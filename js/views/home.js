@@ -7,7 +7,7 @@ import { dueChores, choreRow, trashFor, binChips } from './casa.js';
 import { cats, catAvatar, upcomingFor, lastWeight } from './gatti.js';
 import { seasonInfo, currentTheme, seasonDeco } from '../season.js';
 import { badge as shopBadge } from './spesa.js';
-import { statusOf, personBadge } from './dove.js';
+import { statusOf, personBadge, pillOf, iconOf } from './dove.js';
 
 function greeting() {
   const h = new Date().getHours();
@@ -75,8 +75,8 @@ function doveCard() {
     ${['p1', 'p2'].map((k) => {
       const st = statusOf(k);
       return html`<div class="dh-row">${personBadge(k)}<span class="dh-name">${nameOf(k)}</span>
-        ${st.p ? html`<span class="pill ${st.cls === 'home' ? 'ok' : st.cls === 'out' ? 'soon' : ''}">${icon(st.cls === 'home' ? 'home' : 'pin', 'xs')} ${st.cls ? st.label : 'Posizione'}</span>
-          <span class="dh-sub">${st.cls === 'home' ? st.sub : st.p.place || timeAgo(st.p.at)}</span>` : html`<span class="dh-sub">non ancora condivisa</span>`}
+        ${st.p ? html`<span class="pill ${pillOf(st)}">${icon(iconOf(st), 'xs')} ${st.cls ? st.label : 'Posizione'}</span>
+          <span class="dh-sub">${st.cls === 'home' || st.cls === 'work' ? st.sub : st.p.place || timeAgo(st.p.at)}</span>` : html`<span class="dh-sub">non ancora condivisa</span>`}
       </div>`;
     })}
   </a>`;

@@ -75,20 +75,25 @@ export default async function handler(req, res) {
       const lat = Number(b.lat), lon = Number(b.lon);
       const at = b.tst ? Number(b.tst) * 1000 : Date.now();
       if (!prev.at || at >= prev.at - 60000) {
-        // a casa? dalla posizione di casa impostata nell'app, o dalle "regioni" di OwnTracks
-        let home = null;
-        if (s.casaPos && Number.isFinite(s.casaPos.lat)) home = distanza({ lat, lon }, s.casaPos) <= (Number(s.casaPos.r) || 150);
+        // i nostri posti (casa, lavoro…) segnati nell'app; la casa "segnata qui" ha la precedenza
+        const posti = (Array.isArray(s.luoghi) ? s.luoghi : []).filter((l) => l && Number.isFinite(l.lat) && (l.chi === 'both' || l.chi === who || !l.chi));
+        const casa = s.casaPos && Number.isFinite(s.casaPos.lat) ? { ...s.casaPos, id: 'casa' } : posti.find((l) => l.id === 'casa');
+        let home = casa ? distanza({ lat, lon }, casa) <= (Number(casa.r) || 150) : null;
         const regions = (b.inregions || []).map(norm);
         if (regions.some((r) => r.includes('casa') || r.includes('home'))) home = true;
         if (type === 'transition' && /casa|home/i.test(b.desc || '')) home = b.event === 'enter';
+        const qui = home ? null : posti.filter((l) => l.id !== 'casa').find((l) => distanza({ lat, lon }, l) <= (Number(l.r) || 200));
+        const luogoId = home ? 'casa' : qui ? qui.id : null;
         const moved = !prev.lat || distanza(prev, { lat, lon }) > 120;
-        const place = home ? 'Casa' : moved || !prev.place ? (await luogo(lat, lon)) || prev.place || '' : prev.place;
+        const place = home ? 'Casa' : qui ? qui.nome : moved || !prev.place || prev.luogo ? (await luogo(lat, lon)) || prev.place || '' : prev.place;
         const doc = {
           lat, lon, at,
           acc: Number(b.acc) || null,
           batt: Number.isFinite(Number(b.batt)) ? Number(b.batt) : prev.batt ?? null,
           home,
           homeSince: home !== prev.home ? at : prev.homeSince || at,
+          luogo: luogoId,
+          luogoSince: luogoId !== (prev.luogo ?? null) ? at : prev.luogoSince || at,
           place,
           src: b.chi ? 'app' : 'owntracks',
         };

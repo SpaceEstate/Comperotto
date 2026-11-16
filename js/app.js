@@ -55,6 +55,7 @@ function sameNode(a, b) {
 }
 function patch(from, to) {
   if (from.nodeType === 3 || from.nodeType === 8) { if (from.nodeValue !== to.nodeValue) from.nodeValue = to.nodeValue; return; }
+  if (from.nodeType === 1 && from.hasAttribute('data-keep')) return; // la mappa gestisce da sola il suo riquadro
   for (const { name } of [...from.attributes]) if (!to.hasAttribute(name)) from.removeAttribute(name);
   for (const { name, value } of [...to.attributes]) if (from.getAttribute(name) !== value) from.setAttribute(name, value);
   if (from.nodeName === 'IFRAME' || from.hasAttribute('data-keep')) return; // lettori e mappe restano come sono

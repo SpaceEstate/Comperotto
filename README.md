@@ -117,7 +117,7 @@ Su ogni iPhone, una volta:
 1. Installa **OwnTracks** e consenti la posizione **"Sempre"** (e "Movimento e fitness").
 2. In OwnTracks → **ⓘ / Impostazioni**: *Mode* **HTTP**, *URL* `https://comperotto.vercel.app/api/posizione`, *Authentication* attiva, *UserID* il tuo nome (`patrick` o `serena`), *Password* il codice di famiglia.
 3. Sulla mappa di OwnTracks scegli il modo **Significant** (consuma pochissimo) e tocca la freccia ↑ per mandare subito la posizione.
-4. Nell'app di casa, da casa, apri **Dov'è** e tocca "Sei a casa? Tocca qui per segnarla sulla mappa": da lì in poi l'app sa quando siete a casa.
+4. Nell'app, in **Dov'è → I nostri posti**, tocca Casa e i due Lavoro e scrivi gli indirizzi: l'app trova da sola le coordinate e mostra "A casa", "Al lavoro" o "Fuori". In alternativa, quando sei sul posto, tocca "Sono qui adesso". Si possono aggiungere altri posti. Gli indirizzi restano nel database, non nel codice (che è pubblico).
 
 Si salva solo l'ultima posizione di ciascuno, protetta dal codice di famiglia.
 

@@ -250,6 +250,12 @@ export const DEFAULT_SETTINGS = {
   compleanni: { p1: '12-20', p2: '04-29' },
   // il giorno in cui vi siete messi insieme
   anniversario: '2020-07-18',
+  // i nostri posti per "Dov'è": gli indirizzi si scrivono dall'app (restano nel database, non nel codice pubblico)
+  luoghi: [
+    { id: 'casa', nome: 'Casa', indirizzo: '', chi: 'both', r: 150 },
+    { id: 'lavoro-p1', nome: 'Lavoro', indirizzo: '', chi: 'p1', r: 200 },
+    { id: 'lavoro-p2', nome: 'Lavoro', indirizzo: '', chi: 'p2', r: 200 },
+  ],
   rifiuti: { 0: [], 1: ['umido'], 2: ['plastica'], 3: ['umido', 'carta'], 4: ['secco'], 5: ['umido', 'vetro'], 6: [] },
   rifiutiFatto: null,
   ricorrenze: [],

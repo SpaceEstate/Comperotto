@@ -18,6 +18,8 @@ const OFFER_GROUPS = [
   ['buy', 'Da comprare'],
 ];
 const streaming = (f) => (f.offers || []).filter((o) => o.t === 'flatrate' || o.t === 'free');
+/** Il risultato di una ricerca è già nella nostra lista? */
+const inList = (r) => state.data.film.find((f) => (f.jw && r.jw && f.jw === r.jw) || (norm(f.title) === norm(r.title) && (!f.year || !r.year || f.year === r.year)));
 
 function poster(f, size = '') {
   const src = safePoster(f.poster);
@@ -92,11 +94,11 @@ export function render() {
     ${results ? html`<div class="card film-results fade-in">
       <div class="card-head"><h3 class="card-title">Risultati</h3><button class="icon-btn ghost" data-action="film-results-close" aria-label="Chiudi risultati">${icon('x', 'sm')}</button></div>
       ${results === 'loading' ? html`<p class="muted small">Cerco…</p>` : results.length ? html`<div class="list" style="box-shadow:none">${results.map((r, i) => html`
-        <button class="row" data-action="film-pick" data-i="${i}">
+        <button class="row ${inList(r) ? 'in-list' : ''}" data-action="film-pick" data-i="${i}">
           <span class="mini-poster">${safePoster(r.poster) ? html`<img src="${safePoster(r.poster)}" alt="">` : icon(r.kind === 'tv' ? 'tv' : 'film')}</span>
           <span class="row-main"><span class="row-title">${r.title}</span><span class="row-sub">${r.kind === 'tv' ? 'Serie' : 'Film'}${r.year ? ` · ${r.year}` : ''}</span>
             ${(r.offers || []).filter((o) => o.t === 'flatrate' || o.t === 'free').length ? html`<span class="mini-prov">${providerIcons((r.offers || []).filter((o) => o.t === 'flatrate' || o.t === 'free'), 4)}</span>` : ''}</span>
-          ${icon('plus', 'sm')}
+          ${inList(r) ? html`<span class="pill ok">${icon('check', 'xs')} In lista</span>` : html`<span class="add-dot">${icon('plus', 'sm')}</span>`}
         </button>`)}</div>` : html`<p class="muted small">Nessun risultato. <button class="card-link" data-action="film-manual">Aggiungilo lo stesso</button></p>`}
     </div>` : ''}
 
@@ -267,14 +269,13 @@ export const actions = {
     catch { setUi('film.results', null); editSheet(null, { title: cap(q) }); }
   },
   'film-results-close': () => { state.ui['film.q'] = ''; setUi('film.results', null); },
-  'film-manual': () => { const q = ui('film.q', ''); setUi('film.results', null); editSheet(null, { title: cap(q) }); },
+  // i risultati restano aperti finché non si chiudono con la X: se si apre il film sbagliato basta tornare indietro
+  'film-manual': () => editSheet(null, { title: cap(ui('film.q', '')) }),
   'film-pick': ({ el }) => {
     const r = (ui('film.results', []) || [])[Number(el.dataset.i)];
     if (!r) return;
-    const dup = state.data.film.find((f) => (f.jw && f.jw === r.jw) || (norm(f.title) === norm(r.title) && (!f.year || f.year === r.year)));
-    state.ui['film.q'] = '';
-    setUi('film.results', null);
-    if (dup) { toast('È già nella lista'); return; }
+    const dup = inList(r);
+    if (dup) { detailSheet(dup); return; }
     editSheet(null, r);
   },
   'film-spin': () => { vibrate(); setUi('film.spin', Number(ui('film.spin', 0)) + 1); },

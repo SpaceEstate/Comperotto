@@ -2,7 +2,7 @@
 import { html, raw, norm, cap, parseQty, timeAgo, vibrate, plural } from '../utils.js';
 import { icon, catFace } from '../icons.js';
 import { SHOP_CATS, shopCat, classify } from '../data.js';
-import { state, store, me, whoBadge, openSheet, toast, val, pageHead, emptyState, confirmSheet, closeSheet } from '../core.js';
+import { state, store, me, whoBadge, openSheet, toast, val, emptyState, closeSheet } from '../core.js';
 
 const catOf = (it) => it.category || classify(it.name);
 
@@ -47,7 +47,6 @@ export function render() {
     ${total ? html`<div class="shop-progress">
       <div><b>${todo.length ? plural(todo.length, 'cosa da prendere', 'cose da prendere') : 'Tutto nel carrello!'}</b>
         <span>${done.length ? `${done.length} già nel carrello` : 'Buona spesa'}</span></div>
-      <button class="icon-btn" data-action="spesa-menu" aria-label="Condividi o svuota la lista">${icon('share', 'sm')}</button>
       <i class="bar"><i style="width:${pct}%"></i></i>
     </div>` : ''}
 
@@ -148,37 +147,6 @@ export const actions = {
     const done = state.data.spesa.filter((i) => i.done);
     done.forEach((i) => store.remove('spesa', i.id));
     toast(`Carrello svuotato (${done.length})`, { undo: () => done.forEach(({ id, ...rest }) => store.set('spesa', id, rest)) });
-  },
-  'spesa-menu': () => {
-    openSheet({
-      title: 'Lista della spesa',
-      body: html`<div class="list">
-        <button class="set-row" data-action="spesa-copy">${icon('note')}<div class="row-main"><b>Copia la lista</b><span>Da incollare in chat o in un’altra app</span></div></button>
-        <button class="set-row" data-action="spesa-clear-all">${icon('trash')}<div class="row-main"><b>Cancella tutta la lista</b><span>Anche le cose ancora da prendere</span></div></button>
-      </div>`,
-    });
-  },
-  'spesa-copy': async () => {
-    const todo = state.data.spesa.filter((i) => !i.done);
-    const text = SHOP_CATS.map((c) => {
-      const its = todo.filter((i) => catOf(i) === c.id);
-      return its.length ? `${c.label}\n${its.map((i) => `• ${i.name}${i.qty ? ` (${i.qty})` : ''}`).join('\n')}` : '';
-    }).filter(Boolean).join('\n\n');
-    try {
-      if (navigator.share) await navigator.share({ title: 'Lista della spesa', text });
-      else { await navigator.clipboard.writeText(text); toast('Lista copiata'); }
-    } catch {}
-    closeSheet();
-  },
-  'spesa-clear-all': () => {
-    confirmSheet({
-      title: 'Cancellare tutta la lista?', text: 'Toglie tutte le voci, anche quelle non ancora prese.', yes: 'Cancella tutto',
-      onYes: () => {
-        const all = [...state.data.spesa];
-        all.forEach((i) => store.remove('spesa', i.id));
-        toast('Lista cancellata', { undo: () => all.forEach(({ id, ...rest }) => store.set('spesa', id, rest)) });
-      },
-    });
   },
 };
 

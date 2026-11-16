@@ -1019,3 +1019,6 @@ a.prov { text-decoration: none; color: var(--text); }
   .fh-poster { width: 150px; }
   .film-hero h2 { font-size: 32px; }
 }
+
+.film-results .add-dot { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--oak-soft); color: var(--oak-deep); flex: none; }
+.film-results .row.in-list .row-title { color: var(--text-2); }

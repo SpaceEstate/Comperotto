@@ -58,11 +58,21 @@ export function upcomingDates(settings, cats = [], ref = todayIso()) {
     if (r && r.date && r.label) list.push({ label: r.label, date: nextYearly(r.date, ref), theme: r.theme || 'compleanni', icon: r.icon || 'cake', personal: true });
   });
   const names = { ...DEFAULT_SETTINGS.names, ...(settings.names || {}) };
+  const age = (birth, date) => (birth.length === 10 ? Number(date.slice(0, 4)) - Number(birth.slice(0, 4)) : null);
   Object.entries(settings.compleanni || {}).forEach(([k, d]) => {
-    if (d && names[k]) list.push({ label: `Compleanno di ${names[k]}`, date: nextYearly(d, ref), theme: k === 'p2' ? 'aprile' : 'compleanni', icon: 'cake', personal: true, who: k });
+    if (d && names[k]) {
+      const date = nextYearly(d, ref);
+      list.push({ label: `Compleanno di ${names[k]}`, name: names[k], date, age: age(d, date), theme: k === 'p2' ? 'aprile' : 'compleanni', icon: 'cake', personal: true, who: k });
+    }
   });
-  cats.forEach((c) => {
-    if (c.birth) list.push({ label: `Compleanno di ${c.name}`, date: nextYearly(c.birth, ref), theme: 'compleanni', icon: 'cat', personal: true });
+  // i gatti nati lo stesso giorno festeggiano insieme
+  const byDay = {};
+  cats.filter((c) => c.birth).forEach((c) => { (byDay[c.birth.slice(5)] ||= []).push(c); });
+  Object.values(byDay).forEach((group) => {
+    const n = group.map((c) => c.name);
+    const label = n.length > 1 ? `${n.slice(0, -1).join(', ')} e ${n[n.length - 1]}` : n[0];
+    const date = nextYearly(group[0].birth, ref);
+    list.push({ label: `Compleanno di ${label}`, name: label, date, age: age(group[0].birth, date), theme: 'compleanni', icon: 'cat', personal: true, cats: true });
   });
   return list.map((x) => ({ ...x, days: daysBetween(ref, x.date) })).sort((a, b) => a.days - b.days);
 }
@@ -201,8 +211,9 @@ export const CAT_EVENTS = {
 export const MUSIC_TYPES = { brano: 'Brano', album: 'Album', playlist: 'Playlist' };
 
 export const DEFAULT_SETTINGS = {
-  names: { p1: 'Lui', p2: 'Serena' },
-  compleanni: { p1: '', p2: '' },
+  names: { p1: 'Patrick', p2: 'Serena' },
+  // solo giorno e mese: il repository è pubblico (l'anno si può aggiungere dall'app)
+  compleanni: { p1: '12-20', p2: '04-29' },
   rifiuti: { 0: [], 1: ['umido'], 2: ['plastica'], 3: ['umido', 'carta'], 4: ['secco'], 5: ['umido', 'vetro'], 6: [] },
   rifiutiFatto: null,
   ricorrenze: [],

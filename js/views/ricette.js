@@ -2,7 +2,7 @@
 import { html, raw, norm, cap, parseQty, resizeImage, safeImg, vibrate } from '../utils.js';
 import { icon, catFace } from '../icons.js';
 import { THEMES, themeLabel } from '../data.js';
-import { state, store, openSheet, closeSheet, toast, val, lines, pageHead, emptyState, ui, setUi, navigate, themeChoices, confirmSheet } from '../core.js';
+import { state, store, openSheet, closeSheet, toast, val, lines, pageHead, emptyState, ui, setUi, navigate, themeChoices, confirmSheet, rerender } from '../core.js';
 import { addShopping } from './spesa.js';
 import { currentTheme, seasonInfo } from '../season.js';
 
@@ -83,7 +83,9 @@ function detail(id) {
         ${r.time ? html`<span class="fact">${icon('clock', 'sm')} ${r.time} min</span>` : ''}
         ${r.servings ? html`<span class="fact">${icon('users', 'sm')} ${r.servings} ${r.servings > 12 ? 'pezzi' : 'porzioni'}</span>` : ''}
         ${(r.themes || []).map((t) => html`<span class="fact">${icon((THEMES[t] || THEMES.sempre).icon, 'sm')} ${themeLabel(t, true)}</span>`)}
+        <button class="fact wake ${ui('wake', false) ? 'on' : ''}" data-action="wake">${icon('bulb', 'sm')} ${ui('wake', false) ? 'Schermo sempre acceso' : 'Tieni lo schermo acceso'}</button>
       </div>
+      <div class="recipe-cols"><div class="col-ingr">
 
       ${ingr.length ? html`
         <div class="section-title"><span>Ingredienti</span><button class="card-link" data-action="ingr-all" data-id="${r.id}">${sel.every(Boolean) ? 'Nessuno' : 'Tutti'}</button></div>
@@ -93,9 +95,12 @@ function detail(id) {
             <span class="row-main"><span class="row-title">${x}</span></span>
           </button>`)}</div>
         <button class="btn primary block" style="margin-top:12px" data-action="ricetta-spesa" data-id="${r.id}" ${n ? '' : raw('disabled')}>${icon('basket', 'sm')} Aggiungi alla spesa (${n})</button>` : ''}
+      </div><div class="col-steps">
 
       ${(r.steps || []).length ? html`<div class="section-title"><span>Preparazione</span></div><ol class="steps">${r.steps.map((s) => html`<li>${s}</li>`)}</ol>` : ''}
       ${r.note ? html`<div class="section-title"><span>Il nostro segreto</span></div><p class="recipe-note">${r.note}</p>` : ''}
+      <button class="btn block" style="margin-top:22px" data-action="ricetta-edit" data-id="${r.id}">${icon('pencil', 'sm')} Modifica ricetta</button>
+      </div></div>
     </article>`;
 }
 
@@ -143,7 +148,30 @@ function recipeSheet(r = null) {
   });
 }
 
+// Mentre si cucina lo schermo non si spegne (Screen Wake Lock, iOS 16.4+)
+let wakeLock = null;
+export function releaseWake() {
+  if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+  state.ui.wake = false;
+}
+document.addEventListener('visibilitychange', async () => {
+  if (!document.hidden && state.ui.wake && 'wakeLock' in navigator) {
+    try { wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+  }
+});
+
 export const actions = {
+  wake: async () => {
+    if (state.ui.wake) { releaseWake(); setUi('wake', false); return; }
+    if (!('wakeLock' in navigator)) { toast('Su questo dispositivo non si può: aggiorna iOS'); return; }
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { if (!document.hidden) { state.ui.wake = false; rerender(); } });
+      vibrate();
+      setUi('wake', true);
+      toast('Lo schermo resta acceso finché sei sulla ricetta');
+    } catch { toast('Non riesco a tenere acceso lo schermo'); }
+  },
   'ricette-theme': ({ el, ev }) => { ev.preventDefault(); setUi('ricette.theme', el.dataset.theme); if (location.hash !== '#/ricette') navigate('#/ricette'); },
   'ricette-q': ({ el }) => setUi('ricette.q', el.value),
   'ricetta-new': () => recipeSheet(),

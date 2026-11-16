@@ -1,7 +1,7 @@
 {
   "name": "casa-comperotto-skill",
   "version": "1.0.0",
-  "description": "Skill Alexa per la lista della spesa, i rifiuti e le faccende di Casa Comperotto",
+  "description": "Skill Alexa per la lista della spesa, i rifiuti e le faccende della Fam. Comperotto",
   "main": "index.js",
   "private": true,
   "dependencies": {

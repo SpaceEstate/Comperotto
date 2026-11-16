@@ -1,4 +1,4 @@
-// Skill Alexa "Casa Comperotto"
+// Skill Alexa della Fam. Comperotto (nome di invocazione: "casa comperotto")
 //   «Alexa, chiedi a casa comperotto di aggiungere il latte»
 //   «Alexa, chiedi a casa comperotto cosa c'è da comprare»
 //   «Alexa, chiedi a casa comperotto di togliere il latte»
@@ -101,7 +101,7 @@ const slotId = (h, name) => {
 const LaunchRequestHandler = {
   canHandle: (h) => Alexa.getRequestType(h.requestEnvelope) === 'LaunchRequest',
   handle: (h) => h.responseBuilder
-    .speak('Ciao, sono la casa! Posso aggiungere cose alla spesa, leggerti la lista, dirti cosa si butta stasera o cosa c\'è da fare oggi. Cosa ti serve?')
+    .speak('Ciao, sono la casa della famiglia Comperotto! Posso aggiungere cose alla spesa, leggerti la lista, dirti cosa si butta stasera o cosa c\'è da fare oggi. Cosa ti serve?')
     .reprompt('Per esempio di\': aggiungi il latte.')
     .getResponse(),
 };

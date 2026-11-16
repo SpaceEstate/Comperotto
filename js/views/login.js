@@ -5,7 +5,7 @@ import { store, toast } from '../core.js';
 
 export function render() {
   return html`<section class="login fade-in">
-    <div class="brand"><div class="logo"></div><h1>Casa Comperotto</h1><p>Bentornati a casa</p></div>
+    <div class="brand"><div class="logo"></div><h1>Fam. Comperotto</h1><p>Bentornati a casa</p></div>
     <form class="card" data-form="login" novalidate>
       <label class="field"><span>Email</span><input name="email" type="email" autocomplete="username" inputmode="email" required></label>
       <label class="field"><span>Password</span><input name="password" type="password" autocomplete="current-password" required></label>

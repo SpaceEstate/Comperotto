@@ -9,8 +9,8 @@ export function seedData() {
     settings: [{ id: 'main', ...DEFAULT_SETTINGS, seeded: true }],
 
     gatti: [
-      { id: 'thor', name: 'Thor', birth: '', breed: '', color: 'a', photo: '', note: '', food: '', chip: '' },
-      { id: 'minu', name: 'Minù', birth: '', breed: '', color: 'b', photo: '', note: '', food: '', chip: '' },
+      { id: 'thor', name: 'Thor', birth: '2025-10-04', breed: '', color: 'a', photo: '', note: '', food: '', chip: '' },
+      { id: 'minu', name: 'Minù', birth: '2025-10-04', breed: '', color: 'b', photo: '', note: '', food: '', chip: '' },
     ],
 
     routine: [

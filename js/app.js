@@ -1,4 +1,4 @@
-// Casa Comperotto — avvio, navigazione, aggiornamento dello schermo
+// Fam. Comperotto — avvio, navigazione, aggiornamento dello schermo
 import { html, raw, todayIso } from './utils.js';
 import { icon } from './icons.js';
 import { COLLECTIONS, setErrorHandler } from './store.js';
@@ -24,6 +24,9 @@ const TABS = [
 ];
 
 const route = () => (location.hash.replace(/^#\/?/, '') || '').split('/').map(decodeURIComponent);
+const wideMq = matchMedia('(min-width: 700px) and (min-height: 560px)');
+const wide = () => wideMq.matches;
+wideMq.addEventListener?.('change', () => rerender());
 
 // ---------------------------------------------------------------------------
 // Aggiornamento del DOM "a differenza": cambia solo ciò che serve, così
@@ -86,11 +89,17 @@ function render() {
 
   tabbar.hidden = false;
   const tabsTpl = document.createElement('template');
-  tabsTpl.innerHTML = html`<div class="tabbar-inner">${TABS.map((t) => {
-    const n = t.badge ? t.badge() : 0;
-    return html`<a class="tab ${t.key === (VIEWS[r[0]] ? r[0] : '') || (t.key === '' && r[0] === 'impostazioni') ? 'on' : ''}" href="${t.href}" ${t.key === r[0] ? raw('aria-current="page"') : ''}>
-      <span class="tab-ico">${icon(t.icon)}</span>${t.label}${n ? html`<span class="badge">${n > 99 ? '99+' : n}</span>` : ''}</a>`;
-  })}</div>`.s;
+  const cur = VIEWS[r[0]] ? r[0] : '';
+  tabsTpl.innerHTML = html`<div class="tabbar-inner">
+    <a class="side-brand" href="#/"><span class="mini-logo"></span><span>Fam. Comperotto</span></a>
+    ${TABS.map((t) => {
+      const n = t.badge ? t.badge() : 0;
+      const on = t.key === cur || (t.key === '' && cur === 'impostazioni' && !wide());
+      return html`<a class="tab ${on ? 'on' : ''}" href="${t.href}" ${on ? raw('aria-current="page"') : ''}>
+        <span class="tab-ico">${icon(t.icon)}</span><span class="tab-label">${t.label}</span>${n ? html`<span class="badge">${n > 99 ? '99+' : n}</span>` : ''}</a>`;
+    })}
+    <a class="tab side-only ${cur === 'impostazioni' ? 'on' : ''}" href="#/impostazioni"><span class="tab-ico">${icon('sliders')}</span><span class="tab-label">Impostazioni</span></a>
+  </div>`.s;
   if (tabbar.firstElementChild) morphChildren(tabbar, tabsTpl.content); else tabbar.replaceChildren(tabsTpl.content);
 }
 setRenderer(render);
@@ -137,7 +146,18 @@ document.addEventListener('input', (ev) => {
 
 document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && sheetOpen()) closeSheet(); });
 
-window.addEventListener('hashchange', () => { closeSheet(); render(); });
+window.addEventListener('hashchange', () => { closeSheet(); ricette.releaseWake(); render(); });
+
+// iPhone/iPad: quando si apre la tastiera i fogli dal basso salgono sopra di lei
+if (window.visualViewport) {
+  const vv = window.visualViewport;
+  const upd = () => {
+    const kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+    document.documentElement.style.setProperty('--kb', `${kb > 60 ? kb : 0}px`);
+  };
+  vv.addEventListener('resize', upd);
+  vv.addEventListener('scroll', upd);
+}
 
 // aggiorna "oggi" se l'app resta aperta oltre la mezzanotte o torna in primo piano
 let lastDay = todayIso();

@@ -1,14 +1,14 @@
 // Impostazioni: chi sei, nomi, compleanni, atmosfera, sincronizzazione, Alexa, film, backup
-import { html, raw, cap, lsGet, lsSet, uid, shortDate } from '../utils.js';
+import { html, raw, cap, lsGet, lsSet, uid, parseDMY, fmtDMY } from '../utils.js';
 import { icon } from '../icons.js';
 import { SEASONS } from '../data.js';
 import { ALEXA_INVOCATION, HOUSE_ID } from '../config.js';
 import { COLLECTIONS } from '../store.js';
-import { state, store, isCloud, settings, saveSettings, me, setMe, nameOf, openSheet, closeSheet, toast, val, pageHead, rerender, confirmSheet } from '../core.js';
+import { state, store, isCloud, settings, saveSettings, me, setMe, nameOf, openSheet, closeSheet, sheetError, toast, val, pageHead, rerender, confirmSheet } from '../core.js';
 import { seasonOverride, setSeasonOverride } from '../season.js';
 import { seedData } from '../seed.js';
 
-export const VERSION = '1.0.0';
+export const VERSION = '1.1.0';
 
 const themeMode = () => lsGet('casa.theme', 'auto');
 export function applyTheme() {
@@ -48,8 +48,8 @@ export function render() {
 
     <div class="section-title"><span>Casa</span></div>
     <div class="list">
-      <button class="set-row" data-action="set-names">${icon('users')}<div class="row-main"><b>${n.p1} e ${n.p2}</b><span>Nomi e compleanni${s.compleanni && (s.compleanni.p1 || s.compleanni.p2) ? '' : ' · aggiungi le date'}</span></div>${icon('right', 'sm')}</button>
-      <button class="set-row" data-action="set-dates">${icon('calendar')}<div class="row-main"><b>Ricorrenze</b><span>${ric.length ? ric.map((r) => `${r.label} (${shortDate('2000-' + r.date.slice(-5))})`).join(', ') : 'Anniversario, compleanni di amici e parenti…'}</span></div>${icon('right', 'sm')}</button>
+      <button class="set-row" data-action="set-names">${icon('users')}<div class="row-main"><b>${n.p1} e ${n.p2}</b><span>${s.compleanni && (s.compleanni.p1 || s.compleanni.p2) ? `Compleanni: ${[['p1', n.p1], ['p2', n.p2]].filter(([k]) => s.compleanni[k]).map(([k, x]) => `${x} ${fmtDMY(s.compleanni[k])}`).join(' · ')}` : 'Nomi e compleanni'}</span></div>${icon('right', 'sm')}</button>
+      <button class="set-row" data-action="set-dates">${icon('calendar')}<div class="row-main"><b>Ricorrenze</b><span>${ric.length ? ric.map((r) => `${r.label} (${fmtDMY(r.date)})`).join(', ') : 'Anniversario, compleanni di amici e parenti…'}</span></div>${icon('right', 'sm')}</button>
       <a class="set-row" href="#/casa/rifiuti">${icon('bin')}<div class="row-main"><b>Calendario rifiuti</b><span>I giorni della raccolta</span></div>${icon('right', 'sm')}</a>
     </div>
 
@@ -88,7 +88,7 @@ export function render() {
       <button class="set-row" data-action="wipe" style="color:var(--rose)">${icon('trash')}<div class="row-main"><b>Cancella tutto</b><span>Svuota la casa (per entrambi)</span></div></button>
     </div>
 
-    <p class="muted small" style="text-align:center;margin-top:26px">Casa Comperotto · v${VERSION}<br>Fatta con amore per ${n.p1}, ${n.p2}, Thor e Minù</p>`;
+    <p class="muted small" style="text-align:center;margin-top:26px">Fam. Comperotto · v${VERSION}<br>Fatta con amore per ${n.p1}, ${n.p2}, Thor e Minù</p>`;
 }
 
 function namesSheet() {
@@ -99,17 +99,19 @@ function namesSheet() {
     body: html`
       <div class="field-row">
         <label class="field"><span>Nome</span><input name="p1" value="${s.names.p1}" required></label>
-        <label class="field"><span>Compleanno</span><input name="b1" type="date" value="${c.p1 || ''}"></label>
+        <label class="field"><span>Compleanno</span><input name="b1" inputmode="numeric" placeholder="gg/mm/aaaa" value="${fmtDMY(c.p1)}"></label>
       </div>
       <div class="field-row">
         <label class="field"><span>Nome</span><input name="p2" value="${s.names.p2}" required></label>
-        <label class="field"><span>Compleanno</span><input name="b2" type="date" value="${c.p2 || ''}"></label>
+        <label class="field"><span>Compleanno</span><input name="b2" inputmode="numeric" placeholder="gg/mm/aaaa" value="${fmtDMY(c.p2)}"></label>
       </div>
-      <p class="help" style="margin-top:-6px">Basta giorno e mese giusti, l’anno non conta. Il giorno del compleanno la Home fa festa.</p>`,
+      <p class="help" style="margin-top:-6px">Basta giorno e mese (es. 29/04); con l’anno il giorno del compleanno la Home dice anche quanti anni. Le date restano nel vostro database, non nel codice pubblico.</p>`,
     onSubmit: (fd) => {
       const p1 = cap(val(fd, 'p1')), p2 = cap(val(fd, 'p2'));
-      if (!p1 || !p2) return false;
-      saveSettings({ names: { p1, p2 }, compleanni: { p1: val(fd, 'b1'), p2: val(fd, 'b2') } });
+      const b1 = parseDMY(val(fd, 'b1')), b2 = parseDMY(val(fd, 'b2'));
+      if (!p1 || !p2) { sheetError('Servono entrambi i nomi'); return false; }
+      if (b1 === null || b2 === null) { sheetError('Scrivi le date come 29/04 oppure 29/04/1997'); return false; }
+      saveSettings({ names: { p1, p2 }, compleanni: { p1: b1, p2: b2 } });
     },
   });
 }
@@ -121,15 +123,15 @@ function datesSheet() {
     title: 'Ricorrenze',
     body: html`
       ${ric.length ? html`<div class="list" style="margin-bottom:14px">${ric.map((r) => html`
-        <div class="row"><span class="row-main"><span class="row-title">${r.label}</span><span class="row-sub">${shortDate('2000-' + r.date.slice(-5))}</span></span>
+        <div class="row"><span class="row-main"><span class="row-title">${r.label}</span><span class="row-sub">${fmtDMY(r.date)}</span></span>
           <button class="icon-btn ghost" type="button" data-action="date-del" data-id="${r.id}" aria-label="Elimina ${r.label}">${icon('trash', 'sm')}</button></div>`)}</div>` : ''}
       <label class="field"><span>Cosa</span><input name="label" placeholder="es. Il nostro anniversario"></label>
-      <label class="field"><span>Quando</span><input name="date" type="date"></label>`,
+      <label class="field"><span>Quando</span><input name="date" inputmode="numeric" placeholder="gg/mm"></label>`,
     submit: 'Aggiungi',
     onSubmit: (fd) => {
-      const label = cap(val(fd, 'label')), date = val(fd, 'date');
-      if (!label || !date) return false;
-      saveSettings({ ricorrenze: [...ric, { id: uid(), label, date: date.slice(5) }] });
+      const label = cap(val(fd, 'label')), date = parseDMY(val(fd, 'date'));
+      if (!label || !date) { sheetError('Scrivi cosa e quando (es. 14/02)'); return false; }
+      saveSettings({ ricorrenze: [...ric, { id: uid(), label, date: date.slice(-5) }] });
     },
   });
 }

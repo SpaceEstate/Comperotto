@@ -145,7 +145,50 @@ export const safeImg = (s) => (typeof s === 'string' && /^data:image\/(jpeg|png|
 
 export const money = (n) => (Number(n) || 0).toLocaleString('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: (Number(n) % 1) ? 2 : 0 });
 
-export const vibrate = (ms = 8) => { try { navigator.vibrate && navigator.vibrate(ms); } catch {} };
+// ---------- iPhone / iPad ----------
+export const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+export const isStandalone = () => window.navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+
+/**
+ * Piccolo "tap" tattile. Su iPhone (iOS 18+) Safari non supporta navigator.vibrate,
+ * ma dà un feedback aptico quando si attiva un interruttore <input switch>: lo usiamo di nascosto.
+ */
+export function vibrate(ms = 8) {
+  try {
+    if (navigator.vibrate) { navigator.vibrate(ms); return; }
+    if (!isIOS()) return;
+    const label = document.createElement('label');
+    label.setAttribute('aria-hidden', 'true');
+    label.style.display = 'none';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.setAttribute('switch', '');
+    label.appendChild(input);
+    document.head.appendChild(label);
+    label.click();
+    label.remove();
+  } catch {}
+}
+
+/** "29/04/1997" → "1997-04-29", "29/04" → "04-29"; date non valide → null. Vuoto → "". */
+export function parseDMY(s) {
+  s = String(s || '').trim();
+  if (!s) return '';
+  const m = s.match(/^(\d{1,2})[/.\- ](\d{1,2})(?:[/.\- ](\d{2}|\d{4}))?$/);
+  if (!m) return null;
+  const d = Number(m[1]), mo = Number(m[2]);
+  let y = m[3] ? Number(m[3]) : null;
+  if (y != null && y < 100) y += y > 40 ? 1900 : 2000;
+  if (mo < 1 || mo > 12 || d < 1 || d > new Date(y || 2000, mo, 0).getDate()) return null;
+  return `${y ? `${y}-` : ''}${pad(mo)}-${pad(d)}`;
+}
+/** "1997-04-29" → "29/04/1997", "04-29" → "29/04" */
+export function fmtDMY(s) {
+  s = String(s || '');
+  if (s.length === 10) return `${s.slice(8)}/${s.slice(5, 7)}/${s.slice(0, 4)}`;
+  if (s.length === 5) return `${s.slice(3)}/${s.slice(0, 2)}`;
+  return '';
+}
 
 export const lsGet = (k, def = null) => { try { const v = localStorage.getItem(k); return v == null ? def : v; } catch { return def; } };
 export const lsSet = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch {} };

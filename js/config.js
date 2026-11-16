@@ -1,5 +1,5 @@
 // ============================================================================
-//  Configurazione di Casa Comperotto
+//  Configurazione dell’app della Fam. Comperotto
 // ============================================================================
 //
 //  Senza Firebase l'app funziona lo stesso, ma salva i dati SOLO su questo

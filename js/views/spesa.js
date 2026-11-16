@@ -56,7 +56,7 @@ export function render() {
 
     ${!todo.length && !done.length ? emptyState('Frigo pieno, lista vuota', 'Scrivi qui sopra oppure chiedilo ad Alexa.', catFace('a')) : ''}
 
-    ${groups.map((g) => html`
+    <div class="shop-groups">${groups.map((g) => html`<section class="shop-group">
       <div class="cat-head"><i style="background:${g.color}"></i>${g.label}<span class="muted" style="margin-left:auto">${g.items.length}</span></div>
       <div class="list">
         ${g.items.map((it) => html`
@@ -72,7 +72,7 @@ export function render() {
             </button>
             ${whoBadge(it.by)}
           </div>`)}
-      </div>`)}
+      </div></section>`)}</div>
 
     ${done.length ? html`
       <div class="section-title"><span>Nel carrello · ${done.length}</span>

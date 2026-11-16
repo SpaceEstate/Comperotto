@@ -65,6 +65,10 @@ export function upcomingDates(settings, cats = [], ref = todayIso()) {
       list.push({ label: `Compleanno di ${names[k]}`, name: names[k], date, age: age(d, date), theme: k === 'p2' ? 'aprile' : 'compleanni', icon: 'cake', personal: true, who: k });
     }
   });
+  if (settings.anniversario) {
+    const date = nextYearly(settings.anniversario, ref);
+    list.push({ label: 'Il vostro anniversario', name: `${names.p1} e ${names.p2}`, date, age: age(settings.anniversario, date), theme: 'sanvalentino', icon: 'heart', personal: true, anniversary: true });
+  }
   // i gatti nati lo stesso giorno festeggiano insieme
   const byDay = {};
   cats.filter((c) => c.birth).forEach((c) => { (byDay[c.birth.slice(5)] ||= []).push(c); });
@@ -214,6 +218,8 @@ export const DEFAULT_SETTINGS = {
   names: { p1: 'Patrick', p2: 'Serena' },
   // solo giorno e mese: il repository è pubblico (l'anno si può aggiungere dall'app)
   compleanni: { p1: '12-20', p2: '04-29' },
+  // il giorno in cui vi siete messi insieme
+  anniversario: '2020-07-18',
   rifiuti: { 0: [], 1: ['umido'], 2: ['plastica'], 3: ['umido', 'carta'], 4: ['secco'], 5: ['umido', 'vetro'], 6: [] },
   rifiutiFatto: null,
   ricorrenze: [],

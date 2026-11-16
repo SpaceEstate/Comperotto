@@ -44,15 +44,17 @@ function seasonCard(s) {
 
 function birthdayCard(b) {
   const isP2 = b.who === 'p2';
-  const title = b.cats ? `Buon compleanno, ${b.name}!` : `Buon compleanno, ${b.name}!`;
-  const sub = b.cats
+  const title = b.anniversary ? `Buon anniversario, ${b.name}!` : `Buon compleanno, ${b.name}!`;
+  const sub = b.anniversary
+    ? `${b.age ? `${b.age} ${b.age === 1 ? 'anno' : 'anni'} insieme ♡ ` : ''}Stasera si festeggia: cena romantica?`
+    : b.cats
     ? `${b.age ? `${b.age} ${b.age === 1 ? 'anno' : 'anni'} di fusa. ` : ''}Oggi croccantini extra per tutti.`
     : isP2
       ? `${b.age ? `${b.age} anni! ` : ''}Joyeux anniversaire · ¡Feliz cumpleaños! ✦`
       : `${b.age ? `${b.age} anni! ` : ''}Tanti auguri da tutta la famiglia (gatti compresi).`;
   return html`<section class="bday-card">
     <div class="confetti" aria-hidden="true">${Array.from({ length: 14 }, (_, i) => html`<i style="left:${(i * 29) % 100}%;animation-delay:-${(i * 0.7) % 4}s;background:${['#E7A3B5', '#F2C14E', '#5FB3C4', '#B57F45'][i % 4]}"></i>`)}</div>
-    <span class="sc-ico">${icon(b.cats ? 'cat' : 'cake', 'lg')}</span>
+    <span class="sc-ico">${icon(b.anniversary ? 'heart' : b.cats ? 'cat' : 'cake', 'lg')}</span>
     <div><b>${title}</b><span>${sub}</span></div>
   </section>`;
 }

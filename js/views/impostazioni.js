@@ -48,7 +48,7 @@ export function render() {
 
     <div class="section-title"><span>Casa</span></div>
     <div class="list">
-      <button class="set-row" data-action="set-names">${icon('users')}<div class="row-main"><b>${n.p1} e ${n.p2}</b><span>${s.compleanni && (s.compleanni.p1 || s.compleanni.p2) ? `Compleanni: ${[['p1', n.p1], ['p2', n.p2]].filter(([k]) => s.compleanni[k]).map(([k, x]) => `${x} ${fmtDMY(s.compleanni[k])}`).join(' · ')}` : 'Nomi e compleanni'}</span></div>${icon('right', 'sm')}</button>
+      <button class="set-row" data-action="set-names">${icon('users')}<div class="row-main"><b>${n.p1} e ${n.p2}</b><span>${s.compleanni && (s.compleanni.p1 || s.compleanni.p2) ? `Compleanni: ${[['p1', n.p1], ['p2', n.p2]].filter(([k]) => s.compleanni[k]).map(([k, x]) => `${x} ${fmtDMY(s.compleanni[k])}`).join(' · ')}` : 'Nomi e compleanni'}${s.anniversario ? ` · insieme dal ${fmtDMY(s.anniversario)}` : ''}</span></div>${icon('right', 'sm')}</button>
       <button class="set-row" data-action="set-dates">${icon('calendar')}<div class="row-main"><b>Ricorrenze</b><span>${ric.length ? ric.map((r) => `${r.label} (${fmtDMY(r.date)})`).join(', ') : 'Anniversario, compleanni di amici e parenti…'}</span></div>${icon('right', 'sm')}</button>
       <a class="set-row" href="#/casa/rifiuti">${icon('bin')}<div class="row-main"><b>Calendario rifiuti</b><span>I giorni della raccolta</span></div>${icon('right', 'sm')}</a>
     </div>
@@ -65,7 +65,7 @@ export function render() {
         <button class="card-link" data-action="logout" style="margin:14px auto 0;display:block;color:var(--text-3)">Scollega questo dispositivo</button>`
       : state.backend && !state.backend.storage ? html`
         <p style="margin:0 0 4px;display:flex;align-items:center;gap:8px"><span class="status-dot"></span><b>Manca il database</b></p>
-        <div class="prose small"><p>Su Vercel apri il progetto → <b>Storage</b> → <b>Create Database</b> → <b>Upstash for Redis</b> (gratis) → collegalo al progetto, poi <b>Redeploy</b>. Al prossimo avvio l'app vi chiederà il codice di famiglia.</p></div>`
+        <div class="prose small"><p>Su Vercel apri il progetto → <b>Storage</b> → <b>Create Database</b> → <b>Neon</b> (piano Free) e collegalo al progetto, poi <b>Redeploy</b>. Va bene anche un database Neon o Upstash che avete già (<b>Connect</b>). Al prossimo avvio l'app vi chiederà il codice di famiglia.</p></div>`
       : html`
         <p style="margin:0 0 4px;display:flex;align-items:center;gap:8px"><span class="status-dot"></span><b>Solo su questo dispositivo</b></p>
         <div class="prose small"><p>Aprite l'app dal suo indirizzo <b>Vercel</b> per avere gli stessi dati su tutti i vostri iPhone e iPad.</p></div>`}
@@ -112,13 +112,14 @@ function namesSheet() {
         <label class="field"><span>Nome</span><input name="p2" value="${s.names.p2}" required></label>
         <label class="field"><span>Compleanno</span><input name="b2" inputmode="numeric" placeholder="gg/mm/aaaa" value="${fmtDMY(c.p2)}"></label>
       </div>
-      <p class="help" style="margin-top:-6px">Basta giorno e mese (es. 29/04); con l’anno il giorno del compleanno la Home dice anche quanti anni. Le date restano nel vostro database, non nel codice pubblico.</p>`,
+      <label class="field"><span>Insieme dal</span><input name="ann" inputmode="numeric" placeholder="gg/mm/aaaa" value="${fmtDMY(s.anniversario)}"></label>
+      <p class="help" style="margin-top:-6px">Basta giorno e mese (es. 29/04); con l’anno la Home dice anche quanti anni fate (o da quanti anni state insieme).</p>`,
     onSubmit: (fd) => {
       const p1 = cap(val(fd, 'p1')), p2 = cap(val(fd, 'p2'));
-      const b1 = parseDMY(val(fd, 'b1')), b2 = parseDMY(val(fd, 'b2'));
+      const b1 = parseDMY(val(fd, 'b1')), b2 = parseDMY(val(fd, 'b2')), ann = parseDMY(val(fd, 'ann'));
       if (!p1 || !p2) { sheetError('Servono entrambi i nomi'); return false; }
-      if (b1 === null || b2 === null) { sheetError('Scrivi le date come 29/04 oppure 29/04/1997'); return false; }
-      saveSettings({ names: { p1, p2 }, compleanni: { p1: b1, p2: b2 } });
+      if (b1 === null || b2 === null || ann === null) { sheetError('Scrivi le date come 29/04 oppure 29/04/1997'); return false; }
+      saveSettings({ names: { p1, p2 }, compleanni: { p1: b1, p2: b2 }, anniversario: ann });
     },
   });
 }
@@ -132,7 +133,7 @@ function datesSheet() {
       ${ric.length ? html`<div class="list" style="margin-bottom:14px">${ric.map((r) => html`
         <div class="row"><span class="row-main"><span class="row-title">${r.label}</span><span class="row-sub">${fmtDMY(r.date)}</span></span>
           <button class="icon-btn ghost" type="button" data-action="date-del" data-id="${r.id}" aria-label="Elimina ${r.label}">${icon('trash', 'sm')}</button></div>`)}</div>` : ''}
-      <label class="field"><span>Cosa</span><input name="label" placeholder="es. Il nostro anniversario"></label>
+      <label class="field"><span>Cosa</span><input name="label" placeholder="es. Compleanno della mamma"></label>
       <label class="field"><span>Quando</span><input name="date" inputmode="numeric" placeholder="gg/mm"></label>`,
     submit: 'Aggiungi',
     onSubmit: (fd) => {

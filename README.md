@@ -14,7 +14,7 @@ Un'app fatta su misura per **iPhone e iPad** (si installa dalla schermata Home e
   - **Musica** a tema del periodo, con il lettore Spotify integrato;
   - **Desideri**: cose da comprare con prezzo, link e totale;
   - **Thor e Minù**: foto, età, peso, antiparassitari, vaccini e veterinario, con promemoria.
-- **Lavagnetta** in Home per lasciarsi biglietti, **conto alla rovescia** per le feste e i compleanni (Serena il 29/04, Patrick il 20/12, Thor e Minù il 04/10): il giorno giusto la Home fa festa.
+- **Lavagnetta** in Home per lasciarsi biglietti, **conto alla rovescia** per le feste e i compleanni (Serena il 29/04, Patrick il 20/12, Thor e Minù il 04/10, il vostro anniversario il 18/07): il giorno giusto la Home fa festa.
 - **Atmosfere stagionali**: cambiano colori e decorazioni da sole.
 
 | Periodo | Atmosfera |
@@ -40,7 +40,7 @@ Tutto funziona sia in chiaro sia in scuro. In *Impostazioni → Atmosfera* si pu
 | | Cosa | Serve? | Dove |
 |---|---|---|---|
 | 1 | Progetto su **Vercel** collegato al repository | Sì (già fatto ✓) | sezione 1 |
-| 2 | **Database** su Vercel (Upstash for Redis, gratis) | Sì: senza, ogni dispositivo ha i suoi dati | sezione 1 |
+| 2 | **Database** su Vercel (Neon, piano Free) | Sì: senza, ogni dispositivo ha i suoi dati | sezione 1 |
 | 3 | Scegliere il **codice di famiglia** e installarla su **ogni iPhone/iPad** | Sì | sezione 2 |
 | 4 | **Skill Alexa** | Per usare la voce | sezione 3 |
 | 5 | Chiave **TMDB** | Per locandine e "dove vederlo" | sezione 4 |
@@ -52,8 +52,10 @@ Niente Firebase, niente account da creare per l'app: i dati stanno nel database 
 Il progetto è già collegato a Vercel, che pubblica da solo ogni modifica del branch **main**.
 
 1. Su <https://vercel.com> apri il progetto **Comperotto** → **Settings → Git**: controlla che il *Production Branch* sia **main**. In *Settings → Build and Deployment* il *Framework Preset* è **Other** e i comandi di build restano vuoti.
-2. Scheda **Storage** → **Create Database** → **Upstash** → **Upstash for Redis** → piano **Free**, regione **Frankfurt** (la più vicina) → **Create**. Poi **Connect Project** → *Comperotto*, tutti gli ambienti → **Connect**.
-   Vercel aggiunge da solo le chiavi del database: non c'è niente da copiare. Non serve registrarsi sul sito di Upstash: si accettano solo le sue condizioni dentro Vercel.
+2. Scheda **Storage** → **Create Database** → **Neon** (Serverless Postgres) → piano **Free**, regione **Frankfurt** (la più vicina) → **Create**. Poi **Connect Project** → *Comperotto*, tutti gli ambienti → **Connect**.
+   Vercel aggiunge da solo le chiavi del database: non c'è niente da copiare, e non serve registrarsi sul sito di Neon (si accettano solo le condizioni dentro Vercel). Le tabelle (`fam_docs`, `fam_ver`, `fam_meta`) le crea l'app al primo avvio.
+   - Se avete **già** un database Neon o Upstash nel team, basta **Connect** su quello: l'app usa solo le sue tabelle/chiavi (`fam_…`) e non tocca il resto. Meglio però un database nuovo, solo per casa.
+   - Upstash su Vercel oggi è solo a consumo (pochi centesimi al mese per un uso come il vostro): se volete zero costi scegliete Neon.
 3. **Deployments** → sull'ultimo deployment **⋯ → Redeploy**, così le funzioni vedono il database appena collegato.
 4. Apri l'indirizzo del progetto (in alto nella pagina del progetto, es. `https://comperotto.vercel.app`): l'app chiede di **scegliere il codice di famiglia**. Fatto!
 
@@ -61,7 +63,7 @@ Il progetto è già collegato a Vercel, che pubblica da solo ogni modifica del b
 >
 > GitHub Pages non serve più: aperta da lì l'app salverebbe i dati solo sul dispositivo. Usate sempre l'indirizzo Vercel.
 
-Consumi: con i vostri due-tre dispositivi l'app resta ampiamente dentro il piano gratuito (aggiorna i dati ogni 6 secondi solo mentre è aperta e in primo piano).
+Consumi: con i vostri due-tre dispositivi l'app resta ampiamente dentro il piano gratuito di Neon (aggiorna i dati ogni 6 secondi solo mentre è aperta e in primo piano; quando nessuno la usa il database si addormenta da solo e il primo accesso dopo una pausa impiega mezzo secondo in più). Le funzioni girano a Francoforte, vicino a voi e al database.
 
 ## 2. Codice di famiglia e installazione su iPhone e iPad
 
@@ -133,7 +135,7 @@ js/season.js            atmosfere stagionali e decorazioni
 js/seed.js              esempi iniziali (ricette, film, musica, faccende)
 js/tmdb.js              film e "dove vederlo"
 js/views/*.js           le schermate
-api/                    funzioni Vercel: stato, setup del codice, dati (database Upstash Redis)
+api/                    funzioni Vercel: stato, setup del codice, dati (Neon/Postgres o Upstash Redis)
 alexa-skill/            skill Alexa (modello italiano + codice)
 ```
 
@@ -151,6 +153,6 @@ npx vercel dev
 
 - **Colori**: le variabili all'inizio di `css/style.css` (ogni stagione ha il suo blocco in fondo).
 - **Date delle atmosfere**: `seasonFor()` in `js/data.js`.
-- **Compleanni e anniversari**: dall'app, *Impostazioni → Noi due* e *Ricorrenze* (formato gg/mm o gg/mm/aaaa). Nel codice pubblico ci sono solo giorno e mese; l'anno, se lo aggiungete dall'app, resta nel vostro database. Il giorno del compleanno la Home fa festa.
+- **Compleanni e anniversari**: dall'app, *Impostazioni → Noi due* (compleanni e "insieme dal", già impostato al 18/07/2020) e *Ricorrenze* (formato gg/mm o gg/mm/aaaa). Nel codice pubblico ci sono solo giorno e mese; l'anno, se lo aggiungete dall'app, resta nel vostro database. Il giorno del compleanno la Home fa festa.
 - **Calendario rifiuti**: dall'app, *Casa → Rifiuti* (impostatelo con i giorni del vostro comune).
 - **Backup**: *Impostazioni → Scarica un backup* salva tutto in un file JSON.

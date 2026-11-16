@@ -670,7 +670,7 @@ svg.i.lg { width: 28px; height: 28px; stroke-width: 1.6; }
 .bday-card { position: relative; overflow: hidden; display: flex; align-items: center; gap: 14px; border-radius: var(--radius-lg); padding: 18px 16px; margin: 12px 0 0; background: linear-gradient(135deg, #F6D4DD, #F9E7C8 55%, #CFE8EC); color: #4A2433; box-shadow: var(--shadow-2); }
 .bday-card b { display: block; font-family: var(--font-serif); font-weight: 500; font-size: 22px; line-height: 1.15; }
 .bday-card span { font-size: 13.5px; }
-.bday-card .sc-ico { background: rgba(255,255,255,.55); color: #B4466A; }
+.bday-card .sc-ico { background: rgba(255,255,255,.55); color: #B4466A !important; }
 .bday-card > :not(.confetti) { position: relative; z-index: 1; }
 .confetti i { position: absolute; top: -12px; width: 7px; height: 11px; border-radius: 2px; opacity: .55; animation: confetti 4s linear infinite; }
 @keyframes confetti { to { transform: translateY(150px) rotate(540deg); } }

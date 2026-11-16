@@ -45,6 +45,10 @@ const redisBackend = {
   name: 'redis',
   async getCode() { const [h] = await redis([['GET', RK.code]]); return h || null; },
   async claimCode(h) { const [ok] = await redis([['SET', RK.code, h, 'NX']]); return Boolean(ok); },
+  // appunti del server (chiavi delle notifiche, iscrizioni…): non fanno parte dei dati che l'app scarica
+  async metaGet(k) { const [v] = await redis([['GET', `fam:m:${k}`]]); return v || null; },
+  async metaSet(k, v) { await redis([['SET', `fam:m:${k}`, v]]); },
+  async metaSetNX(k, v) { const [ok] = await redis([['SET', `fam:m:${k}`, v, 'NX']]); return Boolean(ok); },
   async versions() {
     const [v] = await redis([['HGETALL', RK.ver]]);
     const out = {};
@@ -140,6 +144,13 @@ const pgBackend = {
   async getCode() { const r = await (await pg()).query("SELECT v FROM fam_meta WHERE k = 'codice'"); return r.rows[0] ? r.rows[0].v : null; },
   async claimCode(h) {
     const r = await (await pg()).query("INSERT INTO fam_meta (k, v) VALUES ('codice', $1) ON CONFLICT (k) DO NOTHING RETURNING k", [h]);
+    return r.rowCount > 0;
+  },
+  // appunti del server (chiavi delle notifiche, iscrizioni…): non fanno parte dei dati che l'app scarica
+  async metaGet(k) { const r = await (await pg()).query('SELECT v FROM fam_meta WHERE k = $1', [`m:${k}`]); return r.rows[0] ? r.rows[0].v : null; },
+  async metaSet(k, v) { await (await pg()).query('INSERT INTO fam_meta (k, v) VALUES ($1, $2) ON CONFLICT (k) DO UPDATE SET v = EXCLUDED.v', [`m:${k}`, v]); },
+  async metaSetNX(k, v) {
+    const r = await (await pg()).query('INSERT INTO fam_meta (k, v) VALUES ($1, $2) ON CONFLICT (k) DO NOTHING RETURNING k', [`m:${k}`, v]);
     return r.rowCount > 0;
   },
   async versions() {

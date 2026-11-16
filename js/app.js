@@ -185,8 +185,11 @@ window.addEventListener('hashchange', () => {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const gesto = document.documentElement.dataset.gesto;
   delete document.documentElement.dataset.gesto;
-  if (document.startViewTransition && !reduce && !gesto && state.loaded.has('settings')) document.startViewTransition(() => render());
-  else render();
+  if (document.startViewTransition && !reduce && !gesto && state.loaded.has('settings')) {
+    const vt = document.startViewTransition(() => render());
+    // se la dissolvenza viene interrotta (es. ruotando l'iPad) la pagina è comunque già quella nuova
+    [vt.ready, vt.finished, vt.updateCallbackDone].forEach((x) => x && x.catch(() => {}));
+  } else render();
 });
 
 // iPhone: titolo piccolo in alto quando si scorre (come le app di sistema)

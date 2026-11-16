@@ -6,6 +6,7 @@
 //
 // Si tiene solo l'ultima posizione di ciascuno (niente storico).
 import { backend, verifyCode, body, send, sleep } from './_lib.js';
+import { avvisa, origineDi } from './_push.js';
 
 const R = 6371000;
 const toRad = (d) => (d * Math.PI) / 180;
@@ -97,8 +98,31 @@ export default async function handler(req, res) {
           place,
           src: b.chi ? 'app' : 'owntracks',
         };
+        // Notifica all'altro quando si arriva o si va via da casa, dal lavoro o da un altro dei nostri posti.
+        // Per "andato via" bisogna allontanarsi un po' oltre il raggio: così un GPS ballerino non manda falsi allarmi.
+        const detto = prev.avviso ? prev.avviso.luogo ?? null : prev.at ? prev.luogo ?? null : undefined;
+        let stato = luogoId;
+        if (!luogoId && detto) {
+          const era = detto === 'casa' ? casa : posti.find((l) => l.id === detto);
+          const deciso = type === 'transition' && b.event === 'leave';
+          if (era && !deciso && distanza({ lat, lon }, era) <= (Number(era.r) || (detto === 'casa' ? 150 : 200)) + 120) stato = detto;
+        }
+        doc.avviso = { luogo: stato, at: stato === detto && prev.avviso ? prev.avviso.at : at };
         await db.apply([{ op: 'set', col: 'posizioni', id: who, data: doc }]);
         pos[who] = doc;
+        if (detto !== undefined && stato !== detto && Date.now() - at < 30 * 60000) {
+          const nomeDi = (id) => (id === 'casa' ? 'casa' : (posti.find((l) => l.id === id) || {}).nome || '');
+          const dove = (id, arrivo) => {
+            const n = nomeDi(id);
+            if (id === 'casa') return arrivo ? 'è a casa' : 'ha lasciato casa';
+            if (/lavoro/i.test(n)) return arrivo ? 'è al lavoro' : 'ha lasciato il lavoro';
+            return arrivo ? `è qui: ${n}` : `ha lasciato ${n}`;
+          };
+          await avvisa({
+            per: who === 'p1' ? 'p2' : 'p1', tipo: 'arrivi', urgente: true, ttl: 1800,
+            title: names[who], body: `${names[who]} ${stato ? dove(stato, true) : dove(detto, false)}`, tag: `dove-${who}`, url: '#/dove',
+          }, origineDi(req)).catch(() => {});
+        }
       }
     }
 

@@ -5,7 +5,7 @@
 // - "Satellite": foto Esri con sopra strade, nomi e attività disegnati, quindi sempre nitidi
 import { iconMarkup } from './icons.js';
 
-const STILE = 'https://tiles.openfreemap.org/styles/liberty';
+const STILI = { chiaro: 'https://tiles.openfreemap.org/styles/liberty', scuro: 'https://tiles.openfreemap.org/styles/dark' };
 const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services';
 const FONT = ['Noto Sans Regular'];
 const FONT_B = ['Noto Sans Bold'];
@@ -69,14 +69,37 @@ const raster = (path) => ({ type: 'raster', tiles: [`${ESRI}/${path}/MapServer/t
 // ---------------------------------------------------------------------------
 // Lo stile di base (scaricato una volta sola)
 // ---------------------------------------------------------------------------
-let baseP = null;
-function base() {
-  if (!baseP) {
-    baseP = fetch(STILE).then((r) => { if (!r.ok) throw new Error('stile'); return r.json(); })
-      .catch((e) => { baseP = null; throw e; });
+const basi = {};
+function base(nome = 'chiaro') {
+  if (!basi[nome]) {
+    basi[nome] = fetch(STILI[nome]).then((r) => { if (!r.ok) throw new Error('stile'); return r.json(); })
+      .catch((e) => { delete basi[nome]; throw e; });
   }
-  return baseP;
+  return basi[nome];
 }
+
+// Di sera: la mappa scura di OpenFreeMap è quasi nera, la scaldo con i colori dell'app in modalità scura
+const NOTTE = {
+  background: { 'background-color': '#1D1A17' },
+  water: { 'fill-color': '#16252F' },
+  waterway: { 'line-color': '#16252F' },
+  landuse_residential: { 'fill-color': '#211E1A', 'fill-opacity': 1 },
+  landcover_wood: { 'fill-color': '#1C2A1F' },
+  landuse_park: { 'fill-color': '#1F2E22' },
+  building: { 'fill-color': '#2A2521', 'fill-outline-color': '#342E29' },
+  highway_path: { 'line-color': '#3A342E' },
+  highway_minor: { 'line-color': '#3D3731' },
+  highway_major_casing: { 'line-color': '#191613' },
+  highway_major_inner: { 'line-color': '#4C443B' },
+  highway_major_subtle: { 'line-color': '#4C443B' },
+  highway_motorway_casing: { 'line-color': '#191613' },
+  highway_motorway_inner: { 'line-color': '#6B553C' },
+  highway_motorway_subtle: { 'line-color': '#6B553C' },
+  railway: { 'line-color': '#3A3530' }, railway_minor: { 'line-color': '#3A3530' }, railway_transit: { 'line-color': '#3A3530' },
+  railway_dashline: { 'line-color': '#24201C' }, railway_minor_dashline: { 'line-color': '#24201C' }, railway_transit_dashline: { 'line-color': '#24201C' },
+  boundary_state: { 'line-color': '#4A433B' }, 'boundary_country_z0-4': { 'line-color': '#5A5148' }, 'boundary_country_z5-': { 'line-color': '#5A5148' },
+};
+const SCRITTE_NOTTE = { place: '#DDD3C7', transportation_name: '#A69A8C', water_name: '#6E93AD' };
 
 // ---------------------------------------------------------------------------
 // Gli strati delle attività
@@ -89,7 +112,7 @@ const Z_TIPO = ['match', TIPO, ...coppie((k, v) => v[1]), 99];
 const Z_VERO = ['case', ['all', ['match', TIPO, TANTI, true, false], ['==', ['%', ['get', 'rank'], 3], 0]], ['-', Z_TIPO, 1], Z_TIPO];
 const ICONA = ['match', TIPO, ...coppie((k, v) => v[2] || null), TIPO];
 
-function stratiAttivita(sat) {
+function stratiAttivita(sat, scuro = false) {
   const strato = (z) => ({
     id: `att-${z}`,
     type: 'symbol',
@@ -118,7 +141,9 @@ function stratiAttivita(sat) {
     },
     paint: sat
       ? { 'text-color': '#fff', 'text-halo-color': 'rgba(15, 15, 15, .8)', 'text-halo-width': 1.3, 'text-halo-blur': 0.4 }
-      : { 'text-color': ['match', TIPO, ...perCat(1), '#666'], 'text-halo-color': '#fff', 'text-halo-width': 1.4, 'text-halo-blur': 0.3 },
+      : scuro
+        ? { 'text-color': ['match', TIPO, ...perCat(0), '#aaa'], 'text-halo-color': 'rgba(18, 15, 12, .9)', 'text-halo-width': 1.4, 'text-halo-blur': 0.3 }
+        : { 'text-color': ['match', TIPO, ...perCat(1), '#666'], 'text-halo-color': '#fff', 'text-halo-width': 1.4, 'text-halo-blur': 0.3 },
   });
   // in ordine inverso: gli strati più in alto (i posti più importanti) vengono sistemati per primi
   return [
@@ -131,13 +156,15 @@ function stratiAttivita(sat) {
       layout: { 'text-field': ['get', 'housenumber'], 'text-font': FONT, 'text-size': 10.5, 'text-padding': 4 },
       paint: sat
         ? { 'text-color': '#fff', 'text-halo-color': 'rgba(15, 15, 15, .7)', 'text-halo-width': 1 }
-        : { 'text-color': '#8C857D', 'text-halo-color': '#fff', 'text-halo-width': 1 },
+        : scuro
+          ? { 'text-color': '#8E857B', 'text-halo-color': 'rgba(18, 15, 12, .9)', 'text-halo-width': 1 }
+          : { 'text-color': '#8C857D', 'text-halo-color': '#fff', 'text-halo-width': 1 },
     },
     ...[...ZOOM].reverse().map(strato),
   ];
 }
 
-const stratoPosti = (sat) => ({
+const stratoPosti = (chiara) => ({
   id: 'posti',
   type: 'symbol',
   source: 'posti',
@@ -154,9 +181,9 @@ const stratoPosti = (sat) => ({
     'text-justify': 'auto',
     'text-optional': true,
   },
-  paint: sat
-    ? { 'text-color': '#fff', 'text-halo-color': 'rgba(15, 15, 15, .85)', 'text-halo-width': 1.5 }
-    : { 'text-color': '#3D3430', 'text-halo-color': '#fff', 'text-halo-width': 1.6 },
+  paint: chiara
+    ? { 'text-color': '#3D3430', 'text-halo-color': '#fff', 'text-halo-width': 1.6 }
+    : { 'text-color': '#fff', 'text-halo-color': 'rgba(15, 15, 15, .85)', 'text-halo-width': 1.5 },
 });
 
 // nomi in italiano dove esistono ("Monaco di Baviera", non "Munich")
@@ -166,12 +193,19 @@ function italiano(x) {
   return x.map(italiano);
 }
 
-function stileMappa(b, posti) {
+function stileMappa(b, posti, scuro) {
   const s = copia(b);
-  const i = s.layers.findIndex((l) => l['source-layer'] === 'poi');
+  // le attività prendono il posto di quelle originali (o stanno appena sotto i nomi dei paesi)
+  let i = s.layers.findIndex((l) => l['source-layer'] === 'poi');
+  if (i < 0) i = s.layers.findIndex((l) => l.type === 'symbol' && l['source-layer'] === 'place');
   s.layers = s.layers.filter((l) => l['source-layer'] !== 'poi');
-  s.layers.splice(i < 0 ? s.layers.length : i, 0, ...stratiAttivita(false));
+  s.layers.splice(i < 0 ? s.layers.length : i, 0, ...stratiAttivita(false, scuro));
   s.layers.forEach((l) => {
+    if (scuro) {
+      if (NOTTE[l.id]) l.paint = { ...l.paint, ...NOTTE[l.id] };
+      const c = l.type === 'symbol' && SCRITTE_NOTTE[l['source-layer']];
+      if (c) l.paint = { ...l.paint, 'text-color': c, 'text-halo-color': 'rgba(18, 15, 12, .85)', 'text-halo-width': 1.2, 'text-halo-blur': 0.4 };
+    }
     if (l.layout && l.layout['text-field']) l.layout['text-field'] = italiano(l.layout['text-field']);
     // palazzi in rilievo: da vicino i muri diventerebbero enormi, quindi li abbasso man mano
     if (l.type === 'fill-extrusion') {
@@ -180,7 +214,7 @@ function stileMappa(b, posti) {
     }
   });
   s.sources.posti = { type: 'geojson', data: posti };
-  s.layers.push(stratoPosti(false));
+  s.layers.push(stratoPosti(!scuro));
   return s;
 }
 
@@ -222,7 +256,7 @@ function stileSatellite(b, posti) {
       },
       ...scritte,
       ...stratiAttivita(true),
-      stratoPosti(true),
+      stratoPosti(false),
     ],
   };
 }
@@ -238,11 +272,12 @@ const SAT_SEMPLICE = {
   ],
 };
 
-/** Lo stile da dare alla mappa: tipo = 'mappa' | 'satellite'; posti = GeoJSON dei nostri posti. */
-export async function stile(tipo, posti) {
-  let b;
-  try { b = await base(); } catch { return tipo === 'satellite' ? SAT_SEMPLICE : STILE; }
-  return tipo === 'satellite' ? stileSatellite(b, posti) : stileMappa(b, posti);
+/** Lo stile da dare alla mappa: tipo = 'mappa' | 'satellite'; posti = GeoJSON dei nostri posti; scuro = app in modalità scura. */
+export async function stile(tipo, posti, scuro = false) {
+  try {
+    if (tipo === 'satellite') return stileSatellite(await base(), posti);
+    return stileMappa(await base(scuro ? 'scuro' : 'chiaro'), posti, scuro);
+  } catch { return SAT_SEMPLICE; } // la mappa disegnata non risponde: almeno le foto
 }
 
 // ---------------------------------------------------------------------------

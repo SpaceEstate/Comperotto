@@ -180,15 +180,25 @@ function markerEl(k) {
   return el;
 }
 
+/** L'app è in modalità scura? (scelta nelle impostazioni, altrimenti quella dell'iPhone) */
+const scuro = () => { const t = document.documentElement.dataset.theme; return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; };
+const chiaveStile = () => `${tipoMappa()}|${scuro() ? 'scuro' : 'chiaro'}`;
+
+// La mappa resta viva quando si cambia pagina: tornando su Dov'è è già lì, senza ricaricare nulla.
+let viva = null;
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (document.getElementById('mappa')) after(); });
+
 export async function after() {
   ensureCoords();
-  const el = document.getElementById('mappa');
+  let el = document.getElementById('mappa');
   if (!el) return;
+  if (viva && viva !== el) { el.replaceWith(viva); el = viva; el._map.resize(); inquadra(el._map, false); }
   if (!el._map) {
     if (el._inCorso) return; // la sto già preparando
     el._inCorso = true;
     try {
-      const [ml, st, imgs] = await Promise.all([loadMapLibre(), stile(tipoMappa(), postiGeo()), icone()]);
+      const chiave = chiaveStile();
+      const [ml, st, imgs] = await Promise.all([loadMapLibre(), stile(tipoMappa(), postiGeo(), scuro()), icone()]);
       if (!el.isConnected) return;
       const map = new ml.Map({
         container: el,
@@ -202,17 +212,28 @@ export async function after() {
         maxZoom: 19.5,
       });
       map.touchZoomRotate.disableRotation();
-      // a ogni cambio di stile (Mappa/Satellite) le nostre icone vanno rimesse
+      // a ogni cambio di stile (Mappa/Satellite, chiaro/scuro) le nostre icone vanno rimesse
       map.on('style.load', () => mettiIcone(map, imgs));
       map.on('styleimagemissing', (e) => { const im = imgs.get(e.id); if (im && !map.hasImage(e.id)) map.addImage(e.id, im.data, { pixelRatio: im.pixelRatio }); });
       el._ml = ml;
       el._map = map;
       el._markers = [];
+      el._stile = chiave;
       el._posti = JSON.stringify(postiGeo());
+      viva = el;
       inquadra(map, false);
     } catch { el.classList.add('no-map'); return; } finally { el._inCorso = false; }
   }
   const map = el._map;
+  const posti = postiGeo(), pk = JSON.stringify(posti);
+  // Mappa/Satellite o chiaro/scuro sono cambiati
+  const chiave = chiaveStile();
+  if (chiave !== el._stile) {
+    el._stile = chiave;
+    el._posti = pk;
+    const st = await stile(tipoMappa(), posti, scuro());
+    if (el._stile === chiave) map.setStyle(st, { diff: false });
+  }
   // segnaposti delle persone
   const pp = persone();
   const key = JSON.stringify(pp);
@@ -222,7 +243,6 @@ export async function after() {
     el._key = key;
   }
   // i nostri posti (se sono cambiati)
-  const posti = postiGeo(), pk = JSON.stringify(posti);
   if (pk !== el._posti) {
     el._posti = pk;
     const src = map.getSource('posti');
@@ -347,13 +367,11 @@ export const actions = {
       toast(msg, { ms: msg.length > 40 ? 6000 : 2500 });
     }
   },
-  'mappa-tipo': async ({ el }) => {
+  'mappa-tipo': ({ el }) => {
     const v = el.dataset.v === 'satellite' ? 'satellite' : 'mappa';
     if (v === tipoMappa()) return;
     lsSet('casa.mappa', v === 'satellite' ? 'satellite' : null);
-    setUi('mappa.tipo', v);
-    const m = document.getElementById('mappa');
-    if (m && m._map) m._map.setStyle(await stile(v, postiGeo()), { diff: false });
+    setUi('mappa.tipo', v); // ridisegna: after() si accorge del cambio e aggiorna lo stile
   },
   'mappa-centra': () => { const m = document.getElementById('mappa'); if (m && m._map) inquadra(m._map); },
   // tocco sulla scheda di una persona: la mappa vola da lei

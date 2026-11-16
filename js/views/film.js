@@ -21,11 +21,23 @@ const streaming = (f) => (f.offers || []).filter((o) => o.t === 'flatrate' || o.
 /** Il risultato di una ricerca è già nella nostra lista? */
 const inList = (r) => state.data.film.find((f) => (f.jw && r.jw && f.jw === r.jw) || (norm(f.title) === norm(r.title) && (!f.year || !r.year || f.year === r.year)));
 
+const rotte = new Set(); // copertine che non si sono caricate: al loro posto il riquadro con il titolo
 function poster(f, size = '') {
   const src = safePoster(f.poster);
-  if (src) return html`<img src="${src}" alt="" loading="lazy" decoding="async">`;
+  if (src && !rotte.has(src)) return html`<img src="${src}" alt="" loading="lazy" decoding="async" data-poster="${f.id || ''}">`;
   return html`<div class="poster-ph th-${THEMES[mainTheme(f)] ? mainTheme(f) : 'sempre'} ${size}">${icon(f.kind === 'tv' ? 'tv' : 'film')}<span>${f.title}</span></div>`;
 }
+// un'immagine che non arriva (rete lenta, indirizzo cambiato) non lascia un buco
+document.addEventListener('error', (ev) => {
+  const el = ev.target;
+  if (!el || el.tagName !== 'IMG') return;
+  if (el.hasAttribute('data-poster')) {
+    rotte.add(el.getAttribute('src'));
+    const f = state.data.film.find((x) => x.id === el.dataset.poster);
+    if (f) { const d = document.createElement('div'); d.innerHTML = poster(f).s; el.replaceWith(d.firstElementChild); }
+    else el.remove();
+  } else if (el.closest('.prov, .prov-strip, .fh-on, .mini-poster')) el.remove();
+}, true);
 
 function providerIcons(list, max = 3) {
   return list.slice(0, max).map((o) => (safeIcon(o.icon) ? html`<img src="${safeIcon(o.icon)}" alt="${o.name}" title="${o.name}">` : ''));
@@ -46,7 +58,7 @@ function featured(all) {
   const pool = all.filter((f) => !f.watched);
   if (!pool.length) return '';
   const cur = currentTheme();
-  const score = (f) => (cur && (f.themes || []).includes(cur.id) ? 2 : 0) + (streaming(f).length ? 1 : 0) + (safePoster(f.poster) ? 1 : 0);
+  const score = (f) => (cur && (f.themes || []).includes(cur.id) ? 2 : 0) + (streaming(f).length ? 1 : 0) + (safePoster(f.poster) && !rotte.has(f.poster) ? 1 : 0);
   const best = Math.max(...pool.map(score));
   const top = pool.filter((f) => score(f) === best);
   const seed = [...todayIso()].reduce((a, c) => a + c.charCodeAt(0), 0) + Number(ui('film.spin', 0));
@@ -190,7 +202,7 @@ function detailSheet(f) {
     title: f.title,
     body: html`
       <div class="film-head">
-        <div class="film-poster">${src ? html`<img src="${src}" alt="">` : poster(f)}</div>
+        <div class="film-poster">${poster(f)}</div>
         <div>
           <p class="muted small" style="margin:0 0 8px">${f.kind === 'tv' ? 'Serie TV' : 'Film'}${f.year ? ` · ${f.year}` : ''}</p>
           <div class="chips wrap" style="gap:6px">${(f.themes || []).map((t) => html`<span class="pill">${icon((THEMES[t] || THEMES.sempre).icon, 'xs')} ${themeLabel(t, true)}</span>`)}</div>

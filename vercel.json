@@ -22,5 +22,11 @@
   ],
   "regions": [
     "fra1"
+  ],
+  "crons": [
+    {
+      "path": "/api/promemoria",
+      "schedule": "0 17 * * *"
+    }
   ]
 }

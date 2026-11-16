@@ -43,7 +43,7 @@ export function seasonDeco() {
   }
   if (s === 'halloween') {
     return html`<div class="season-deco bats" aria-hidden="true">
-      ${[0, 1, 2].map((i) => html`<svg viewBox="0 0 64 28" style="left:${12 + i * 31}%;top:${14 + (i % 2) * 26}px;animation-delay:-${i * 1.3}s"><path d="M32 10c-2-4-5-5-8-4 1 2 0 4-2 4-3-6-11-8-20-4 5 1 8 5 8 10 3-2 7-2 9 1 2-2 5-2 7 0 1-3 3-4 6-4s5 1 6 4c2-2 5-2 7 0 2-3 6-3 9-1 0-5 3-9 8-10-9-4-17-2-20 4-2 0-3-2-2-4-3-1-6 0-8 4z" fill="currentColor"/></svg>`)}
+      ${[[50, 6], [66, 38], [82, 104]].map(([x, y], i) => html`<svg viewBox="0 0 64 28" style="left:${x}%;top:${y}px;animation-delay:-${i * 1.3}s"><path d="M32 10c-2-4-5-5-8-4 1 2 0 4-2 4-3-6-11-8-20-4 5 1 8 5 8 10 3-2 7-2 9 1 2-2 5-2 7 0 1-3 3-4 6-4s5 1 6 4c2-2 5-2 7 0 2-3 6-3 9-1 0-5 3-9 8-10-9-4-17-2-20 4-2 0-3-2-2-4-3-1-6 0-8 4z" fill="currentColor"/></svg>`)}
     </div>`;
   }
   if (s === 'mare') {

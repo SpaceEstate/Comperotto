@@ -78,7 +78,8 @@ function renderLavori() {
         <button class="check sq" data-action="lavoro-toggle" data-id="${l.id}" aria-label="Completa ${l.title}">${icon('check')}</button>
         <button class="row-edit" data-action="lavoro-edit" data-id="${l.id}">
           <div class="row-title"><span class="prio p${l.prio || 1}"></span>${l.title}</div>
-          <div class="row-sub">${l.room ? html`<span>${icon('door', 'xs')} ${l.room}</span>` : ''}${l.note ? html`<span>· ${l.note}</span>` : ''}</div>
+          ${l.room ? html`<div class="row-sub"><span>${icon('door', 'xs')} ${l.room}</span></div>` : ''}
+          ${l.note ? html`<div class="row-sub">${l.note}</div>` : ''}
         </button>
         ${whoBadge(l.who)}
       </div>`)}</div>`

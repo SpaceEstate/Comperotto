@@ -80,8 +80,7 @@ export function render() {
     ${up.length ? html`<div class="list">${up.map((e) => html`
       <div class="row">
         ${catAvatar(e.cat)}
-        <div class="row-main"><div class="row-title">${CAT_EVENTS[e.type] ? CAT_EVENTS[e.type].label : e.type}</div><div class="row-sub">${e.cat.name} · ${shortDate(e.next)}</div></div>
-        ${dueLabel(e.days)}
+        <div class="row-main"><div class="row-title">${CAT_EVENTS[e.type] ? CAT_EVENTS[e.type].label : e.type}</div><div class="row-sub"><span>${e.cat.name} · ${shortDate(e.next)}</span>${dueLabel(e.days)}</div></div>
         <button class="done-btn ${e.days <= 0 ? 'due' : ''}" data-action="cat-repeat" data-id="${e.id}" data-cat="${e.cat.id}" aria-label="Fatto oggi">${icon('check', 'sm')}</button>
       </div>`)}</div>`
       : html`<div class="card"><p class="muted small" style="margin:0">Nessuna scadenza nelle prossime settimane. Registra antiparassitario e vaccini qui sotto: vi ricordo io quando rifarli.</p></div>`}

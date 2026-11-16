@@ -114,7 +114,7 @@ export function render() {
           <div class="row" id="s-${it.id}"${swipe(it.id, ['spesa-toggle', 'Preso'], ['spesa-del', 'Elimina'])}>
             <button class="check" data-action="spesa-toggle" data-id="${it.id}" aria-label="Preso ${it.name}">${icon('check')}</button>
             <button class="row-edit" data-action="spesa-edit" data-id="${it.id}">
-              <div class="row-title">${cleanName(it.name)} ${it.qty ? html`<span class="muted" style="font-weight:500">· ${it.qty}</span>` : ''}</div>
+              <div class="row-title">${cleanName(it.name)}${it.qty ? html` <span class="qty">${it.qty}</span>` : ''}</div>
               ${it.note || it.recipe ? html`<div class="row-sub">
                 ${it.note ? html`<span>${it.note}</span>` : ''}
                 ${it.recipe ? html`<span>per ${it.recipe}</span>` : ''}

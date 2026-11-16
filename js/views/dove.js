@@ -137,13 +137,12 @@ function loadLeaflet() {
 
 const dark = () => document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
 
-// Mappe di OpenStreetMap: gratuite e senza chiave (i colori pastello li dà il CSS)
+// Vista satellitare con strade e nomi dei posti sopra (come la vista "ibrida" di Mappe)
+const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services';
 function tiles(L, map) {
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap',
-    className: 'osm-tiles',
-  }).addTo(map);
+  L.tileLayer(`${ESRI}/World_Imagery/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 19 }).addTo(map);
+  L.tileLayer(`${ESRI}/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 19, opacity: 0.85 }).addTo(map);
+  L.tileLayer(`${ESRI}/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 19 }).addTo(map);
 }
 
 export async function after() {
@@ -154,8 +153,7 @@ export async function after() {
   try { L = await loadLeaflet(); } catch { el.classList.add('no-map'); return; }
   if (!el.isConnected) return;
   if (!el._map) {
-    const map = L.map(el, { zoomControl: false, attributionControl: true, scrollWheelZoom: false });
-    map.attributionControl.setPrefix('');
+    const map = L.map(el, { zoomControl: false, attributionControl: false, scrollWheelZoom: false });
     tiles(L, map);
     el._map = map;
     el._layer = L.layerGroup().addTo(map);

@@ -181,7 +181,7 @@ function offersBlock(f) {
         return o.url ? html`<a class="prov" href="${o.url}" target="_blank" rel="noopener">${inner}</a>` : html`<span class="prov">${inner}</span>`;
       })}</div></div>` : '';
     })}
-    <p class="muted small" style="margin:6px 0 0">Aggiornato ${f.offersAt ? new Date(f.offersAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }) : ''} · <a href="${f.link || searchUrl(f.title)}" target="_blank" rel="noopener">JustWatch</a></p>`;
+    ${f.offersAt ? html`<p class="muted small" style="margin:6px 0 0">Aggiornato il ${new Date(f.offersAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}</p>` : ''}`;
 }
 
 function detailSheet(f) {

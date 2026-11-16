@@ -7,10 +7,11 @@
 'use strict';
 
 // ============================================================================
-//  L'UNICA COSA DA CAMBIARE: l'indirizzo della vostra app + /api e il codice di famiglia
+//  L'UNICA COSA DA CAMBIARE: il codice di famiglia (solo nella console Alexa,
+//  mai qui nel repository pubblico)
 // ============================================================================
 const CONFIG = {
-  apiUrl: 'https://VOSTRO-PROGETTO.vercel.app/api',
+  apiUrl: 'https://comperotto.vercel.app/api',
   codice: 'il-vostro-codice',
 };
 // ============================================================================
@@ -44,7 +45,7 @@ function defaultTransport(method, url, body, headers = {}) {
   });
 }
 
-/** apiUrl: es. "https://comperotto.vercel.app/api" — codice: il codice di famiglia. */
+/** apiUrl: l'indirizzo dell'app + /api — codice: il codice di famiglia. */
 function createClient({ apiUrl, codice, transport = defaultTransport }) {
   const base = String(apiUrl || '').replace(/\/+$/, '');
   async function call(method, path, body) {

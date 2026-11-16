@@ -55,7 +55,7 @@ Il progetto è già collegato a Vercel, che pubblica da solo ogni modifica del b
    - Se avete **già** un database Neon o Upstash nel team, basta **Connect** su quello: l'app usa solo le sue tabelle/chiavi (`fam_…`) e non tocca il resto. Meglio però un database nuovo, solo per casa.
    - Upstash su Vercel oggi è solo a consumo (pochi centesimi al mese per un uso come il vostro): se volete zero costi scegliete Neon.
 3. **Deployments** → sull'ultimo deployment **⋯ → Redeploy**, così le funzioni vedono il database appena collegato.
-4. Apri l'indirizzo del progetto (in alto nella pagina del progetto, es. `https://comperotto.vercel.app`): l'app chiede di **scegliere il codice di famiglia**. Fatto!
+4. Apri **<https://comperotto.vercel.app>**: l'app chiede di **scegliere il codice di famiglia**. Fatto!
 
 > Il repository è **pubblico**: il codice si vede, i vostri dati no (stanno nel database, protetti dal codice di famiglia). Per questo **non mettete foto della casa nel repository**: le foto dei gatti e delle ricette si caricano dall'app e finiscono nel database.
 >
@@ -92,8 +92,8 @@ Le cose aggiunte a voce compaiono nell'app con il bollino **Alexa**.
 1. Vai su <https://developer.amazon.com/alexa/console/ask> ed entra con **lo stesso account Amazon dei vostri Echo**.
 2. **Create Skill** → nome "Fam. Comperotto", lingua **Italian (IT)**, tipo **Other → Custom**, hosting **Alexa-hosted (Node.js)**, template *Start from scratch*.
 3. Scheda **Build → Interaction Model → JSON Editor**: incolla il contenuto di [`alexa-skill/skill-package/interactionModels/custom/it-IT.json`](alexa-skill/skill-package/interactionModels/custom/it-IT.json) → **Save** → **Build skill**.
-4. Scheda **Code**: apri `lambda/index.js`, cancella tutto e incolla il contenuto di [`alexa-skill/lambda/index.js`](alexa-skill/lambda/index.js). In alto cambia solo le due righe di `CONFIG`:
-   - `apiUrl`: l'indirizzo Vercel dell'app seguito da `/api` (es. `https://comperotto.vercel.app/api`). Usate l'indirizzo di **produzione**, non quello di un'anteprima;
+4. Scheda **Code**: apri `lambda/index.js`, cancella tutto e incolla il contenuto di [`alexa-skill/lambda/index.js`](alexa-skill/lambda/index.js). In alto, in `CONFIG`, cambia solo il codice:
+   - `apiUrl`: è già `https://comperotto.vercel.app/api`, non va toccato;
    - `codice`: il vostro codice di famiglia.
 
    Poi **Save** → **Deploy**. Il codice resta solo nella console Amazon: non scrivetelo mai nel file del repository pubblico.
@@ -115,7 +115,7 @@ In Home c'è il riquadro **Dov'è** (a casa / fuori, indirizzo, da quanto) e toc
 
 Su ogni iPhone, una volta:
 1. Installa **OwnTracks** e consenti la posizione **"Sempre"** (e "Movimento e fitness").
-2. In OwnTracks → **ⓘ / Impostazioni**: *Mode* **HTTP**, *URL* `https://<indirizzo-app>.vercel.app/api/posizione`, *Authentication* attiva, *UserID* il tuo nome (`patrick` o `serena`), *Password* il codice di famiglia.
+2. In OwnTracks → **ⓘ / Impostazioni**: *Mode* **HTTP**, *URL* `https://comperotto.vercel.app/api/posizione`, *Authentication* attiva, *UserID* il tuo nome (`patrick` o `serena`), *Password* il codice di famiglia.
 3. Sulla mappa di OwnTracks scegli il modo **Significant** (consuma pochissimo) e tocca la freccia ↑ per mandare subito la posizione.
 4. Nell'app di casa, da casa, apri **Dov'è** e tocca "Sei a casa? Tocca qui per segnarla sulla mappa": da lì in poi l'app sa quando siete a casa.
 

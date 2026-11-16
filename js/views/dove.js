@@ -137,17 +137,13 @@ function loadLeaflet() {
 
 const dark = () => document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
 
+// Mappe di OpenStreetMap: gratuite e senza chiave (i colori pastello li dà il CSS)
 function tiles(L, map) {
-  const carto = L.tileLayer(`https://{s}.basemaps.cartocdn.com/rastertiles/${dark() ? 'dark_all' : 'voyager'}/{z}/{x}/{y}{r}.png`, {
-    maxZoom: 19, subdomains: 'abcd', attribution: '© OpenStreetMap · © CARTO',
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap',
+    className: 'osm-tiles',
   }).addTo(map);
-  // se le mappe colorate non arrivano, passo a quelle classiche di OpenStreetMap
-  let errors = 0;
-  carto.on('tileerror', () => {
-    if (++errors !== 4) return;
-    map.removeLayer(carto);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
-  });
 }
 
 export async function after() {

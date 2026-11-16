@@ -1201,3 +1201,9 @@ html:root[data-season="natale"][data-season] .home-top { background: linear-grad
 .pin-place.p2 { background: #F0E5FA; color: #6A4683; }
 .pin-place svg.i { width: 16px; height: 16px; }
 .dove-place { margin: 5px 0 0; font-size: 13.5px; color: var(--text-2); }
+/* mappa OpenStreetMap più morbida, in tinta con l'app */
+.mappa .osm-tiles { filter: saturate(.55) sepia(.18) brightness(1.04) contrast(.94); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .mappa .osm-tiles { filter: invert(1) hue-rotate(180deg) brightness(.82) saturate(.5) contrast(.9); }
+}
+:root[data-theme="dark"] .mappa .osm-tiles { filter: invert(1) hue-rotate(180deg) brightness(.82) saturate(.5) contrast(.9); }

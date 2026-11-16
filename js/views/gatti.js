@@ -133,20 +133,36 @@ function eventSheet(e = null, preset = {}) {
       </div></div>
       <div class="field"><span>Cosa</span><div class="radio-chips">${Object.entries(CAT_EVENTS).map(([k, v]) => html`
         <label><input type="radio" name="type" value="${k}" ${(d.type || 'peso') === k ? raw('checked') : ''}><span>${icon(v.icon, 'xs')} ${v.label}</span></label>`)}</div></div>
-      <div class="field-row">
-        <label class="field"><span>Quando</span><input name="date" type="date" value="${d.date || todayIso()}"></label>
-        <label class="field"><span>Peso (kg)</span><input name="value" type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" value="${d.value || ''}" placeholder="solo per il peso"></label>
+      <label class="field"><span>Quando</span><input name="date" type="date" value="${d.date || todayIso()}"></label>
+      <label class="field" id="ev-peso" ${(d.type || 'peso') === 'peso' ? '' : raw('hidden')}><span>Peso (kg)</span>
+        <input name="value" type="text" inputmode="decimal" autocomplete="off" value="${d.value ? String(d.value).replace('.', ',') : ''}" placeholder="es. 4,6"></label>
+      <div class="field"><span>Richiamo <em class="opt">facoltativo</em></span>
+        <input name="next" type="date" value="${d.next || ''}" aria-label="Data del richiamo">
+        <div class="chips wrap quick-next">
+          <button type="button" class="chip" data-days="30">tra 1 mese</button>
+          <button type="button" class="chip" data-days="90">tra 3 mesi</button>
+          <button type="button" class="chip" data-days="365">tra 1 anno</button>
+          <button type="button" class="chip" data-days="0">nessuno</button>
+        </div>
       </div>
-      <label class="field"><span>Da rifare il</span><input name="next" type="date" value="${d.next || ''}">
-        <p class="help">Lascia vuoto per calcolarlo da solo (antiparassitario 30 gg, vermifugo 90, vaccino 1 anno).</p></label>
       <label class="field"><span>Nota</span><input name="note" value="${d.note || ''}" placeholder="es. prodotto usato, cosa ha detto il veterinario"></label>`,
     extra: e ? html`<button class="btn danger" type="button" data-action="cat-event-del" data-id="${e.id}">${icon('trash', 'sm')}</button>` : '',
+    onOpen: (root) => {
+      const form = root.querySelector('#sheet-form');
+      // il peso compare solo quando serve
+      form.querySelectorAll('input[name=type]').forEach((r) => r.addEventListener('change', () => {
+        root.querySelector('#ev-peso').hidden = form.type.value !== 'peso';
+      }));
+      // scorciatoie per il richiamo (si può anche lasciare vuoto)
+      root.querySelectorAll('.quick-next [data-days]').forEach((b) => b.addEventListener('click', () => {
+        const n = Number(b.dataset.days);
+        form.next.value = n ? addDays(form.date.value || todayIso(), n) : '';
+      }));
+    },
     onSubmit: (fd) => {
       const type = val(fd, 'type') || 'altro';
       const date = val(fd, 'date') || todayIso();
-      let next = val(fd, 'next');
-      const every = (CAT_EVENTS[type] || {}).every;
-      if (!next && every && (!e || !e.next)) next = addDays(date, every);
+      const next = val(fd, 'next');
       const value = Number(val(fd, 'value').replace(',', '.')) || null;
       if (type === 'peso' && !value) { sheetError('Scrivi il peso in kg'); return false; }
       const data = { catId: val(fd, 'catId') || 'thor', type, date, next: next || null, value: type === 'peso' ? value : null, note: val(fd, 'note') };

@@ -6,7 +6,7 @@
 // L'app usa quello che trova.
 import crypto from 'node:crypto';
 
-export const COLLECTIONS = ['settings', 'spesa', 'freq', 'lavori', 'routine', 'ricette', 'desideri', 'gatti', 'eventiGatti', 'bacheca', 'musica', 'film'];
+export const COLLECTIONS = ['settings', 'spesa', 'freq', 'lavori', 'routine', 'ricette', 'desideri', 'gatti', 'eventiGatti', 'bacheca', 'musica', 'film', 'posizioni'];
 
 const stripId = (o) => { const x = { ...(o && typeof o === 'object' ? o : {}) }; delete x.id; return x; };
 const parse = (s) => { try { return JSON.parse(s); } catch { return null; } };
@@ -215,14 +215,15 @@ export async function storedHash() {
   return h || null;
 }
 
-export async function checkAuth(req) {
-  const code = req.headers['x-famiglia'];
+export async function verifyCode(code) {
   if (!code || !hasStorage()) return false;
   const expected = await storedHash();
   if (!expected) return false;
   const a = Buffer.from(hashCode(code)), b = Buffer.from(expected);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
+
+export const checkAuth = (req) => verifyCode(req.headers['x-famiglia']);
 
 export function body(req) {
   if (req.body && typeof req.body === 'object') return req.body;

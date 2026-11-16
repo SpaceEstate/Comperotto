@@ -1145,3 +1145,44 @@ html:root[data-season="natale"][data-season] .home-top { background: linear-grad
   :root[data-season="halloween"]:not([data-theme="light"]) { --bg: #100E0D; --bg-2: #181412; --surface: #1C1816; --surface-2: #241F1B; --line: #312923; --line-2: #42372F; --oak: #F08A3C; --oak-ink: #111111; --oak-soft: #3A2414; }
 }
 :root[data-season="halloween"][data-theme="dark"] { --bg: #100E0D; --bg-2: #181412; --surface: #1C1816; --surface-2: #241F1B; --line: #312923; --line-2: #42372F; --oak: #F08A3C; --oak-ink: #111111; --oak-soft: #3A2414; }
+
+/* ==========================================================================
+   Dov'è
+   ========================================================================== */
+.who-pin { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; flex: none; font-weight: 800; font-size: 17px; }
+.who-pin.p1 { background: #FDE6CF; color: #8A4E22; box-shadow: inset 0 0 0 2px #EFB47F; }
+.who-pin.p2 { background: #F0E5FA; color: #6A4683; box-shadow: inset 0 0 0 2px #C9A9DA; }
+.map-card { position: relative; border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-2); border: 1px solid var(--line); margin-bottom: 14px; background: var(--surface-2); isolation: isolate; }
+.mappa { height: 300px; width: 100%; z-index: 0; }
+.mappa.no-map { height: 0; }
+.dove-list { display: grid; gap: 12px; }
+.dove-list .card + .card { margin-top: 0; }
+.dove-card { display: flex; align-items: center; gap: 12px; padding: 14px; }
+.dove-main { flex: 1; min-width: 0; }
+.dove-main b { font-size: 17px; }
+.dove-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 5px; color: var(--text-2); }
+.dove-sub { margin: 5px 0 0; font-size: 12.5px; color: var(--text-3); display: flex; align-items: center; gap: 4px; }
+.dove-card.stale .dove-status { opacity: .65; }
+.dove-actions { margin-top: 16px; }
+.pin-wrap { background: none !important; border: 0 !important; }
+.pin-person {
+  position: relative; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+  font: 800 16px var(--font-sans); color: #fff; border: 3px solid #fff; box-shadow: 0 6px 14px rgba(40, 28, 16, .3);
+}
+.pin-person::after { content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: #fff; }
+.pin-person.p1 { background: #E9A66E; }
+.pin-person.p2 { background: #B08AC6; }
+.pin-home { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #A5D3A1; color: #2D4A2B; border: 3px solid #fff; box-shadow: 0 4px 12px rgba(40, 28, 16, .25); }
+.pin-home svg.i { width: 17px; height: 17px; }
+.leaflet-control-attribution { font-size: 10px !important; background: rgba(255,255,255,.7) !important; }
+.leaflet-container { font-family: var(--font-sans); background: var(--surface-2); }
+
+.dove-home { display: block; text-decoration: none; color: inherit; padding: 12px 14px 8px; margin-top: 14px; }
+.dh-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; color: var(--text-3); }
+.dh-head b { flex: 1; font-size: 15px; color: var(--text); }
+.dh-head .dot-ico { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; }
+.dh-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); min-width: 0; }
+.dh-row .who-pin { width: 32px; height: 32px; font-size: 14px; }
+.dh-name { font-weight: 700; flex: none; }
+.dh-sub { font-size: 12.5px; color: var(--text-3); margin-left: auto; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+@media (min-width: 700px) and (min-height: 560px) { .mappa { height: 440px; } }

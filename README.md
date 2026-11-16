@@ -109,7 +109,19 @@ Per le cose che comprate più spesso potete fare anche Routine dirette, es. «Al
 
 Non c'è niente da configurare: quando aggiungete un film o una serie l'app cerca da sola la copertina e su quali piattaforme si trova in Italia (Netflix, Prime Video, Disney+… in abbonamento, a noleggio o da comprare), usando i dati pubblici di JustWatch, e li ricontrolla una volta al giorno perché il catalogo cambia spesso. Toccando una piattaforma si apre direttamente il film.
 
-## 5. Musica
+## 5. Dov'è (posizione di Patrick e Serena)
+
+In Home c'è il riquadro **Dov'è** (a casa / fuori, indirizzo, da quanto) e toccandolo la mappa. Le posizioni arrivano in automatico dall'app gratuita **OwnTracks** (App Store), che le manda al sito in sottofondo; il pulsante "Apri Dov'è" apre invece la posizione dal vivo di Apple.
+
+Su ogni iPhone, una volta:
+1. Installa **OwnTracks** e consenti la posizione **"Sempre"** (e "Movimento e fitness").
+2. In OwnTracks → **ⓘ / Impostazioni**: *Mode* **HTTP**, *URL* `https://<indirizzo-app>.vercel.app/api/posizione`, *Authentication* attiva, *UserID* il tuo nome (`patrick` o `serena`), *Password* il codice di famiglia.
+3. Sulla mappa di OwnTracks scegli il modo **Significant** (consuma pochissimo) e tocca la freccia ↑ per mandare subito la posizione.
+4. Nell'app di casa, da casa, apri **Dov'è** e tocca "Sei a casa? Tocca qui per segnarla sulla mappa": da lì in poi l'app sa quando siete a casa.
+
+Si salva solo l'ultima posizione di ciascuno, protetta dal codice di famiglia.
+
+## 6. Musica
 
 Aggiungete brani, album o playlist con un tema (Natale, Halloween, Estate, Parigi e Canarie…). Se incollate un **link Spotify** (Condividi → Copia link) si ascolta direttamente nell'app. Nel periodo giusto la sezione mette in cima la musica a tema.
 

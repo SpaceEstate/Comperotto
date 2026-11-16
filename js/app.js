@@ -12,13 +12,14 @@ import * as film from './views/film.js';
 import * as musica from './views/musica.js';
 import * as desideri from './views/desideri.js';
 import * as gatti from './views/gatti.js';
+import * as dove from './views/dove.js';
 import * as impostazioni from './views/impostazioni.js';
 import * as login from './views/login.js';
 
-const VIEWS = { '': home, casa, ricette, film, desideri, musica, gatti, impostazioni };
+const VIEWS = { '': home, casa, ricette, film, desideri, musica, gatti, dove, impostazioni };
 const actions = {
   ...home.actions, ...spesa.actions, ...casa.actions, ...ricette.actions, ...film.actions,
-  ...musica.actions, ...desideri.actions, ...gatti.actions, ...impostazioni.actions, ...login.actions,
+  ...musica.actions, ...desideri.actions, ...gatti.actions, ...dove.actions, ...impostazioni.actions, ...login.actions,
 };
 
 // sul telefono: le 5 schede in basso; su iPad la barra laterale mostra anche Musica e Gatti
@@ -29,6 +30,7 @@ const TABS = [
   { key: 'film', label: 'Film', icon: 'film', href: '#/film' },
   { key: 'desideri', label: 'Desideri', icon: 'gift', href: '#/desideri' },
   { key: 'musica', label: 'Musica', icon: 'music', href: '#/musica', side: true },
+  { key: 'dove', label: 'Dov’è', icon: 'pin', href: '#/dove', side: true },
   { key: 'gatti', label: 'Thor e Minù', icon: 'cat', href: '#/gatti', side: true },
 ];
 
@@ -55,7 +57,7 @@ function patch(from, to) {
   if (from.nodeType === 3 || from.nodeType === 8) { if (from.nodeValue !== to.nodeValue) from.nodeValue = to.nodeValue; return; }
   for (const { name } of [...from.attributes]) if (!to.hasAttribute(name)) from.removeAttribute(name);
   for (const { name, value } of [...to.attributes]) if (from.getAttribute(name) !== value) from.setAttribute(name, value);
-  if (from.nodeName === 'IFRAME') return;
+  if (from.nodeName === 'IFRAME' || from.hasAttribute('data-keep')) return; // lettori e mappe restano come sono
   if (from.nodeName === 'INPUT' || from.nodeName === 'TEXTAREA' || from.nodeName === 'SELECT') {
     if (from.type === 'checkbox' || from.type === 'radio') from.checked = to.hasAttribute('checked');
     else if (document.activeElement !== from && from.type !== 'file' && from.nodeName !== 'SELECT') from.value = to.getAttribute('value') ?? to.value ?? '';
@@ -112,7 +114,7 @@ function render() {
     <a class="side-brand" href="#/"><span class="mini-logo"></span><span>Fam. Comperotto</span></a>
     ${TABS.map((t) => {
       const n = t.badge ? t.badge() : 0;
-      const on = t.key === cur || (t.key === '' && ['impostazioni', 'musica', 'gatti'].includes(cur) && !wide());
+      const on = t.key === cur || (t.key === '' && ['impostazioni', 'musica', 'gatti', 'dove'].includes(cur) && !wide());
       return html`<a class="tab ${on ? 'on' : ''} ${t.side ? 'side-only side-mid' : ''}" href="${t.href}" ${on ? raw('aria-current="page"') : ''}>
         <span class="tab-ico">${icon(t.icon)}</span><span class="tab-label">${t.label}</span>${n ? html`<span class="badge">${n > 99 ? '99+' : n}</span>` : ''}</a>`;
     })}

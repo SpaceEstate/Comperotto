@@ -3,6 +3,7 @@
 import { html, raw, timeAgo, vibrate, uid, cap, isIPad, lsGet, lsSet } from '../utils.js';
 import { icon } from '../icons.js';
 import { state, store, settings, saveSettings, me, nameOf, toast, pageHead, isSynced, openSheet, closeSheet, sheetError, val, confirmSheet, ui, setUi } from '../core.js';
+import { stile, icone, mettiIcone, iconaPosto } from '../mappa.js';
 
 const PEOPLE = ['p1', 'p2'];
 const pos = (k) => state.data.posizioni.find((p) => p.id === k && Number.isFinite(p.lat));
@@ -86,16 +87,18 @@ export function render() {
 
     <div class="dove-list">${PEOPLE.map((k) => {
       const st = statusOf(k);
-      return html`<section class="card dove-card ${st.stale ? 'stale' : ''}">
+      const dentro = html`
         ${personBadge(k)}
-        <div class="dove-main">
+        <span class="dove-main">
           <b>${nameOf(k)}</b>
-          <div class="dove-status">
+          <span class="dove-status">
             ${st.p ? html`<span class="pill ${pillOf(st)}">${icon(iconOf(st), 'xs')} ${st.label}${st.since ? ` ${st.since}` : ''}</span>` : html`<span class="muted small">${st.label}</span>`}
-          </div>
-          ${st.place ? html`<p class="dove-place">${st.place}</p>` : ''}
-          ${st.p ? html`<p class="dove-sub">Aggiornato ${timeAgo(st.p.at)}${st.p.batt != null ? html` · ${icon('battery', 'xs')} ${st.p.batt}%` : ''}</p>` : ''}
-        </div>
+          </span>
+          ${st.place ? html`<span class="dove-place">${st.place}</span>` : ''}
+          ${st.p ? html`<span class="dove-sub">Aggiornato ${timeAgo(st.p.at)}${st.p.batt != null ? html` · ${icon('battery', 'xs')} ${st.p.batt}%` : ''}</span>` : ''}
+        </span>`;
+      return html`<section class="card dove-card ${st.stale ? 'stale' : ''}">
+        ${st.p ? html`<button class="dove-hit" data-action="dove-vai" data-k="${k}" aria-label="Mostra ${nameOf(k)} sulla mappa">${dentro}</button>` : html`<div class="dove-hit">${dentro}</div>`}
         ${st.p ? html`<a class="icon-btn" href="${mapsUrl(st.p, nameOf(k))}" target="_blank" rel="noopener" aria-label="Apri ${nameOf(k)} in Mappe">${icon('map', 'sm')}</a>` : ''}
       </section>`;
     })}</div>
@@ -118,22 +121,9 @@ export function render() {
 }
 
 // ---------------------------------------------------------------------------
-// Mappa vettoriale (MapLibre, dentro l'app): nitida a ogni zoom, come quella di Dov'è.
-// "Mappa" = OpenFreeMap (gratis, senza chiavi); "Satellite" = foto Esri con strade e nomi.
+// Mappa (MapLibre, dentro l'app; lo stile sta in js/mappa.js).
+// Patrick e Serena si vedono sempre; Casa, Lavoro e le attività compaiono ingrandendo, come su Dov'è.
 // ---------------------------------------------------------------------------
-const STYLE_MAPPA = 'https://tiles.openfreemap.org/styles/liberty';
-const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services';
-const raster = (path) => ({ type: 'raster', tiles: [`${ESRI}/${path}/MapServer/tile/{z}/{y}/{x}`], tileSize: 128, maxzoom: 19 });
-// tileSize 128: chiede foto di un livello più dettagliato, così sull'iPhone non sono sgranate
-const STYLE_SAT = {
-  version: 8,
-  sources: { sat: raster('World_Imagery'), strade: raster('Reference/World_Transportation'), nomi: raster('Reference/World_Boundaries_and_Places') },
-  layers: [
-    { id: 'sat', type: 'raster', source: 'sat' },
-    { id: 'strade', type: 'raster', source: 'strade', paint: { 'raster-opacity': 0.85 } },
-    { id: 'nomi', type: 'raster', source: 'nomi' },
-  ],
-};
 const tipoMappa = () => (lsGet('casa.mappa') === 'satellite' ? 'satellite' : 'mappa');
 
 let mlgl = null;
@@ -155,32 +145,38 @@ function loadMapLibre() {
   return mlgl;
 }
 
-function punti() {
-  const pts = [];
-  luoghi().filter(hasXY).forEach((l) => pts.push({ kind: 'luogo', l, ll: [l.lon, l.lat] }));
-  PEOPLE.forEach((k) => { const p = pos(k); if (p) pts.push({ kind: 'persona', k, ll: [p.lon, p.lat] }); });
-  return pts;
-}
+/** Dove sono Patrick e Serena (segnaposti sempre visibili) */
+const persone = () => PEOPLE.flatMap((k) => { const p = pos(k); return p ? [{ k, ll: [p.lon, p.lat] }] : []; });
+/** I nostri posti, nel formato che vuole la mappa */
+const postiGeo = () => ({
+  type: 'FeatureCollection',
+  features: luoghi().filter(hasXY).map((l) => ({
+    type: 'Feature',
+    geometry: { type: 'Point', coordinates: [l.lon, l.lat] },
+    properties: { nome: l.nome, icona: iconaPosto(l) },
+  })),
+});
 
-function inquadra(map, pts, animate = true) {
-  if (!pts.length) return;
-  if (pts.length === 1) { map.jumpTo({ center: pts[0].ll, zoom: 15 }); return; }
-  const lons = pts.map((x) => x.ll[0]), lats = pts.map((x) => x.ll[1]);
-  map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: 56, maxZoom: 16, animate });
-}
-
-function markerEl(x) {
-  const el = document.createElement('div');
-  if (x.kind === 'persona') {
-    el.innerHTML = `<span class="pin-person ${x.k}">${initialOf(x.k)}</span>`;
-    el.title = nameOf(x.k);
-  } else {
-    const l = x.l;
-    const cls = l.id === 'casa' ? 'pin-home' : `pin-place ${l.chi === 'p1' || l.chi === 'p2' ? l.chi : ''}`;
-    const ic = l.id === 'casa' ? 'home' : /lavoro/i.test(l.nome) ? 'briefcase' : 'pin';
-    el.innerHTML = `<span class="${cls}">${icon(ic, 'sm').s}</span>`;
-    el.title = `${l.nome}${ownerOf(l) ? ` · ${ownerOf(l)}` : ''}`;
+/** Inquadra le persone; se nessuno ha ancora una posizione, casa (o il primo posto) */
+function inquadra(map, animate = true) {
+  const pts = persone().map((x) => x.ll);
+  if (!pts.length) {
+    const l = luoghi().find((x) => x.id === 'casa' && hasXY(x)) || luoghi().find(hasXY);
+    if (l) map.jumpTo({ center: [l.lon, l.lat], zoom: 15 });
+    return;
   }
+  if (pts.length === 1 || distanza({ lon: pts[0][0], lat: pts[0][1] }, { lon: pts[1][0], lat: pts[1][1] }) < 60) {
+    map[animate ? 'easeTo' : 'jumpTo']({ center: pts[0], zoom: 15.5 });
+    return;
+  }
+  const lons = pts.map((x) => x[0]), lats = pts.map((x) => x[1]);
+  map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: { top: 76, bottom: 44, left: 56, right: 56 }, maxZoom: 16, animate });
+}
+
+function markerEl(k) {
+  const el = document.createElement('div');
+  el.innerHTML = `<span class="pin-person ${k}">${initialOf(k)}</span>`;
+  el.title = nameOf(k);
   return el;
 }
 
@@ -188,39 +184,49 @@ export async function after() {
   ensureCoords();
   const el = document.getElementById('mappa');
   if (!el) return;
-  let ml;
-  try { ml = await loadMapLibre(); } catch { el.classList.add('no-map'); return; }
-  if (!el.isConnected) return;
-  const pts = punti();
   if (!el._map) {
-    const tipo = tipoMappa();
-    const map = new ml.Map({
-      container: el,
-      style: tipo === 'satellite' ? STYLE_SAT : STYLE_MAPPA,
-      center: pts.length ? pts[pts.length - 1].ll : [12.5, 42.5],
-      zoom: pts.length ? 14 : 5,
-      attributionControl: false,
-      dragRotate: false,
-      pitchWithRotate: false,
-      touchPitch: false,
-      maxZoom: 19.5,
-    });
-    map.touchZoomRotate.disableRotation();
-    // se la mappa disegnata non arriva, passo al satellite
-    let loaded = false;
-    map.on('load', () => { loaded = true; });
-    map.on('error', () => { if (!loaded && tipoMappa() === 'mappa' && !el._fallback) { el._fallback = true; map.setStyle(STYLE_SAT); } });
-    el._map = map;
-    el._markers = [];
-    inquadra(map, pts, false);
+    if (el._inCorso) return; // la sto già preparando
+    el._inCorso = true;
+    try {
+      const [ml, st, imgs] = await Promise.all([loadMapLibre(), stile(tipoMappa(), postiGeo()), icone()]);
+      if (!el.isConnected) return;
+      const map = new ml.Map({
+        container: el,
+        style: st,
+        center: [12.5, 42.5],
+        zoom: 5,
+        attributionControl: false,
+        dragRotate: false,
+        pitchWithRotate: false,
+        touchPitch: false,
+        maxZoom: 19.5,
+      });
+      map.touchZoomRotate.disableRotation();
+      // a ogni cambio di stile (Mappa/Satellite) le nostre icone vanno rimesse
+      map.on('style.load', () => mettiIcone(map, imgs));
+      map.on('styleimagemissing', (e) => { const im = imgs.get(e.id); if (im && !map.hasImage(e.id)) map.addImage(e.id, im.data, { pixelRatio: im.pixelRatio }); });
+      el._ml = ml;
+      el._map = map;
+      el._markers = [];
+      el._posti = JSON.stringify(postiGeo());
+      inquadra(map, false);
+    } catch { el.classList.add('no-map'); return; } finally { el._inCorso = false; }
   }
-  // segnaposti (restano anche cambiando mappa/satellite)
-  const key = JSON.stringify(pts.map((x) => [x.kind, x.k || x.l.id, x.ll]));
+  const map = el._map;
+  // segnaposti delle persone
+  const pp = persone();
+  const key = JSON.stringify(pp);
   if (key !== el._key) {
     el._markers.forEach((m) => m.remove());
-    el._markers = pts.map((x) => new ml.Marker({ element: markerEl(x), anchor: x.kind === 'persona' ? 'bottom' : 'center' }).setLngLat(x.ll).addTo(el._map));
-    if (el._key === undefined || el._refit) { inquadra(el._map, pts); el._refit = false; }
+    el._markers = pp.map((x) => new el._ml.Marker({ element: markerEl(x.k), anchor: 'bottom' }).setLngLat(x.ll).addTo(map));
     el._key = key;
+  }
+  // i nostri posti (se sono cambiati)
+  const posti = postiGeo(), pk = JSON.stringify(posti);
+  if (pk !== el._posti) {
+    el._posti = pk;
+    const src = map.getSource('posti');
+    if (src) src.setData(posti);
   }
 }
 
@@ -277,15 +283,17 @@ function luogoSheet(l = null) {
       <p class="help" id="luogo-qui-ok" hidden>Posizione presa ✓</p>`,
     extra: l && l.id !== 'casa' ? html`<button class="btn danger" type="button" data-action="luogo-del" data-id="${l.id}">${icon('trash', 'sm')}</button>` : '',
     onOpen: (root) => {
-      root.querySelector('#luogo-qui').addEventListener('click', async (ev) => {
-        ev.currentTarget.disabled = true;
+      const btn = root.querySelector('#luogo-qui');
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
         try {
           const { coords } = await here();
           qui = { lat: coords.latitude, lon: coords.longitude };
           root.querySelector('#luogo-qui-ok').hidden = false;
+          sheetError('');
           vibrate(10);
         } catch { sheetError('Per farlo serve il permesso alla posizione'); }
-        ev.currentTarget.disabled = false;
+        btn.disabled = false;
       });
     },
     onSubmit: async (fd) => {
@@ -329,24 +337,32 @@ export const actions = {
         }
       }
       if (isSynced()) await store.sync();
-      const m = document.getElementById('mappa');
-      if (m) m._refit = true;
     } finally {
       // la rotellina si vede almeno un attimo, così si capisce che ha aggiornato
       await new Promise((ok) => setTimeout(ok, Math.max(0, 700 - (Date.now() - t0))));
       setUi('dove.busy', false);
+      const m = document.getElementById('mappa');
+      if (m && m._map) setTimeout(() => inquadra(m._map), 60); // dopo che i segnaposti si sono spostati
       vibrate(10);
       toast(msg, { ms: msg.length > 40 ? 6000 : 2500 });
     }
   },
-  'mappa-tipo': ({ el }) => {
+  'mappa-tipo': async ({ el }) => {
     const v = el.dataset.v === 'satellite' ? 'satellite' : 'mappa';
+    if (v === tipoMappa()) return;
     lsSet('casa.mappa', v === 'satellite' ? 'satellite' : null);
-    const m = document.getElementById('mappa');
-    if (m && m._map) m._map.setStyle(v === 'satellite' ? STYLE_SAT : STYLE_MAPPA);
     setUi('mappa.tipo', v);
+    const m = document.getElementById('mappa');
+    if (m && m._map) m._map.setStyle(await stile(v, postiGeo()), { diff: false });
   },
-  'mappa-centra': () => { const m = document.getElementById('mappa'); if (m && m._map) inquadra(m._map, punti()); },
+  'mappa-centra': () => { const m = document.getElementById('mappa'); if (m && m._map) inquadra(m._map); },
+  // tocco sulla scheda di una persona: la mappa vola da lei
+  'dove-vai': ({ el }) => {
+    const p = pos(el.dataset.k), m = document.getElementById('mappa');
+    if (!p || !m || !m._map) return;
+    m._map.flyTo({ center: [p.lon, p.lat], zoom: Math.max(m._map.getZoom(), 16.5), duration: 900 });
+    m.closest('.map-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  },
   'dove-io-local': async (data) => {
     const casa = luogoById('casa');
     const home = hasXY(casa) ? distanza(data, casa) <= (casa.r || 150) : null;

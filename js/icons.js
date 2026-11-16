@@ -78,6 +78,9 @@ const P = {
   headphones: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3.5" y="14" width="4.5" height="6.5" rx="1.5"/><rect x="16" y="14" width="4.5" height="6.5" rx="1.5"/>',
 };
 
+/** Il disegno "nudo" di un'icona (per ridisegnarla altrove, es. sulla mappa). */
+export const iconMarkup = (name) => P[name] || '';
+
 export function icon(name, cls = '') {
   return raw(`<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${P[name] || P.info}</svg>`);
 }

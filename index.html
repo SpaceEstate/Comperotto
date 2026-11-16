@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Casa Comperotto</title>
+  <meta name="description" content="La nostra casa: spesa, faccende, ricette, desideri e gatti.">
+  <meta name="theme-color" content="#F5F1EB" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1C1916" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Casa">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="assets/icons/icon.svg">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script>
+    // Applica subito il tema scelto su questo dispositivo (evita il "lampo" chiaro/scuro).
+    try { var t = localStorage.getItem('casa.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+</head>
+<body>
+  <div id="app" class="app">
+    <main id="view" class="view" aria-live="polite">
+      <div class="splash">
+        <div class="splash-logo"></div>
+        <p>Apro la porta di casa…</p>
+      </div>
+    </main>
+    <nav id="tabbar" class="tabbar" aria-label="Sezioni" hidden></nav>
+  </div>
+
+  <div id="sheet-layer" class="sheet-layer" hidden>
+    <div class="sheet-backdrop" data-action="sheet-close"></div>
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+      <div class="sheet-grip" aria-hidden="true"></div>
+      <div id="sheet-content"></div>
+    </section>
+  </div>
+
+  <div id="toast-layer" class="toast-layer" aria-live="polite"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

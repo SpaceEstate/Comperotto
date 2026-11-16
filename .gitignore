@@ -1,0 +1,4 @@
+node_modules/
+.DS_Store
+# credenziali della skill Alexa: restano solo nella console Amazon
+alexa-skill/lambda/config.js

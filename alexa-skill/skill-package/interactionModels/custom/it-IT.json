@@ -1,0 +1,811 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "casa comperotto",
+      "intents": [
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.NavigateHomeIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.FallbackIntent",
+          "samples": []
+        },
+        {
+          "name": "AggiungiIntent",
+          "slots": [
+            {
+              "name": "prodotto",
+              "type": "PRODOTTO"
+            }
+          ],
+          "samples": [
+            "aggiungi {prodotto}",
+            "aggiungi {prodotto} alla spesa",
+            "aggiungi {prodotto} alla lista",
+            "aggiungi {prodotto} alla lista della spesa",
+            "aggiungere {prodotto}",
+            "di aggiungere {prodotto}",
+            "di aggiungere {prodotto} alla spesa",
+            "di aggiungere {prodotto} alla lista",
+            "metti {prodotto}",
+            "metti {prodotto} nella lista",
+            "metti {prodotto} nella spesa",
+            "di mettere {prodotto} nella lista",
+            "mettere {prodotto} nella lista",
+            "segna {prodotto}",
+            "di segnare {prodotto}",
+            "compra {prodotto}",
+            "comprare {prodotto}",
+            "dobbiamo comprare {prodotto}",
+            "manca {prodotto}",
+            "mancano {prodotto}",
+            "è finito {prodotto}",
+            "è finita {prodotto}",
+            "sono finiti {prodotto}",
+            "sono finite {prodotto}",
+            "abbiamo finito {prodotto}"
+          ]
+        },
+        {
+          "name": "LeggiListaIntent",
+          "slots": [],
+          "samples": [
+            "cosa c'è nella lista",
+            "cosa c'è nella lista della spesa",
+            "cosa c'è da comprare",
+            "cosa dobbiamo comprare",
+            "cosa manca",
+            "leggi la lista",
+            "leggimi la lista",
+            "leggi la spesa",
+            "leggimi la spesa",
+            "di leggere la lista",
+            "di leggermi la spesa",
+            "la lista della spesa",
+            "cosa devo comprare"
+          ]
+        },
+        {
+          "name": "RimuoviIntent",
+          "slots": [
+            {
+              "name": "prodotto",
+              "type": "PRODOTTO"
+            }
+          ],
+          "samples": [
+            "togli {prodotto}",
+            "togli {prodotto} dalla lista",
+            "di togliere {prodotto}",
+            "rimuovi {prodotto}",
+            "di rimuovere {prodotto}",
+            "cancella {prodotto}",
+            "cancella {prodotto} dalla lista",
+            "elimina {prodotto}",
+            "ho comprato {prodotto}",
+            "abbiamo comprato {prodotto}",
+            "ho preso {prodotto}"
+          ]
+        },
+        {
+          "name": "RifiutiIntent",
+          "slots": [
+            {
+              "name": "giorno",
+              "type": "GIORNO"
+            }
+          ],
+          "samples": [
+            "cosa si butta",
+            "cosa si butta {giorno}",
+            "cosa devo buttare",
+            "cosa devo buttare {giorno}",
+            "cosa butto {giorno}",
+            "cosa porto fuori {giorno}",
+            "che spazzatura c'è {giorno}",
+            "quale spazzatura {giorno}",
+            "che rifiuti ci sono {giorno}",
+            "che immondizia c'è {giorno}",
+            "la spazzatura di {giorno}",
+            "cosa si porta fuori",
+            "cosa si porta fuori {giorno}"
+          ]
+        },
+        {
+          "name": "FaccendeIntent",
+          "slots": [],
+          "samples": [
+            "cosa c'è da fare oggi",
+            "cosa c'è da fare",
+            "cosa dobbiamo fare oggi",
+            "cosa devo fare oggi",
+            "quali faccende ci sono",
+            "le faccende di oggi",
+            "cosa c'è da fare in casa",
+            "che faccende ci sono oggi"
+          ]
+        }
+      ],
+      "types": [
+        {
+          "name": "PRODOTTO",
+          "values": [
+            {
+              "name": {
+                "value": "latte"
+              }
+            },
+            {
+              "name": {
+                "value": "uova"
+              }
+            },
+            {
+              "name": {
+                "value": "pane"
+              }
+            },
+            {
+              "name": {
+                "value": "pasta"
+              }
+            },
+            {
+              "name": {
+                "value": "riso"
+              }
+            },
+            {
+              "name": {
+                "value": "farina"
+              }
+            },
+            {
+              "name": {
+                "value": "zucchero"
+              }
+            },
+            {
+              "name": {
+                "value": "sale"
+              }
+            },
+            {
+              "name": {
+                "value": "olio"
+              }
+            },
+            {
+              "name": {
+                "value": "aceto"
+              }
+            },
+            {
+              "name": {
+                "value": "burro"
+              }
+            },
+            {
+              "name": {
+                "value": "yogurt"
+              }
+            },
+            {
+              "name": {
+                "value": "mozzarella"
+              }
+            },
+            {
+              "name": {
+                "value": "parmigiano"
+              }
+            },
+            {
+              "name": {
+                "value": "formaggio"
+              }
+            },
+            {
+              "name": {
+                "value": "prosciutto cotto"
+              }
+            },
+            {
+              "name": {
+                "value": "prosciutto crudo"
+              }
+            },
+            {
+              "name": {
+                "value": "salame"
+              }
+            },
+            {
+              "name": {
+                "value": "mortadella"
+              }
+            },
+            {
+              "name": {
+                "value": "pollo"
+              }
+            },
+            {
+              "name": {
+                "value": "petto di pollo"
+              }
+            },
+            {
+              "name": {
+                "value": "carne macinata"
+              }
+            },
+            {
+              "name": {
+                "value": "salsiccia"
+              }
+            },
+            {
+              "name": {
+                "value": "hamburger"
+              }
+            },
+            {
+              "name": {
+                "value": "tonno"
+              }
+            },
+            {
+              "name": {
+                "value": "salmone"
+              }
+            },
+            {
+              "name": {
+                "value": "pesce"
+              }
+            },
+            {
+              "name": {
+                "value": "gamberi"
+              }
+            },
+            {
+              "name": {
+                "value": "mele"
+              }
+            },
+            {
+              "name": {
+                "value": "banane"
+              }
+            },
+            {
+              "name": {
+                "value": "pere"
+              }
+            },
+            {
+              "name": {
+                "value": "arance"
+              }
+            },
+            {
+              "name": {
+                "value": "limoni"
+              }
+            },
+            {
+              "name": {
+                "value": "fragole"
+              }
+            },
+            {
+              "name": {
+                "value": "kiwi"
+              }
+            },
+            {
+              "name": {
+                "value": "uva"
+              }
+            },
+            {
+              "name": {
+                "value": "insalata"
+              }
+            },
+            {
+              "name": {
+                "value": "pomodori"
+              }
+            },
+            {
+              "name": {
+                "value": "patate"
+              }
+            },
+            {
+              "name": {
+                "value": "cipolle"
+              }
+            },
+            {
+              "name": {
+                "value": "aglio"
+              }
+            },
+            {
+              "name": {
+                "value": "carote"
+              }
+            },
+            {
+              "name": {
+                "value": "zucchine"
+              }
+            },
+            {
+              "name": {
+                "value": "melanzane"
+              }
+            },
+            {
+              "name": {
+                "value": "peperoni"
+              }
+            },
+            {
+              "name": {
+                "value": "spinaci"
+              }
+            },
+            {
+              "name": {
+                "value": "funghi"
+              }
+            },
+            {
+              "name": {
+                "value": "basilico"
+              }
+            },
+            {
+              "name": {
+                "value": "prezzemolo"
+              }
+            },
+            {
+              "name": {
+                "value": "acqua"
+              }
+            },
+            {
+              "name": {
+                "value": "acqua frizzante"
+              }
+            },
+            {
+              "name": {
+                "value": "vino"
+              }
+            },
+            {
+              "name": {
+                "value": "birra"
+              }
+            },
+            {
+              "name": {
+                "value": "succo di frutta"
+              }
+            },
+            {
+              "name": {
+                "value": "caffè"
+              }
+            },
+            {
+              "name": {
+                "value": "tè"
+              }
+            },
+            {
+              "name": {
+                "value": "camomilla"
+              }
+            },
+            {
+              "name": {
+                "value": "biscotti"
+              }
+            },
+            {
+              "name": {
+                "value": "cereali"
+              }
+            },
+            {
+              "name": {
+                "value": "marmellata"
+              }
+            },
+            {
+              "name": {
+                "value": "miele"
+              }
+            },
+            {
+              "name": {
+                "value": "nutella"
+              }
+            },
+            {
+              "name": {
+                "value": "cioccolato"
+              }
+            },
+            {
+              "name": {
+                "value": "gelato"
+              }
+            },
+            {
+              "name": {
+                "value": "pizza surgelata"
+              }
+            },
+            {
+              "name": {
+                "value": "piselli surgelati"
+              }
+            },
+            {
+              "name": {
+                "value": "passata di pomodoro"
+              }
+            },
+            {
+              "name": {
+                "value": "pelati"
+              }
+            },
+            {
+              "name": {
+                "value": "ceci"
+              }
+            },
+            {
+              "name": {
+                "value": "lenticchie"
+              }
+            },
+            {
+              "name": {
+                "value": "fagioli"
+              }
+            },
+            {
+              "name": {
+                "value": "detersivo"
+              }
+            },
+            {
+              "name": {
+                "value": "detersivo per i piatti"
+              }
+            },
+            {
+              "name": {
+                "value": "detersivo per la lavatrice"
+              }
+            },
+            {
+              "name": {
+                "value": "ammorbidente"
+              }
+            },
+            {
+              "name": {
+                "value": "carta igienica"
+              }
+            },
+            {
+              "name": {
+                "value": "scottex"
+              }
+            },
+            {
+              "name": {
+                "value": "carta da forno"
+              }
+            },
+            {
+              "name": {
+                "value": "pellicola"
+              }
+            },
+            {
+              "name": {
+                "value": "sacchetti della spazzatura"
+              }
+            },
+            {
+              "name": {
+                "value": "spugne"
+              }
+            },
+            {
+              "name": {
+                "value": "sapone"
+              }
+            },
+            {
+              "name": {
+                "value": "shampoo"
+              }
+            },
+            {
+              "name": {
+                "value": "bagnoschiuma"
+              }
+            },
+            {
+              "name": {
+                "value": "dentifricio"
+              }
+            },
+            {
+              "name": {
+                "value": "fazzoletti"
+              }
+            },
+            {
+              "name": {
+                "value": "croccantini"
+              }
+            },
+            {
+              "name": {
+                "value": "scatolette per i gatti"
+              }
+            },
+            {
+              "name": {
+                "value": "cibo per i gatti"
+              }
+            },
+            {
+              "name": {
+                "value": "lettiera"
+              }
+            },
+            {
+              "name": {
+                "value": "sabbia per i gatti"
+              }
+            },
+            {
+              "name": {
+                "value": "snack per i gatti"
+              }
+            },
+            {
+              "name": {
+                "value": "panna"
+              }
+            },
+            {
+              "name": {
+                "value": "mascarpone"
+              }
+            },
+            {
+              "name": {
+                "value": "ricotta"
+              }
+            },
+            {
+              "name": {
+                "value": "stracchino"
+              }
+            },
+            {
+              "name": {
+                "value": "grana"
+              }
+            },
+            {
+              "name": {
+                "value": "pancetta"
+              }
+            },
+            {
+              "name": {
+                "value": "guanciale"
+              }
+            },
+            {
+              "name": {
+                "value": "wurstel"
+              }
+            },
+            {
+              "name": {
+                "value": "lievito"
+              }
+            },
+            {
+              "name": {
+                "value": "pangrattato"
+              }
+            },
+            {
+              "name": {
+                "value": "cracker"
+              }
+            },
+            {
+              "name": {
+                "value": "grissini"
+              }
+            },
+            {
+              "name": {
+                "value": "fette biscottate"
+              }
+            },
+            {
+              "name": {
+                "value": "cornetti"
+              }
+            },
+            {
+              "name": {
+                "value": "brioche"
+              }
+            },
+            {
+              "name": {
+                "value": "avocado"
+              }
+            },
+            {
+              "name": {
+                "value": "zucca"
+              }
+            },
+            {
+              "name": {
+                "value": "rucola"
+              }
+            },
+            {
+              "name": {
+                "value": "sedano"
+              }
+            },
+            {
+              "name": {
+                "value": "finocchi"
+              }
+            },
+            {
+              "name": {
+                "value": "broccoli"
+              }
+            },
+            {
+              "name": {
+                "value": "cavolfiore"
+              }
+            },
+            {
+              "name": {
+                "value": "piadine"
+              }
+            },
+            {
+              "name": {
+                "value": "tortellini"
+              }
+            },
+            {
+              "name": {
+                "value": "gnocchi"
+              }
+            },
+            {
+              "name": {
+                "value": "lasagne"
+              }
+            },
+            {
+              "name": {
+                "value": "besciamella"
+              }
+            },
+            {
+              "name": {
+                "value": "maionese"
+              }
+            },
+            {
+              "name": {
+                "value": "ketchup"
+              }
+            },
+            {
+              "name": {
+                "value": "senape"
+              }
+            },
+            {
+              "name": {
+                "value": "olive"
+              }
+            },
+            {
+              "name": {
+                "value": "capperi"
+              }
+            },
+            {
+              "name": {
+                "value": "latte e uova"
+              }
+            },
+            {
+              "name": {
+                "value": "pane e latte"
+              }
+            },
+            {
+              "name": {
+                "value": "pasta e pomodori"
+              }
+            }
+          ]
+        },
+        {
+          "name": "GIORNO",
+          "values": [
+            {
+              "id": "oggi",
+              "name": {
+                "value": "stasera",
+                "synonyms": [
+                  "oggi",
+                  "questa sera",
+                  "stanotte"
+                ]
+              }
+            },
+            {
+              "id": "domani",
+              "name": {
+                "value": "domani",
+                "synonyms": [
+                  "domani sera"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

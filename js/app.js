@@ -4,6 +4,7 @@ import { icon } from './icons.js';
 import { COLLECTIONS, setErrorHandler, detectBackend, savedCode, useSync } from './store.js';
 import { state, store, setRenderer, rerender, closeSheet, submitSheet, sheetOpen, sheetError, openSheet, toast, settings, saveSettings, me, setMe, val } from './core.js';
 import { applySeason } from './season.js';
+import { initGestures } from './gestures.js';
 import * as home from './views/home.js';
 import * as spesa from './views/spesa.js';
 import * as casa from './views/casa.js';
@@ -167,12 +168,24 @@ document.addEventListener('input', (ev) => {
 
 document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && sheetOpen()) closeSheet(); });
 
+// gesti dell'iPhone: fogli da trascinare giù, indietro dal bordo, tira giù per aggiornare, righe da scorrere
+initGestures({
+  run,
+  refresh: async () => {
+    if (route()[0] === 'dove') { await dove.actions['dove-aggiorna'](); return; }
+    if (store.mode === 'sync') await store.sync();
+    rerender();
+  },
+});
+
 // cambio pagina con una dissolvenza leggera (View Transitions, Safari 18+)
 window.addEventListener('hashchange', () => {
   closeSheet();
   ricette.releaseWake();
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (document.startViewTransition && !reduce && state.loaded.has('settings')) document.startViewTransition(() => render());
+  const gesto = document.documentElement.dataset.gesto;
+  delete document.documentElement.dataset.gesto;
+  if (document.startViewTransition && !reduce && !gesto && state.loaded.has('settings')) document.startViewTransition(() => render());
   else render();
 });
 

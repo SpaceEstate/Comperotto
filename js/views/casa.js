@@ -3,7 +3,7 @@ import { render as spesaRender, tidyShopping } from './spesa.js';
 import { html, raw, lsGet, lsSet, todayIso, shortDate, parseIso, WEEKDAYS, WEEKDAYS_SHORT, addDays, vibrate, cap, timeAgo } from '../utils.js';
 import { icon, catFace } from '../icons.js';
 import { ROOMS, CHORE_ICONS, CHORE_TONES, BINS, BIN_IDS, choreStatus, freqLabel } from '../data.js';
-import { state, store, me, nameOf, whoBadge, whoChoices, openSheet, closeSheet, toast, val, pageHead, emptyState, settings, saveSettings, ui, setUi, confirmSheet } from '../core.js';
+import { state, store, me, nameOf, whoBadge, whoChoices, openSheet, closeSheet, toast, val, pageHead, emptyState, settings, saveSettings, ui, setUi, confirmSheet, swipe } from '../core.js';
 
 export const sortedChores = () => state.data.routine
   .map((c) => ({ ...c, st: choreStatus(c) }))
@@ -24,7 +24,7 @@ export function choreRow(c, { compact = false } = {}) {
   const tone = CHORE_TONES[c.icon] || 'oak';
   const fresh = c.lastDone === todayIso();
   return html`
-    <div class="chore" id="c-${c.id}">
+    <div class="chore" id="c-${c.id}"${fresh ? '' : swipe(c.id, ['chore-done', 'Fatto'])}>
       <span class="chore-ico tone-${tone} dot-ico">${icon(c.icon || 'sparkles')}</span>
       <button class="row-edit" data-action="chore-edit" data-id="${c.id}">
         <div class="row-title">${c.title}</div>
@@ -74,7 +74,7 @@ function renderLavori() {
   return html`
     ${rooms.length > 2 ? html`<div class="chips" style="margin-top:0">${rooms.map((r) => html`<button class="chip ${r === room ? 'on' : ''}" data-action="lavori-room" data-room="${r}">${r}</button>`)}</div>` : ''}
     ${open.length ? html`<div class="list" style="margin-top:8px">${open.map((l) => html`
-      <div class="row">
+      <div class="row" id="l-${l.id}"${swipe(l.id, ['lavoro-toggle', 'Fatto'], ['lavoro-del', 'Elimina'])}>
         <button class="check sq" data-action="lavoro-toggle" data-id="${l.id}" aria-label="Completa ${l.title}">${icon('check')}</button>
         <button class="row-edit" data-action="lavoro-edit" data-id="${l.id}">
           <div class="row-title"><span class="prio p${l.prio || 1}"></span>${l.title}</div>
@@ -86,7 +86,7 @@ function renderLavori() {
     ${done.length ? html`
       <div class="section-title"><span>Completati · ${done.length}</span><button class="card-link" data-action="lavori-showdone">${showDone ? 'Nascondi' : 'Mostra'}</button></div>
       ${showDone ? html`<div class="list">${done.slice(0, 40).map((l) => html`
-        <div class="row done">
+        <div class="row done" id="ld-${l.id}"${swipe(l.id, ['lavoro-toggle', 'Riapri'], ['lavoro-del', 'Elimina'])}>
           <button class="check sq on" data-action="lavoro-toggle" data-id="${l.id}" aria-label="Riapri ${l.title}">${icon('check')}</button>
           <button class="row-edit" data-action="lavoro-edit" data-id="${l.id}"><div class="row-title">${l.title}</div><div class="row-sub">${l.doneAt ? timeAgo(l.doneAt) : ''}${l.doneBy ? ` · ${nameOf(l.doneBy)}` : ''}</div></button>
         </div>`)}</div>` : ''}` : ''}

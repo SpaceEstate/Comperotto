@@ -2,7 +2,7 @@
 import { html, raw, cap, safeUrl, hostOf, money, vibrate, timeAgo } from '../utils.js';
 import { icon, catFace } from '../icons.js';
 import { WISH_CATS } from '../data.js';
-import { state, store, me, whoBadge, whoChoices, openSheet, closeSheet, toast, val, emptyState, ui, setUi, pageHead } from '../core.js';
+import { state, store, me, whoBadge, whoChoices, openSheet, closeSheet, toast, val, emptyState, ui, setUi, pageHead, swipe } from '../core.js';
 
 function hearts(n) {
   return html`<span class="hearts" title="Quanto lo vogliamo">${[1, 2, 3].map((i) => icon('heart', i <= (n || 1) ? '' : 'off'))}</span>`;
@@ -10,7 +10,7 @@ function hearts(n) {
 
 function item(w) {
   const link = safeUrl(w.link);
-  return html`<div class="wish ${w.bought ? 'done' : ''}" id="w-${w.id}">
+  return html`<div class="wish ${w.bought ? 'done' : ''}" id="w-${w.id}"${swipe(w.id, ['wish-toggle', w.bought ? 'Non ancora' : 'Preso'], ['wish-del', 'Elimina'])}>
     <button class="check ${w.bought ? 'on' : ''}" data-action="wish-toggle" data-id="${w.id}" aria-label="${w.bought ? 'Non ancora comprato' : 'Comprato'}: ${w.title}">${icon('check')}</button>
     <div class="row-main">
       <button class="row-edit" data-action="wish-edit" data-id="${w.id}" style="padding:0;width:100%">

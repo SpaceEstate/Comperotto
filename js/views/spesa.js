@@ -2,7 +2,7 @@
 import { html, raw, norm, cap, parseQty, timeAgo, vibrate, plural } from '../utils.js';
 import { icon, catFace } from '../icons.js';
 import { SHOP_CATS, normCat, classify } from '../data.js';
-import { state, store, me, whoBadge, openSheet, toast, val, emptyState, closeSheet } from '../core.js';
+import { state, store, me, whoBadge, openSheet, toast, val, emptyState, closeSheet, swipe } from '../core.js';
 
 // Reparto: quello scelto a mano (per quel prodotto o ricordato dalle volte prima), altrimenti indovinato dal nome
 const learnedCat = (name) => {
@@ -111,7 +111,7 @@ export function render() {
       <div class="cat-head" style="--c:${g.color}"><i></i>${g.label}<span class="cat-n">${g.items.length}</span></div>
       <div class="list">
         ${g.items.map((it) => html`
-          <div class="row" id="s-${it.id}">
+          <div class="row" id="s-${it.id}"${swipe(it.id, ['spesa-toggle', 'Preso'], ['spesa-del', 'Elimina'])}>
             <button class="check" data-action="spesa-toggle" data-id="${it.id}" aria-label="Preso ${it.name}">${icon('check')}</button>
             <button class="row-edit" data-action="spesa-edit" data-id="${it.id}">
               <div class="row-title">${cleanName(it.name)} ${it.qty ? html`<span class="muted" style="font-weight:500">· ${it.qty}</span>` : ''}</div>
@@ -130,7 +130,7 @@ export function render() {
         <button class="card-link" data-action="spesa-clear">Svuota</button></div>
       <div class="list">
         ${done.slice(0, 30).map((it) => html`
-          <div class="row done">
+          <div class="row done" id="sd-${it.id}"${swipe(it.id, ['spesa-toggle', 'Rimetti'], ['spesa-del', 'Elimina'])}>
             <button class="check on" data-action="spesa-toggle" data-id="${it.id}" aria-label="Rimetti ${it.name}">${icon('check')}</button>
             <div class="row-main"><div class="row-title">${cleanName(it.name)}</div><div class="row-sub">${timeAgo(it.doneAt)}</div></div>
           </div>`)}

@@ -57,12 +57,22 @@ export function whoChoices(name, value, { allowNone = true } = {}) {
 // ---------------------------------------------------------------------------
 let _rerender = () => {};
 let scheduled = false;
+let held = false, missed = false;
 export const setRenderer = (fn) => { _rerender = fn; };
 export function rerender() {
+  if (held) { missed = true; return; }
   if (scheduled) return;
   scheduled = true;
-  requestAnimationFrame(() => { scheduled = false; _rerender(); });
+  requestAnimationFrame(() => { scheduled = false; if (held) missed = true; else _rerender(); });
 }
+/** Mentre un dito trascina una riga non ridisegno: lo faccio appena finisce il gesto. */
+export function holdRender(on) {
+  held = on;
+  if (!on && missed) { missed = false; rerender(); }
+}
+
+/** Riga da scorrere col dito: right/left = [azione, etichetta], es. ['spesa-toggle', 'Preso'] */
+export const swipe = (id, right, left) => html` data-swipe-id="${id}"${right ? html` data-swipe-r="${right[0]}" data-swipe-rl="${right[1]}"` : ''}${left ? html` data-swipe-l="${left[0]}" data-swipe-ll="${left[1]}"` : ''}`;
 export const navigate = (hash) => { if (location.hash === hash) rerender(); else location.hash = hash; };
 
 // ---------------------------------------------------------------------------
@@ -94,6 +104,9 @@ export function openSheet(opts) {
       : opts.body}`;
   content.innerHTML = body.s;
   const l = layer();
+  // se l'ultimo foglio è stato chiuso trascinandolo, riparte dalla posizione normale
+  const sh = l.querySelector('.sheet');
+  sh.style.transform = sh.style.transition = sh.style.opacity = '';
   l.hidden = false;
   document.body.style.overflow = 'hidden';
   requestAnimationFrame(() => requestAnimationFrame(() => l.classList.add('open')));

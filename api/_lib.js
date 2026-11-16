@@ -121,6 +121,8 @@ async function pg() {
       max: 3,
       idleTimeoutMillis: 10000,
     });
+    // Neon chiude le connessioni ferme: la connessione persa si scarta e la prossima richiesta ne apre un'altra
+    pool.on('error', () => {});
   }
   if (!schemaReady) {
     schemaReady = pool.query(`

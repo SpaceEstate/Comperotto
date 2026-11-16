@@ -13,8 +13,10 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
 - **Dov'è:** posizioni da OwnTracks → `POST /api/posizione` (Basic auth: nome + codice di famiglia).
   "I nostri posti" (casa, lavoro…) si compilano dall'app; **mai indirizzi o dati personali nei file del repository**.
   Solo gli iPhone mandano la posizione (OwnTracks installato solo lì; su iPad "Aggiorna la mia" è nascosto).
-  Mappa con Leaflet incluso in `js/vendor/leaflet/` e vista satellitare Esri con strade e nomi, senza scritte (CARTO chiede una chiave); coordinate dagli indirizzi con `/api/geocodifica`.
+  Mappa vettoriale MapLibre inclusa in `js/vendor/maplibre/` (stile OpenFreeMap "liberty", gratis e senza chiavi) con interruttore Satellite (foto Esri a tileSize 128 per nitidezza), senza scritte; coordinate dagli indirizzi con `/api/geocodifica`.
 - **Sito pulito:** è un'app interna di famiglia: niente spiegazioni tecniche, crediti o link "obbligatori" nelle pagine (es. sulla mappa); le spiegazioni vanno date in chat.
 - **Stile:** pastello in tinta con la casa; le feste con i loro colori pieni (Natale verde/rosso/bianco,
   Halloween nero/arancione). Pensata per iPhone e iPad.
+- **Gesti iPhone** (`js/gestures.js`): fogli da trascinare giù, indietro dal bordo sinistro (solo app installata),
+  tira giù per aggiornare, righe da scorrere (`swipe()` in `core.js`: destra = spunta, sinistra = elimina con Annulla).
 - Niente build: HTML/CSS/JS moderni (`index.html`, `css/`, `js/`), funzioni Vercel in `api/`.

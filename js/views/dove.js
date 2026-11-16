@@ -1,8 +1,8 @@
 // Dov'è: chi è a casa, al lavoro o fuori, con la mappa. Le posizioni arrivano da OwnTracks (in automatico)
-// o da "Aggiorna la mia"; per la posizione dal vivo c'è il pulsante per "Dov'è" di Apple.
-import { html, raw, timeAgo, vibrate, uid, cap, isIPad } from '../utils.js';
+// o da "Aggiorna" (solo da iPhone); per la posizione dal vivo c'è il pulsante per "Dov'è" di Apple.
+import { html, raw, timeAgo, vibrate, uid, cap, isIPad, lsGet, lsSet } from '../utils.js';
 import { icon } from '../icons.js';
-import { state, store, settings, saveSettings, me, nameOf, toast, pageHead, isSynced, openSheet, closeSheet, sheetError, val, confirmSheet } from '../core.js';
+import { state, store, settings, saveSettings, me, nameOf, toast, pageHead, isSynced, openSheet, closeSheet, sheetError, val, confirmSheet, ui, setUi } from '../core.js';
 
 const PEOPLE = ['p1', 'p2'];
 const pos = (k) => state.data.posizioni.find((p) => p.id === k && Number.isFinite(p.lat));
@@ -78,7 +78,11 @@ export function render() {
     <a class="back-link phone-only" href="#/">${icon('left', 'sm')} Home</a>
     ${pageHead('Dov’è', { eyebrow: `${nameOf('p1')} e ${nameOf('p2')}` })}
 
-    ${any ? html`<div class="map-card"><div id="mappa" class="mappa" data-keep></div></div>` : ''}
+    ${any ? html`<div class="map-card"><div id="mappa" class="mappa" data-keep></div>
+      <div class="map-tools">
+        <div class="map-switch">${[['mappa', 'Mappa'], ['satellite', 'Satellite']].map(([v, t]) => html`<button class="${tipoMappa() === v ? 'on' : ''}" data-action="mappa-tipo" data-v="${v}">${t}</button>`)}</div>
+        <button class="map-btn" data-action="mappa-centra" aria-label="Mostra tutti">${icon('users', 'sm')}</button>
+      </div></div>` : ''}
 
     <div class="dove-list">${PEOPLE.map((k) => {
       const st = statusOf(k);
@@ -97,7 +101,7 @@ export function render() {
     })}</div>
 
     <div class="btn-row dove-actions">
-      ${isIPad() ? '' : html`<button class="btn" data-action="dove-io">${icon('pin', 'sm')} Aggiorna la mia</button>`}
+      <button class="btn" data-action="dove-aggiorna" ${ui('dove.busy', false) ? raw('disabled') : ''}>${icon('refresh', ui('dove.busy', false) ? 'sm spin' : 'sm')} ${ui('dove.busy', false) ? 'Aggiorno…' : 'Aggiorna'}</button>
       <a class="btn primary" href="findmy://">${icon('search', 'sm')} Apri Dov’è</a>
     </div>
 
@@ -114,76 +118,110 @@ export function render() {
 }
 
 // ---------------------------------------------------------------------------
-// Mappa (Leaflet, dentro l'app) con le mappe di OpenStreetMap
+// Mappa vettoriale (MapLibre, dentro l'app): nitida a ogni zoom, come quella di Dov'è.
+// "Mappa" = OpenFreeMap (gratis, senza chiavi); "Satellite" = foto Esri con strade e nomi.
 // ---------------------------------------------------------------------------
-let leaflet = null;
-function loadLeaflet() {
-  if (window.L) return Promise.resolve(window.L);
-  if (!leaflet) {
-    leaflet = new Promise((ok, ko) => {
+const STYLE_MAPPA = 'https://tiles.openfreemap.org/styles/liberty';
+const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services';
+const raster = (path) => ({ type: 'raster', tiles: [`${ESRI}/${path}/MapServer/tile/{z}/{y}/{x}`], tileSize: 128, maxzoom: 19 });
+// tileSize 128: chiede foto di un livello più dettagliato, così sull'iPhone non sono sgranate
+const STYLE_SAT = {
+  version: 8,
+  sources: { sat: raster('World_Imagery'), strade: raster('Reference/World_Transportation'), nomi: raster('Reference/World_Boundaries_and_Places') },
+  layers: [
+    { id: 'sat', type: 'raster', source: 'sat' },
+    { id: 'strade', type: 'raster', source: 'strade', paint: { 'raster-opacity': 0.85 } },
+    { id: 'nomi', type: 'raster', source: 'nomi' },
+  ],
+};
+const tipoMappa = () => (lsGet('casa.mappa') === 'satellite' ? 'satellite' : 'mappa');
+
+let mlgl = null;
+function loadMapLibre() {
+  if (window.maplibregl) return Promise.resolve(window.maplibregl);
+  if (!mlgl) {
+    mlgl = new Promise((ok, ko) => {
       const css = document.createElement('link');
       css.rel = 'stylesheet';
-      css.href = 'js/vendor/leaflet/leaflet.css';
+      css.href = 'js/vendor/maplibre/maplibre-gl.css';
       document.head.appendChild(css);
       const js = document.createElement('script');
-      js.src = 'js/vendor/leaflet/leaflet.js';
-      js.onload = () => ok(window.L);
-      js.onerror = () => { leaflet = null; ko(new Error('mappa non disponibile')); };
+      js.src = 'js/vendor/maplibre/maplibre-gl.js';
+      js.onload = () => ok(window.maplibregl);
+      js.onerror = () => { mlgl = null; ko(new Error('mappa non disponibile')); };
       document.head.appendChild(js);
     });
   }
-  return leaflet;
+  return mlgl;
 }
 
-const dark = () => document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
+function punti() {
+  const pts = [];
+  luoghi().filter(hasXY).forEach((l) => pts.push({ kind: 'luogo', l, ll: [l.lon, l.lat] }));
+  PEOPLE.forEach((k) => { const p = pos(k); if (p) pts.push({ kind: 'persona', k, ll: [p.lon, p.lat] }); });
+  return pts;
+}
 
-// Vista satellitare con strade e nomi dei posti sopra (come la vista "ibrida" di Mappe)
-const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services';
-function tiles(L, map) {
-  L.tileLayer(`${ESRI}/World_Imagery/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 19 }).addTo(map);
-  L.tileLayer(`${ESRI}/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 19, opacity: 0.85 }).addTo(map);
-  L.tileLayer(`${ESRI}/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 19 }).addTo(map);
+function inquadra(map, pts, animate = true) {
+  if (!pts.length) return;
+  if (pts.length === 1) { map.jumpTo({ center: pts[0].ll, zoom: 15 }); return; }
+  const lons = pts.map((x) => x.ll[0]), lats = pts.map((x) => x.ll[1]);
+  map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: 56, maxZoom: 16, animate });
+}
+
+function markerEl(x) {
+  const el = document.createElement('div');
+  if (x.kind === 'persona') {
+    el.innerHTML = `<span class="pin-person ${x.k}">${initialOf(x.k)}</span>`;
+    el.title = nameOf(x.k);
+  } else {
+    const l = x.l;
+    const cls = l.id === 'casa' ? 'pin-home' : `pin-place ${l.chi === 'p1' || l.chi === 'p2' ? l.chi : ''}`;
+    const ic = l.id === 'casa' ? 'home' : /lavoro/i.test(l.nome) ? 'briefcase' : 'pin';
+    el.innerHTML = `<span class="${cls}">${icon(ic, 'sm').s}</span>`;
+    el.title = `${l.nome}${ownerOf(l) ? ` · ${ownerOf(l)}` : ''}`;
+  }
+  return el;
 }
 
 export async function after() {
   ensureCoords();
   const el = document.getElementById('mappa');
   if (!el) return;
-  let L;
-  try { L = await loadLeaflet(); } catch { el.classList.add('no-map'); return; }
+  let ml;
+  try { ml = await loadMapLibre(); } catch { el.classList.add('no-map'); return; }
   if (!el.isConnected) return;
+  const pts = punti();
   if (!el._map) {
-    const map = L.map(el, { zoomControl: false, attributionControl: false, scrollWheelZoom: false });
-    tiles(L, map);
+    const tipo = tipoMappa();
+    const map = new ml.Map({
+      container: el,
+      style: tipo === 'satellite' ? STYLE_SAT : STYLE_MAPPA,
+      center: pts.length ? pts[pts.length - 1].ll : [12.5, 42.5],
+      zoom: pts.length ? 14 : 5,
+      attributionControl: false,
+      dragRotate: false,
+      pitchWithRotate: false,
+      touchPitch: false,
+      maxZoom: 19.5,
+    });
+    map.touchZoomRotate.disableRotation();
+    // se la mappa disegnata non arriva, passo al satellite
+    let loaded = false;
+    map.on('load', () => { loaded = true; });
+    map.on('error', () => { if (!loaded && tipoMappa() === 'mappa' && !el._fallback) { el._fallback = true; map.setStyle(STYLE_SAT); } });
     el._map = map;
-    el._layer = L.layerGroup().addTo(map);
+    el._markers = [];
+    inquadra(map, pts, false);
   }
-  const map = el._map;
-  const layer = el._layer;
-  layer.clearLayers();
-  const pts = [];
-  luoghi().filter(hasXY).forEach((l) => {
-    const cls = l.id === 'casa' ? 'pin-home' : `pin-place ${l.chi === 'p1' || l.chi === 'p2' ? l.chi : ''}`;
-    const ic = l.id === 'casa' ? 'home' : /lavoro/i.test(l.nome) ? 'briefcase' : 'pin';
-    L.marker([l.lat, l.lon], {
-      icon: L.divIcon({ className: 'pin-wrap', html: `<span class="${cls}">${icon(ic, 'sm').s}</span>`, iconSize: [34, 34], iconAnchor: [17, 17] }),
-      title: `${l.nome}${ownerOf(l) ? ` · ${ownerOf(l)}` : ''}`, keyboard: false,
-    }).addTo(layer);
-    pts.push([l.lat, l.lon]);
-  });
-  PEOPLE.forEach((k) => {
-    const p = pos(k);
-    if (!p) return;
-    L.marker([p.lat, p.lon], { icon: L.divIcon({ className: 'pin-wrap', html: `<span class="pin-person ${k}">${initialOf(k)}</span>`, iconSize: [42, 50], iconAnchor: [21, 48] }), title: nameOf(k), zIndexOffset: 500 }).addTo(layer);
-    pts.push([p.lat, p.lon]);
-  });
-  const key = JSON.stringify(pts);
-  if (key !== el._fit) {
-    el._fit = key;
-    if (pts.length === 1) map.setView(pts[0], 15);
-    else if (pts.length) map.fitBounds(pts, { padding: [46, 46], maxZoom: 16 });
+  // segnaposti (restano anche cambiando mappa/satellite)
+  const key = JSON.stringify(pts.map((x) => [x.kind, x.k || x.l.id, x.ll]));
+  if (key !== el._key) {
+    el._markers.forEach((m) => m.remove());
+    el._markers = pts.map((x) => new ml.Marker({ element: markerEl(x), anchor: x.kind === 'persona' ? 'bottom' : 'center' }).setLngLat(x.ll).addTo(el._map));
+    if (el._key === undefined || el._refit) { inquadra(el._map, pts); el._refit = false; }
+    el._key = key;
   }
-  setTimeout(() => map.invalidateSize(), 60);
 }
 
 // ---------------------------------------------------------------------------
@@ -217,10 +255,11 @@ async function ensureCoords() {
 }
 
 function here() {
-  return new Promise((ok, ko) => {
-    if (!navigator.geolocation) { ko(new Error('no')); return; }
-    navigator.geolocation.getCurrentPosition(ok, ko, { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 });
-  });
+  const get = (opts) => new Promise((ok, ko) => navigator.geolocation.getCurrentPosition(ok, ko, opts));
+  if (!navigator.geolocation) return Promise.reject(Object.assign(new Error('no'), { code: 2 }));
+  // prima precisa; se non arriva in tempo (es. in casa), va bene anche meno precisa
+  return get({ enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 })
+    .catch((e) => (e && e.code === 1 ? Promise.reject(e) : get({ enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 })));
 }
 
 function luogoSheet(l = null) {
@@ -270,28 +309,49 @@ function luogoSheet(l = null) {
 }
 
 export const actions = {
-  'dove-io': async ({ el }) => {
-    if (!me() || isIPad()) return; // solo gli iPhone dicono dove siete
-    el.disabled = true;
+  // Aggiorna: manda la mia posizione (solo da iPhone) e scarica subito quella dell'altro
+  'dove-aggiorna': async () => {
+    if (ui('dove.busy', false)) return;
+    setUi('dove.busy', true);
+    const t0 = Date.now();
+    let msg = 'Aggiornato';
     try {
-      const { coords } = await here();
-      const data = { chi: me(), lat: coords.latitude, lon: coords.longitude, acc: Math.round(coords.accuracy), tst: Math.round(Date.now() / 1000) };
-      if (isSynced()) {
-        await store.call('posizione', { method: 'POST', body: data });
-        await store.sync();
-      } else {
-        const casa = luogoById('casa');
-        const home = hasXY(casa) ? distanza(data, casa) <= (casa.r || 150) : null;
-        const prev = pos(me()) || {};
-        store.set('posizioni', me(), { lat: data.lat, lon: data.lon, acc: data.acc, at: Date.now(), home, homeSince: home !== prev.home ? Date.now() : prev.homeSince || Date.now(), place: home ? 'Casa' : prev.place || '', src: 'app' });
+      if (!isIPad() && me()) {
+        try {
+          const { coords } = await here();
+          const data = { chi: me(), lat: coords.latitude, lon: coords.longitude, acc: Math.round(coords.accuracy), tst: Math.round(Date.now() / 1000) };
+          if (isSynced()) await store.call('posizione', { method: 'POST', body: data });
+          else await actions['dove-io-local'](data);
+        } catch (e) {
+          msg = e && e.code === 1
+            ? 'Per mandare la tua posizione consenti la localizzazione: Impostazioni → Privacy → Localizzazione → Siti web di Safari'
+            : e && (e.code === 2 || e.code === 3) ? 'Non trovo la tua posizione adesso: ho aggiornato solo quella degli altri' : 'Non riesco a salvarla, riprova tra poco';
+        }
       }
-      vibrate(12);
-      toast('Posizione aggiornata');
-    } catch {
-      toast('Per farlo serve il permesso alla posizione');
+      if (isSynced()) await store.sync();
+      const m = document.getElementById('mappa');
+      if (m) m._refit = true;
     } finally {
-      el.disabled = false;
+      // la rotellina si vede almeno un attimo, così si capisce che ha aggiornato
+      await new Promise((ok) => setTimeout(ok, Math.max(0, 700 - (Date.now() - t0))));
+      setUi('dove.busy', false);
+      vibrate(10);
+      toast(msg, { ms: msg.length > 40 ? 6000 : 2500 });
     }
+  },
+  'mappa-tipo': ({ el }) => {
+    const v = el.dataset.v === 'satellite' ? 'satellite' : 'mappa';
+    lsSet('casa.mappa', v === 'satellite' ? 'satellite' : null);
+    const m = document.getElementById('mappa');
+    if (m && m._map) m._map.setStyle(v === 'satellite' ? STYLE_SAT : STYLE_MAPPA);
+    setUi('mappa.tipo', v);
+  },
+  'mappa-centra': () => { const m = document.getElementById('mappa'); if (m && m._map) inquadra(m._map, punti()); },
+  'dove-io-local': async (data) => {
+    const casa = luogoById('casa');
+    const home = hasXY(casa) ? distanza(data, casa) <= (casa.r || 150) : null;
+    const prev = pos(me()) || {};
+    store.set('posizioni', me(), { lat: data.lat, lon: data.lon, acc: data.acc, at: Date.now(), home, homeSince: home !== prev.home ? Date.now() : prev.homeSince || Date.now(), place: home ? 'Casa' : prev.place || '', src: 'app' });
   },
   'luogo-new': () => luogoSheet(),
   'luogo-edit': ({ id }) => { const l = (settings().luoghi || []).find((x) => x.id === id); if (l) luogoSheet(luoghi().find((x) => x.id === id)); },

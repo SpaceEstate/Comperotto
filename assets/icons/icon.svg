@@ -1,17 +1,77 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs><clipPath id="r"><rect width="512" height="512" rx="112"/></clipPath></defs>
-  <g clip-path="url(#r)">
-  <rect width="512" height="512" fill="#F3ECE2"/>
-  <path d="M0 400h512v112H0z" fill="#E6D3BB"/>
-  <path d="M0 400h512" stroke="#D9BF9E" stroke-width="6"/>
-  <path d="M140 408V236l30-118 66 74h40l66-74 30 118v172z" fill="#B57F45"/>
-  <path d="M168 150l14-12 32 38-26 6zM344 150l-14-12-32 38 26 6z" fill="#8C5C2C" opacity=".55"/>
-  <ellipse cx="208" cy="268" rx="22" ry="24" fill="#F3ECE2"/>
-  <ellipse cx="304" cy="268" rx="22" ry="24" fill="#F3ECE2"/>
-  <ellipse cx="208" cy="270" rx="7" ry="16" fill="#5E4A3C"/>
-  <ellipse cx="304" cy="270" rx="7" ry="16" fill="#5E4A3C"/>
-  <path d="M244 304h24l-12 13z" fill="#F3ECE2"/>
-  <path d="M222 408v-46a34 34 0 0 1 68 0v46z" fill="#F3ECE2"/>
-  <circle cx="276" cy="384" r="4.5" fill="#B57F45"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FEF1E6"/>
+      <stop offset="1" stop-color="#F9D9DF"/>
+    </linearGradient>
+    <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#DFF2E8"/>
+      <stop offset="1" stop-color="#C6E5D4"/>
+    </linearGradient>
+    <radialGradient id="maskA" cx=".5" cy=".55" r=".55">
+      <stop offset="0" stop-color="#6B4E40" stop-opacity=".85"/>
+      <stop offset=".55" stop-color="#8A6A58" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#C9A890" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="maskB" cx=".5" cy=".55" r=".55">
+      <stop offset="0" stop-color="#9A7A66" stop-opacity=".75"/>
+      <stop offset=".55" stop-color="#B49482" stop-opacity=".45"/>
+      <stop offset="1" stop-color="#D9C0AE" stop-opacity="0"/>
+    </radialGradient>
+    <g id="face">
+      <!-- orecchie -->
+      <path d="M-70 -6 L-66 -88 Q-64 -100 -53 -93 L-10 -58 Z" fill="var(--ear)"/>
+      <path d="M70 -6 L66 -88 Q64 -100 53 -93 L10 -58 Z" fill="var(--ear)"/>
+      <path d="M-58 -24 L-56 -74 L-27 -52 Z" fill="#F7BAC4"/>
+      <path d="M58 -24 L56 -74 L27 -52 Z" fill="#F7BAC4"/>
+      <!-- testa con ciuffetti sulle guance -->
+      <path d="M-80 12 C-80 -40 -42 -62 0 -62 C42 -62 80 -40 80 12 C80 26 88 34 82 44 C76 54 70 52 64 58 C46 74 22 80 0 80 C-22 80 -46 74 -64 58 C-70 52 -76 54 -82 44 C-88 34 -80 26 -80 12 Z" fill="#FFF7EE"/>
+    </g>
+    <g id="eyes">
+      <ellipse cx="-29" cy="8" rx="14" ry="16" fill="#2E2A33"/>
+      <ellipse cx="29" cy="8" rx="14" ry="16" fill="#2E2A33"/>
+      <ellipse cx="-29" cy="9" rx="11" ry="13" fill="#7CB6E2"/>
+      <ellipse cx="29" cy="9" rx="11" ry="13" fill="#7CB6E2"/>
+      <circle cx="-24" cy="2" r="5" fill="#fff"/>
+      <circle cx="34" cy="2" r="5" fill="#fff"/>
+      <circle cx="-32" cy="14" r="2.2" fill="#fff" opacity=".85"/>
+      <circle cx="26" cy="14" r="2.2" fill="#fff" opacity=".85"/>
+      <ellipse cx="-52" cy="32" rx="12" ry="8" fill="#F7A6B5" opacity=".8"/>
+      <ellipse cx="52" cy="32" rx="12" ry="8" fill="#F7A6B5" opacity=".8"/>
+      <path d="M-7 28 Q0 24 7 28 Q2 36 0 36 Q-2 36 -7 28 Z" fill="#E8879A"/>
+      <path d="M0 36 Q-5 44 -12 41 M0 36 Q5 44 12 41" stroke="#5E443B" stroke-width="3.6" fill="none" stroke-linecap="round"/>
+    </g>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <ellipse cx="256" cy="452" rx="196" ry="20" fill="#EDB8C0" opacity=".5"/>
+
+  <!-- camino e cuoricino -->
+  <rect x="346" y="104" width="40" height="80" rx="10" fill="#EE9C88"/>
+  <path d="M366 74 c-6 -15 -28 -11 -26 4 c2 11 26 24 26 24 s24 -13 26 -24 c2 -15 -20 -19 -26 -4 z" fill="#F48FA6"/>
+  <!-- casa -->
+  <path d="M96 226 L256 100 L416 226 V422 a24 24 0 0 1 -24 24 H120 a24 24 0 0 1 -24 -24 Z" fill="url(#wall)"/>
+  <path d="M66 242 L256 88 L446 242" stroke="#EE9C88" stroke-width="44" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <circle cx="256" cy="186" r="21" fill="#FFF7EE"/>
+  <path d="M256 165 V207 M235 186 H277" stroke="#C6E5D4" stroke-width="5"/>
+
+  <!-- Thor (più scuro) -->
+  <g transform="translate(178 330) scale(.9)">
+    <path d="M40 120 C110 130 130 60 96 40" stroke="#6B4E40" stroke-width="24" fill="none" stroke-linecap="round"/>
+    <ellipse cx="0" cy="104" rx="66" ry="58" fill="#FFF7EE"/>
+    <ellipse cx="-26" cy="156" rx="20" ry="13" fill="#fff"/>
+    <ellipse cx="26" cy="156" rx="20" ry="13" fill="#fff"/>
+    <use href="#face" style="--ear:#6B4E40"/>
+    <ellipse cx="0" cy="24" rx="56" ry="46" fill="url(#maskA)"/>
+    <use href="#eyes"/>
+  </g>
+  <!-- Minù (più chiara) -->
+  <g transform="translate(338 344) scale(.8)">
+    <path d="M-40 120 C-110 130 -130 60 -96 40" stroke="#9A7A66" stroke-width="24" fill="none" stroke-linecap="round"/>
+    <ellipse cx="0" cy="104" rx="66" ry="58" fill="#FFF7EE"/>
+    <ellipse cx="-26" cy="156" rx="20" ry="13" fill="#fff"/>
+    <ellipse cx="26" cy="156" rx="20" ry="13" fill="#fff"/>
+    <use href="#face" style="--ear:#9A7A66"/>
+    <ellipse cx="0" cy="24" rx="56" ry="46" fill="url(#maskB)"/>
+    <use href="#eyes"/>
   </g>
 </svg>

@@ -6,30 +6,33 @@
    ========================================================================== */
 
 :root {
-  --bg: #F5F1EB;
-  --bg-2: #EDE6DC;
-  --surface: #FFFCF8;
-  --surface-2: #F8F3EC;
-  --line: #E6DDD1;
-  --line-2: #D9CEC0;
-  --text: #2F2924;
-  --text-2: #6F655B;
-  --text-3: #9E9387;
+  /* casa a pastello: lino chiaro, albicocca, salvia, cielo, rosa cipria, lavanda */
+  --bg: #FBF6F1;
+  --bg-2: #F4ECE4;
+  --surface: #FFFDFB;
+  --surface-2: #FAF4EE;
+  --line: #EFE5DB;
+  --line-2: #E3D5C7;
+  --text: #3D3430;
+  --text-2: #776A60;
+  --text-3: #A6998E;
 
-  --oak: #B57F45;
-  --oak-deep: #8C5C2C;
-  --oak-soft: #F2E4D2;
-  --oak-ink: #FFFFFF;
-  --taupe: #9A8D80;
-  --taupe-soft: #ECE5DC;
-  --sage: #687A55;
-  --sage-soft: #E3E8D9;
-  --sky: #6E91A6;
-  --sky-soft: #E0E9EF;
-  --rose: #B4624F;
-  --rose-soft: #F5E1DA;
-  --plum: #8A6A86;
-  --plum-soft: #EEE3EC;
+  --oak: #F1BC8E;
+  --oak-deep: #9A5E31;
+  --oak-soft: #FDEBDB;
+  --oak-ink: #5A341A;
+  --taupe: #A8998C;
+  --taupe-soft: #F3ECE5;
+  --sage: #5E8A5B;
+  --sage-soft: #E4F2E0;
+  --sage-pastel: #A5D3A1;
+  --sage-ink: #2D4A2B;
+  --sky: #5F8CAB;
+  --sky-soft: #E2EFF9;
+  --rose: #C2614F;
+  --rose-soft: #FCE4DF;
+  --plum: #8B6A9B;
+  --plum-soft: #F1E6F7;
 
   --shadow-1: 0 1px 2px rgba(68, 50, 30, .06), 0 2px 8px rgba(68, 50, 30, .05);
   --shadow-2: 0 6px 24px rgba(68, 50, 30, .10), 0 2px 6px rgba(68, 50, 30, .06);
@@ -69,10 +72,12 @@
     --text: #F2EBE2;
     --text-2: #C2B6A8;
     --text-3: #8C8074;
-    --oak: #D19E66;
-    --oak-deep: #E8BC88;
-    --oak-soft: #3A2E22;
-    --oak-ink: #1B1815;
+    --oak: #EDB68A;
+    --oak-deep: #F2C9A3;
+    --oak-soft: #3A2C22;
+    --oak-ink: #2A1A0E;
+    --sage-pastel: #8FBF8B;
+    --sage-ink: #13230F;
     --taupe: #A69888;
     --taupe-soft: #332D28;
     --sage: #9DB088;
@@ -102,10 +107,12 @@
   --text: #F2EBE2;
   --text-2: #C2B6A8;
   --text-3: #8C8074;
-  --oak: #D19E66;
-  --oak-deep: #E8BC88;
-  --oak-soft: #3A2E22;
-  --oak-ink: #1B1815;
+  --oak: #EDB68A;
+  --oak-deep: #F2C9A3;
+  --oak-soft: #3A2C22;
+  --oak-ink: #2A1A0E;
+  --sage-pastel: #8FBF8B;
+  --sage-ink: #13230F;
   --taupe: #A69888;
   --taupe-soft: #332D28;
   --sage: #9DB088;
@@ -1022,3 +1029,119 @@ a.prov { text-decoration: none; color: var(--text); }
 
 .film-results .add-dot { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--oak-soft); color: var(--oak-deep); flex: none; }
 .film-results .row.in-list .row-title { color: var(--text-2); }
+
+/* ==========================================================================
+   Pastello (tutta l'app) + colori pieni solo per le feste
+   ========================================================================== */
+.check.on { background: var(--sage-pastel); border-color: var(--sage-pastel); color: var(--sage-ink); }
+.p-seen { background: var(--sage-pastel); color: var(--sage-ink); }
+.count.soft { background: var(--oak); color: var(--oak-ink); }
+.fab { background: var(--oak); color: var(--oak-ink); box-shadow: 0 10px 26px -8px color-mix(in srgb, var(--oak) 90%, transparent), var(--shadow-1); }
+.chip.on { background: var(--oak-soft); color: var(--oak-deep); border-color: color-mix(in srgb, var(--oak) 70%, transparent); }
+.segmented { background: color-mix(in srgb, var(--oak-soft) 60%, var(--bg-2)); }
+.tab.on .tab-ico { background: var(--oak-soft); color: var(--oak-deep); }
+.ring-fg { stroke: var(--sage-pastel); }
+.shop-progress .bar > i { background: linear-gradient(90deg, var(--sage-pastel), color-mix(in srgb, var(--sage-pastel) 55%, #fff)); }
+.note.c-oak { background: #FDE6CC; }
+.note.c-sage { background: #E0F1DA; }
+.note.c-sky { background: #DCEBF8; }
+.note.c-rose { background: #FBDCE2; }
+
+/* testata della home: un velo pastello */
+.home-top { background: linear-gradient(180deg, #FDE9DA 0%, #FBEFE6 55%, transparent 100%); }
+
+/* riquadri della home a pastello */
+.hero-tiles .tile { color: var(--td); background: linear-gradient(150deg, var(--tp1), var(--tp2)); box-shadow: 0 8px 20px -10px color-mix(in srgb, var(--td) 45%, transparent); }
+.hero-tiles .tile-ico { background: rgba(255,255,255,.6); color: var(--td); }
+.hero-tiles .tile-num { color: var(--td); }
+.hero-tiles .tile-label { color: color-mix(in srgb, var(--td) 85%, transparent); }
+.hero-tiles .tile-mark { color: var(--td); opacity: .12; }
+.t-oak { --tp1: #FEE6CF; --tp2: #F8CDA6; --td: #6E3F1A; }
+.t-sage { --tp1: #E6F4DF; --tp2: #C9E5BF; --td: #355A31; }
+.t-sky { --tp1: #E2F0FB; --tp2: #C2DCF1; --td: #2C5577; }
+.t-rose { --tp1: #FDE3E2; --tp2: #F6C4C3; --td: #8B3A3A; }
+.t-plum { --tp1: #F0E5FA; --tp2: #DCC8EE; --td: #5C3F74; }
+.t-gold { --tp1: #FEF4D3; --tp2: #F6E2A2; --td: #6B5414; }
+
+/* conto alla rovescia: le ricorrenze di famiglia a pastello… */
+.cd-festa, .cd-compleanni { --cd: linear-gradient(155deg, #FCDDE5 0%, #F9CDBE 70%, #F8E0A9 135%); color: #6A2F44; }
+.cd-gatti { --cd: linear-gradient(155deg, #EEE2F7 0%, #DCC9EC 70%, #F5E6D6 135%); color: #4E3762; }
+.cd-amore { --cd: linear-gradient(155deg, #FDDDE3 0%, #F7B9C5 80%, #F59AAC 140%); color: #7A2236; }
+.cd-pasqua { --cd: linear-gradient(155deg, #EFE6FA 0%, #DCCDF2 60%, #FBEFC1 130%); color: #4E3A72; }
+.cd-festa .cd-ico, .cd-compleanni .cd-ico, .cd-gatti .cd-ico, .cd-amore .cd-ico, .cd-pasqua .cd-ico { background: rgba(255,255,255,.6); }
+.cd-festa::before, .cd-compleanni::before, .cd-gatti::before, .cd-amore::before, .cd-pasqua::before { background: rgba(255,255,255,.35); }
+/* …le feste con i loro colori pieni */
+.cd-natale { --cd: linear-gradient(160deg, #1B5636 0%, #23683F 55%, #C42F37 135%); color: #fff; }
+.cd-natale::after { inset: 0; width: auto; height: auto; right: 0; bottom: 0; border-radius: 0; background-color: transparent; background-image: radial-gradient(circle, rgba(255,255,255,.75) 1.6px, transparent 2.2px), radial-gradient(circle, rgba(255,255,255,.45) 1.2px, transparent 1.8px); background-size: 38px 38px, 27px 27px; background-position: 0 0, 13px 17px; opacity: .55; }
+.cd-natale .cd-ico { background: #C42F37; }
+.cd-halloween { --cd: linear-gradient(160deg, #0E0E0E 0%, #1E150F 55%, #EE7A1F 140%); color: #FFE6CC; }
+.cd-halloween .cd-ico { background: #EE7A1F; color: #111; }
+.cd-halloween .cd-big { color: #F59440; }
+.cd-capodanno { --cd: linear-gradient(160deg, #0F0F14 0%, #1D1C2A 60%, #C9A24A 140%); color: #FFF4D8; }
+.cd-capodanno .cd-ico { background: #C9A24A; color: #111; }
+.cd-sanvalentino { --cd: linear-gradient(160deg, #A51F38 0%, #D9415C 100%); color: #fff; }
+.cd-estate { --cd: linear-gradient(160deg, #1F6E94 0%, #3FA0C4 60%, #EBD3A0 140%); color: #fff; }
+
+/* ---- Halloween: nero e arancione ---- */
+:root[data-season="halloween"] {
+  --oak: #EE7A1F; --oak-deep: #B4520E; --oak-soft: #FDE4CF; --oak-ink: #111111;
+  --season-bg: linear-gradient(150deg, #0E0E0E 0%, #22170F 55%, #EE7A1F 145%); --season-ink: #FFE6CC; --deco: #EE7A1F;
+}
+:root[data-season="halloween"] .home-top,
+:root[data-season="natale"] .home-top {
+  color: #fff; border-radius: 0 0 28px 28px; padding-bottom: 22px; margin-bottom: 4px;
+}
+:root[data-season="halloween"] .home-top { background: linear-gradient(180deg, #0E0C0B 0%, #23170E 75%, #34200F 100%); }
+:root[data-season="halloween"] .home-top::after,
+:root[data-season="natale"] .home-top::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 7px; }
+:root[data-season="halloween"] .home-top::after { background: repeating-linear-gradient(135deg, #EE7A1F 0 12px, #111 12px 24px); }
+:root[data-season="halloween"] .hello .eyebrow { color: rgba(255,230,204,.7); }
+:root[data-season="halloween"] .hello h1 { color: #FFE6CC; }
+:root[data-season="halloween"] .hello h1 em, :root[data-season="halloween"] .brand-line { color: #F59440; }
+:root[data-season="halloween"] .season-deco.bats svg { color: #EE7A1F; opacity: .9; }
+:root[data-season="halloween"] .sc-ico { background: #EE7A1F; color: #111; }
+
+/* ---- Natale: verde, rosso e bianco ---- */
+:root[data-season="natale"] {
+  --season-bg: linear-gradient(155deg, #1B5636 0%, #23683F 60%, #C42F37 150%); --season-ink: #FFFFFF; --snow: #FFFFFF;
+}
+:root[data-season="natale"] .home-top { background: linear-gradient(180deg, #154A2E 0%, #1C5A38 75%, #216640 100%); }
+:root[data-season="natale"] .home-top::after { background: repeating-linear-gradient(135deg, #C42F37 0 12px, #FFFFFF 12px 24px); }
+:root[data-season="natale"] .hello .eyebrow { color: rgba(255,255,255,.75); }
+:root[data-season="natale"] .hello h1 { color: #FFFFFF; }
+:root[data-season="natale"] .hello h1 em { color: #FF9D9D; }
+:root[data-season="natale"] .brand-line { color: #FFD7A0; }
+:root[data-season="natale"] .sc-ico { background: #C42F37; color: #fff; }
+:root[data-season="natale"] .season-card { position: relative; }
+:root[data-season="natale"] .season-card::after { content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; background-image: radial-gradient(circle, rgba(255,255,255,.6) 1.5px, transparent 2px); background-size: 24px 24px; opacity: .45; }
+:root[data-season="halloween"] .home-top .icon-btn,
+:root[data-season="natale"] .home-top .icon-btn { background: rgba(255,255,255,.14); border-color: transparent; color: #fff; box-shadow: none; }
+
+/* al buio i riquadri pastello diventano tenui */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .hero-tiles .tile { background: color-mix(in srgb, var(--tp2) 20%, var(--surface)); color: var(--tp1); }
+  :root:not([data-theme="light"]) .hero-tiles .tile-ico { background: color-mix(in srgb, var(--tp2) 28%, transparent); color: var(--tp1); }
+  :root:not([data-theme="light"]) .hero-tiles .tile-num, :root:not([data-theme="light"]) .hero-tiles .tile-label, :root:not([data-theme="light"]) .hero-tiles .tile-mark { color: var(--tp1); }
+  :root:not([data-theme="light"]) .home-top { background: linear-gradient(180deg, #2C231D 0%, transparent 100%); }
+  :root:not([data-theme="light"]) .note.c-oak { background: #4A3826; color: #FBE3C8; }
+  :root:not([data-theme="light"]) .note.c-sage { background: #2F3F2B; color: #DDEFD6; }
+  :root:not([data-theme="light"]) .note.c-sky { background: #263848; color: #D8E9F7; }
+  :root:not([data-theme="light"]) .note.c-rose { background: #47292E; color: #FBDCE2; }
+}
+:root[data-theme="dark"] .hero-tiles .tile { background: color-mix(in srgb, var(--tp2) 20%, var(--surface)); color: var(--tp1); }
+:root[data-theme="dark"] .hero-tiles .tile-ico { background: color-mix(in srgb, var(--tp2) 28%, transparent); color: var(--tp1); }
+:root[data-theme="dark"] .hero-tiles .tile-num, :root[data-theme="dark"] .hero-tiles .tile-label, :root[data-theme="dark"] .hero-tiles .tile-mark { color: var(--tp1); }
+:root[data-theme="dark"] .home-top { background: linear-gradient(180deg, #2C231D 0%, transparent 100%); }
+:root[data-theme="dark"] .note.c-oak { background: #4A3826; color: #FBE3C8; }
+:root[data-theme="dark"] .note.c-sage { background: #2F3F2B; color: #DDEFD6; }
+:root[data-theme="dark"] .note.c-sky { background: #263848; color: #D8E9F7; }
+:root[data-theme="dark"] .note.c-rose { background: #47292E; color: #FBDCE2; }
+/* le testate di Halloween e Natale restano scure anche con il tema scuro */
+html:root[data-season="halloween"][data-season] .home-top { background: linear-gradient(180deg, #0E0C0B 0%, #23170E 75%, #34200F 100%); }
+html:root[data-season="natale"][data-season] .home-top { background: linear-gradient(180deg, #154A2E 0%, #1C5A38 75%, #216640 100%); }
+
+/* Halloween al buio: nero vero, non viola */
+@media (prefers-color-scheme: dark) {
+  :root[data-season="halloween"]:not([data-theme="light"]) { --bg: #100E0D; --bg-2: #181412; --surface: #1C1816; --surface-2: #241F1B; --line: #312923; --line-2: #42372F; --oak: #F08A3C; --oak-ink: #111111; --oak-soft: #3A2414; }
+}
+:root[data-season="halloween"][data-theme="dark"] { --bg: #100E0D; --bg-2: #181412; --surface: #1C1816; --surface-2: #241F1B; --line: #312923; --line-2: #42372F; --oak: #F08A3C; --oak-ink: #111111; --oak-soft: #3A2414; }

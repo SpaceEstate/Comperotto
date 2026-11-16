@@ -5,7 +5,7 @@ import { COLLECTIONS, setErrorHandler, detectBackend, savedCode, useSync } from 
 import { state, store, setRenderer, rerender, closeSheet, submitSheet, sheetOpen, sheetError, openSheet, toast, settings, saveSettings, me, setMe, val } from './core.js';
 import { applySeason } from './season.js';
 import { initGestures } from './gestures.js';
-import { rinfresca as rinfrescaNotifiche } from './notifiche.js';
+import { rinfresca as rinfrescaNotifiche, stato as statoNotifiche } from './notifiche.js';
 import * as home from './views/home.js';
 import * as spesa from './views/spesa.js';
 import * as casa from './views/casa.js';
@@ -307,6 +307,8 @@ export function startSync(code) {
   s.start();
   render();
   setTimeout(rinfrescaNotifiche, 4000);
+  // la Home propone le notifiche solo dove si possono davvero accendere
+  setTimeout(() => statoNotifiche().then((s) => { state.ui['push.stato'] = s; rerender(); }).catch(() => {}), 1200);
 }
 
 async function boot() {

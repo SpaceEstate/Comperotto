@@ -1288,3 +1288,13 @@ body.swiping-back .fab { visibility: hidden; }
 .sw:checked { background: var(--sage-pastel); }
 .sw:checked::after { transform: translateX(20px); }
 label.set-row { cursor: pointer; }
+
+/* Home: il conto alla rovescia sta sotto "Oggi in casa" (su iPad dentro la colonna di sinistra) */
+.home-grid { margin-top: 14px; }
+.home-col .cd-section .section-title { margin-top: 4px; }
+@media (min-width: 700px) and (min-height: 560px) {
+  .home-col .cd-scroll { margin: 0; padding: 2px 0 10px; scroll-padding-left: 0; grid-auto-columns: minmax(150px, calc(33.333% - 8px)); }
+}
+@media (min-width: 1000px) and (min-height: 560px) {
+  .home-col .cd-scroll { grid-auto-columns: calc(50% - 6px); }
+}

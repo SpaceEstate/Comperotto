@@ -3,7 +3,7 @@ import { render as spesaRender, tidyShopping } from './spesa.js';
 import { html, raw, lsGet, lsSet, todayIso, shortDate, parseIso, WEEKDAYS, WEEKDAYS_SHORT, addDays, vibrate, cap, timeAgo } from '../utils.js';
 import { icon, catFace } from '../icons.js';
 import { ROOMS, CHORE_ICONS, CHORE_TONES, BINS, BIN_IDS, choreStatus, freqLabel } from '../data.js';
-import { state, store, me, nameOf, whoBadge, whoChoices, openSheet, closeSheet, toast, val, pageHead, emptyState, settings, saveSettings, ui, setUi, confirmSheet, swipe } from '../core.js';
+import { state, store, me, nameOf, whoBadge, whoChoices, openSheet, closeSheet, toast, val, pageHead, emptyState, settings, saveSettings, ui, setUi, confirmSheet, swipe, sheetError } from '../core.js';
 
 export const sortedChores = () => state.data.routine
   .map((c) => ({ ...c, st: choreStatus(c) }))
@@ -154,22 +154,28 @@ function choreSheet(c = null) {
           <label><input type="radio" name="ftype" value="days" ${f.type !== 'weekdays' ? raw('checked') : ''}><span>Ogni N giorni</span></label>
           <label><input type="radio" name="ftype" value="weekdays" ${f.type === 'weekdays' ? raw('checked') : ''}><span>Giorni fissi</span></label>
         </div>
-        <div class="field-row">
+        <div class="field-row" id="ch-ogni" ${f.type === 'weekdays' ? raw('hidden') : ''}>
           <label class="field" style="margin:0"><span>Ogni quanti giorni</span><input name="every" type="number" inputmode="numeric" min="1" max="365" value="${f.every || 7}"></label>
           <div></div>
         </div>
-        <div class="radio-chips" style="margin-top:10px">${[1, 2, 3, 4, 5, 6, 0].map((d) => html`
+        <div class="radio-chips" id="ch-giorni" ${f.type === 'weekdays' ? '' : raw('hidden')}>${[1, 2, 3, 4, 5, 6, 0].map((d) => html`
           <label><input type="checkbox" name="days" value="${d}" ${days.includes(d) ? raw('checked') : ''}><span>${WEEKDAYS_SHORT[d]}</span></label>`)}</div>
-        <p class="help">I giorni fissi valgono solo se scegli “Giorni fissi”.</p>
       </div>
       <div class="field"><span>Di solito chi la fa</span>${whoChoices('who', c ? c.who : '')}</div>
       ${c && c.history && c.history.length ? html`<div class="field"><span>Ultime volte</span><p class="small muted" style="margin:0">${c.history.slice(-6).reverse().map((h) => `${shortDate(h.date)}${h.by ? ` (${nameOf(h.by)})` : ''}`).join(' · ')}</p></div>` : ''}`,
     extra: c ? html`<button class="btn danger" type="button" data-action="chore-del" data-id="${c.id}">${icon('trash', 'sm')}</button>` : '',
+    // "Ogni N giorni" mostra il numero, "Giorni fissi" mostra i giorni della settimana
+    onOpen: (root) => root.querySelectorAll('input[name=ftype]').forEach((r) => r.addEventListener('change', () => {
+      const fissi = root.querySelector('input[name=ftype]:checked').value === 'weekdays';
+      root.querySelector('#ch-ogni').hidden = fissi;
+      root.querySelector('#ch-giorni').hidden = !fissi;
+    })),
     onSubmit: (fd) => {
       const title = cap(val(fd, 'title'));
       if (!title) return false;
       const ftype = val(fd, 'ftype');
       const sel = fd.getAll('days').map(Number);
+      if (ftype === 'weekdays' && !sel.length) { sheetError('Scegli almeno un giorno della settimana'); return false; }
       const freq = ftype === 'weekdays' && sel.length ? { type: 'weekdays', days: sel } : { type: 'days', every: Math.max(1, Number(val(fd, 'every')) || 7) };
       const data = { title, icon: val(fd, 'icon') || 'sparkles', freq, who: val(fd, 'who') };
       if (c) store.update('routine', c.id, data);

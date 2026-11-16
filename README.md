@@ -121,7 +121,20 @@ Su ogni iPhone, una volta:
 
 Si salva solo l'ultima posizione di ciascuno, protetta dal codice di famiglia.
 
-## 6. Musica
+La mappa mostra sempre Patrick e Serena; **Casa, Lavoro e le attività** (bar, negozi, farmacie…) compaiono ingrandendo, come in Dov'è di Apple. C'è l'interruttore **Mappa / Satellite** e, con l'app in modalità scura, la mappa diventa scura.
+
+## 6. Notifiche
+
+Su ogni iPhone/iPad con l'app **installata sulla schermata Home**: **Impostazioni → Notifiche → Attiva le notifiche** (c'è anche un invito in Home). Non serve configurare niente: le chiavi si creano da sole e restano nel database.
+
+- **Arrivi e partenze**: "Serena è a casa", "Patrick ha lasciato il lavoro" (dalle posizioni di OwnTracks, con un margine contro i falsi allarmi).
+- **Stasera si butta**: una volta al giorno verso le 18–19, se quella sera c'è qualcosa da portare fuori e non è già stato segnato.
+- **Biglietti sulla lavagnetta**: quando l'altro ne attacca uno nuovo.
+- **Compleanni e gatti**: il giorno prima di compleanni, anniversario, ricorrenze e richiami di Thor e Minù.
+
+Ogni tipo si può spegnere dal singolo dispositivo; "Prova" manda una notifica di prova.
+
+## 7. Musica
 
 Aggiungete brani, album o playlist con un tema (Natale, Halloween, Estate, Parigi e Canarie…). Se incollate un **link Spotify** (Condividi → Copia link) si ascolta direttamente nell'app. Nel periodo giusto la sezione mette in cima la musica a tema.
 
@@ -140,12 +153,17 @@ js/core.js              stato, fogli dal basso, avvisi
 js/data.js              reparti, temi, stagioni, rifiuti, faccende
 js/season.js            atmosfere stagionali e decorazioni
 js/seed.js              esempi iniziali (ricette, film, musica, faccende)
+js/gestures.js          gesti dell'iPhone (fogli da trascinare, indietro dal bordo, righe da scorrere)
+js/mappa.js             stile della mappa di Dov'è (attività, i nostri posti, satellite, scuro)
+js/notifiche.js         notifiche di questo dispositivo
 js/views/*.js           le schermate
-api/                    funzioni Vercel: stato, setup del codice, dati (Neon/Postgres o Upstash Redis), film
+assets/fonts/           i caratteri (dentro l'app: niente richieste esterne)
+api/                    funzioni Vercel: stato, setup del codice, dati (Neon/Postgres o Upstash Redis), film,
+                        posizione, notifiche (push, promemoria della sera)
 alexa-skill/            skill Alexa (modello italiano + codice)
 ```
 
-Niente framework e niente build: HTML, CSS e JavaScript moderni, più tre piccole funzioni in `api/`. Per modificarla basta cambiare i file e fare push su `main`: Vercel la ripubblica da solo e il telefono prende la nuova versione alla riapertura successiva.
+Niente framework e niente build: HTML, CSS e JavaScript moderni, più alcune piccole funzioni in `api/`. Per modificarla basta cambiare i file e fare push su `main`: Vercel la ripubblica da solo e l'app, alla prima apertura, si ricarica da sola con la versione nuova (a ogni pubblicazione va cambiato il numero di `CACHE` in `sw.js`).
 
 Per provarla sul computer con le funzioni e il database:
 

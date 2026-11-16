@@ -2,7 +2,7 @@
 import { html, raw, longDate, todayIso, timeAgo, vibrate, cap, plural, isIOS, isStandalone, lsGet, lsSet } from '../utils.js';
 import { icon } from '../icons.js';
 import { THEMES, upcomingDates, CAT_EVENTS } from '../data.js';
-import { state, store, settings, me, nameOf, myName, openSheet, toast, val, confirmSheet, rerender } from '../core.js';
+import { state, store, settings, me, nameOf, myName, openSheet, toast, val, confirmSheet, rerender, ui, isSynced } from '../core.js';
 import { dueChores, choreRow, trashFor, binChips } from './casa.js';
 import { cats, catAvatar, upcomingFor, lastWeight } from './gatti.js';
 import { seasonInfo, currentTheme, seasonDeco } from '../season.js';
@@ -66,6 +66,18 @@ function installHint() {
     <span class="dot-ico tone-oak">${icon('share')}</span>
     <div><b>Mettila nella schermata Home</b><span>Tocca ${icon('share', 'xs')} Condividi e poi «Aggiungi alla schermata Home»: si apre a tutto schermo, come un’app.</span></div>
     <button class="icon-btn ghost" data-action="hint-close" aria-label="Chiudi">${icon('x', 'sm')}</button>
+  </div>`;
+}
+
+/** Le notifiche si possono accendere ma sono ancora spente: lo propongo una volta, con discrezione. */
+function pushHint() {
+  if (!isSynced() || ui('push.stato', null) !== 'spente' || lsGet('casa.hint.push')) return '';
+  const altro = nameOf(me() === 'p1' ? 'p2' : 'p1');
+  return html`<div class="install-hint fade-in">
+    <span class="dot-ico tone-sky">${icon('bell')}</span>
+    <div><b>Vuoi le notifiche?</b><span>Un avviso quando ${altro} arriva a casa e, la sera, cosa si butta.</span>
+      <button class="mini-btn primary" data-action="push-on" style="margin-top:8px">Attiva</button></div>
+    <button class="icon-btn ghost" data-action="hint-push-close" aria-label="Non ora">${icon('x', 'sm')}</button>
   </div>`;
 }
 
@@ -150,14 +162,13 @@ export function render() {
 
     <div class="stagger">
       ${installHint()}
+      ${pushHint()}
       ${bdays.map(birthdayCard)}
 
       <div class="cats-strip">${cats().map((c) => html`
         <a class="cat-chip" href="#/gatti">${catAvatar(c)}<div><b>${c.name}</b><span>${catStatus(c)}</span></div></a>`)}</div>
 
       ${doveCard()}
-
-      ${countdowns(dates)}
 
       <div class="home-grid">
         <div class="home-col">
@@ -177,6 +188,8 @@ export function render() {
             ${due.length ? html`<div>${due.slice(0, 4).map((c) => choreRow(c, { compact: true }))}</div>
               ${due.length > 4 ? html`<a class="today-more" href="#/casa/faccende">e altre ${due.length - 4}</a>` : ''}` : ''}
           </section>
+
+          ${countdowns(dates)}
         </div>
 
         <div class="home-col">
@@ -225,6 +238,7 @@ export const actions = {
   'musica-theme-go': ({ el }) => { state.ui['musica.theme'] = el.dataset.v; location.hash = '#/musica'; },
   'film-theme-go': ({ el }) => { state.ui['film.theme'] = el.dataset.v; state.ui['film.filter'] = 'tutti'; location.hash = '#/film'; },
   'hint-close': () => { lsSet('casa.hint.install', '1'); rerender(); },
+  'hint-push-close': () => { lsSet('casa.hint.push', '1'); rerender(); },
   'note-new': () => noteSheet(),
   'note-open': ({ id }) => {
     const n = state.data.bacheca.find((x) => x.id === id);

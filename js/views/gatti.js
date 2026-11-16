@@ -159,7 +159,7 @@ export const actions = {
   'cat-photo': async ({ el }) => {
     const f = el.files && el.files[0];
     if (!f) return;
-    try { store.update('gatti', el.dataset.id, { photo: await resizeImage(f, 480, 0.8) }); toast('Che bella foto!'); }
+    try { store.update('gatti', el.dataset.id, { photo: await resizeImage(f, 400, 0.8) }); toast('Che bella foto!'); }
     catch { toast('Foto non valida'); }
   },
   'cat-photo-del': ({ id }) => { store.update('gatti', id, { photo: '' }); closeSheet(); },

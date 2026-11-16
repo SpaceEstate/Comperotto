@@ -129,7 +129,7 @@ function recipeSheet(r = null) {
       root.querySelector('#r-photo').addEventListener('change', async (e) => {
         const f = e.target.files[0];
         if (!f) return;
-        try { photo = await resizeImage(f, 900, 0.75); thumb.style.backgroundImage = `url('${photo}')`; thumb.innerHTML = ''; } catch { toast('Foto non valida'); }
+        try { photo = await resizeImage(f, 800, 0.72); thumb.style.backgroundImage = `url('${photo}')`; thumb.innerHTML = ''; } catch { toast('Foto non valida'); }
       });
       const del = root.querySelector('#r-photo-del');
       if (del) del.addEventListener('click', () => { photo = ''; thumb.style.backgroundImage = ''; del.remove(); });

@@ -7,19 +7,13 @@
 'use strict';
 
 const Alexa = require('ask-sdk-core');
-const { createClient } = require('./firestore');
+const { createClient } = require('./api');
 
 let client = null;
 function db() {
   if (client) return client;
   const cfg = require('./config'); // eslint-disable-line global-require
-  client = createClient({
-    apiKey: cfg.firebase.apiKey,
-    projectId: cfg.firebase.projectId,
-    email: cfg.account.email,
-    password: cfg.account.password,
-    houseId: cfg.houseId || 'comperotto',
-  });
+  client = createClient({ apiUrl: cfg.apiUrl, codice: cfg.codice });
   return client;
 }
 // per i test
@@ -120,7 +114,10 @@ const AggiungiIntentHandler = {
     const already = [];
     for (const name of items) {
       if (open.has(norm(name))) { already.push(name); continue; }
-      await db().add('spesa', { name, qty: '', category: '', done: false, by: '', source: 'alexa', createdAt: Date.now() });
+      const key = norm(name).replace(/[^a-z0-9]+/g, '-').slice(0, 60) || 'x';
+      // anche Alexa alimenta i "spesso comprati" dell'app
+      await db().add('spesa', { name, qty: '', category: '', done: false, by: '', source: 'alexa', createdAt: Date.now() },
+        [{ op: 'bump', col: 'freq', id: key, data: { name } }]);
       open.add(norm(name));
       added.push(name);
     }

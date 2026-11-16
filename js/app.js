@@ -1,8 +1,8 @@
 // Fam. Comperotto — avvio, navigazione, aggiornamento dello schermo
 import { html, raw, todayIso } from './utils.js';
 import { icon } from './icons.js';
-import { COLLECTIONS, setErrorHandler } from './store.js';
-import { state, store, isCloud, setRenderer, rerender, closeSheet, submitSheet, sheetOpen, sheetError, openSheet, toast, settings, saveSettings, me, setMe, val } from './core.js';
+import { COLLECTIONS, setErrorHandler, detectBackend, savedCode, useSync } from './store.js';
+import { state, store, setRenderer, rerender, closeSheet, submitSheet, sheetOpen, sheetError, openSheet, toast, settings, saveSettings, me, setMe, val } from './core.js';
 import { applySeason } from './season.js';
 import * as home from './views/home.js';
 import * as spesa from './views/spesa.js';
@@ -67,9 +67,9 @@ function render() {
   const r = route();
   applySeason();
 
-  if (isCloud && !state.user) {
+  if (state.needCode) {
     tabbar.hidden = true;
-    if (state.authReady && !view.querySelector('.login')) view.innerHTML = login.render().s;
+    if (!view.querySelector('.login')) { view.innerHTML = login.render(state.backend).s; lastRoute = null; }
     return;
   }
   if (!state.loaded.has('settings')) return;
@@ -167,7 +167,7 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => ap
 
 setErrorHandler((e) => {
   console.error(e);
-  const msg = e && e.code === 'permission-denied' ? 'Permesso negato: controlla le regole di Firebase' : (e && e.message) || 'Errore';
+  const msg = (e && e.message) || 'Errore';
   toast(msg);
 });
 
@@ -232,27 +232,39 @@ function maybeWelcome() {
 }
 actions['welcome-me'] = ({ el }) => { setMe(el.dataset.v); closeSheet(); rerender(); toast(`Ciao ${settings().names[el.dataset.v]}!`); };
 
+/** Avvia la sincronizzazione con il codice di famiglia (chiamata anche dalla schermata del codice). */
+export function startSync(code) {
+  const s = useSync(code);
+  state.needCode = false;
+  s.onAuthLost = () => {
+    s.forget();
+    unsubs.forEach((u) => u && u());
+    unsubs = [];
+    state.backend = { ...(state.backend || {}), claimed: true };
+    state.needCode = true;
+    closeSheet();
+    render();
+    toast('Il codice di famiglia è cambiato: inseriscilo di nuovo');
+  };
+  s.onChange = () => rerender();
+  subscribeAll();
+  s.start();
+  render();
+}
+
 async function boot() {
   impostazioni.applyTheme();
   applySeason();
-  if (isCloud) {
-    try { await store.init(); }
-    catch (e) {
-      console.error(e);
-      document.getElementById('view').innerHTML = html`<div class="empty"><p><b>Non riesco a collegarmi a Firebase</b></p><p class="small">Controlla la connessione o la configurazione in js/config.js.</p></div>`.s;
-      return;
-    }
-    store.onAuth((user) => {
-      state.user = user;
-      state.authReady = true;
-      if (user) subscribeAll();
-      else { unsubs.forEach((u) => u && u()); unsubs = []; lastRoute = null; }
-      render();
-    });
-  } else {
-    state.user = { email: 'locale' };
-    subscribeAll();
+  const info = await detectBackend();
+  state.backend = info;
+  if (info && info.storage) {
+    const code = savedCode();
+    if (code) startSync(code);
+    else { state.needCode = true; render(); }
+    return;
   }
+  // nessun database condiviso: i dati restano su questo dispositivo
+  subscribeAll();
 }
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {

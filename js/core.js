@@ -1,10 +1,11 @@
 // Stato condiviso dell'app + componenti di interfaccia (fogli, avvisi).
-import { COLLECTIONS, store, isCloud } from './store.js';
+import { COLLECTIONS, store } from './store.js';
 import { DEFAULT_SETTINGS } from './data.js';
 import { html, raw, lsGet, lsSet, initial } from './utils.js';
 import { icon } from './icons.js';
 
-export { store, isCloud };
+export { store };
+export const isSynced = () => store.mode === 'sync';
 
 export const state = {
   data: Object.fromEntries(COLLECTIONS.map((c) => [c, []])),

@@ -3,7 +3,7 @@ import { html, raw, norm, cap, parseQty, timeAgo, vibrate, plural } from '../uti
 import { icon, catFace } from '../icons.js';
 import { SHOP_CATS, shopCat, classify } from '../data.js';
 import { ALEXA_INVOCATION } from '../config.js';
-import { state, store, me, whoBadge, openSheet, toast, val, pageHead, emptyState, confirmSheet, closeSheet, isCloud } from '../core.js';
+import { state, store, me, whoBadge, openSheet, toast, val, pageHead, emptyState, confirmSheet, closeSheet, isSynced } from '../core.js';
 
 const catOf = (it) => it.category || classify(it.name);
 
@@ -86,9 +86,9 @@ export function render() {
       </div>` : ''}
 
     <div class="hint">${icon('mic', 'sm')}<div>
-      ${isCloud
+      ${isSynced()
         ? html`Con Alexa: <b>«Alexa, chiedi a ${ALEXA_INVOCATION} di aggiungere il latte»</b>. Le cose aggiunte a voce hanno il bollino <span class="pill alexa">${icon('mic', 'xs')} Alexa</span>.`
-        : html`Per usarla con Alexa e condividerla tra i vostri telefoni collega Firebase (vedi <b>Impostazioni</b>).`}
+        : html`Per condividerla tra i vostri dispositivi e usarla con Alexa aprite l'app dal suo indirizzo Vercel (vedi <b>Impostazioni</b>).`}
     </div></div>
   `;
 }

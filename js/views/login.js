@@ -1,44 +1,44 @@
-// Accesso (solo quando Firebase è configurato)
-import { html } from '../utils.js';
+// Codice di famiglia: si scrive una volta su ogni iPhone/iPad e i dati si condividono da soli.
+import { html, raw } from '../utils.js';
 import { icon } from '../icons.js';
-import { store, toast } from '../core.js';
+import { api, AuthError } from '../store.js';
 
-export function render() {
+export function render(backend) {
+  const first = backend && !backend.claimed;
   return html`<section class="login fade-in">
-    <div class="brand"><div class="logo"></div><h1>Fam. Comperotto</h1><p>Bentornati a casa</p></div>
-    <form class="card" data-form="login" novalidate>
-      <label class="field"><span>Email</span><input name="email" type="email" autocomplete="username" inputmode="email" required></label>
-      <label class="field"><span>Password</span><input name="password" type="password" autocomplete="current-password" required></label>
+    <div class="brand"><div class="logo"></div><h1>Fam. Comperotto</h1>
+      <p>${first ? 'Prima volta qui: scegliete il vostro codice di famiglia' : 'Bentornati a casa'}</p></div>
+    <form class="card" data-form="codice" novalidate data-first="${first ? '1' : ''}">
+      <label class="field"><span>${first ? 'Scegli il codice di famiglia' : 'Codice di famiglia'}</span>
+        <input name="codice" type="password" autocomplete="${first ? 'new-password' : 'current-password'}" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="${first ? 'es. thorminu2025' : ''}" required ${raw('autofocus')}>
+      </label>
+      <p class="help" style="margin:-6px 2px 14px">${first
+        ? 'Almeno 6 caratteri. Lo scriverete una volta su ogni iPhone e iPad (e nella skill Alexa): poi i dati si aggiornano da soli su tutti.'
+        : 'Lo stesso che avete scelto sul primo dispositivo.'}</p>
       <div class="form-error" id="login-error" hidden></div>
-      <button class="btn primary block" type="submit">${icon('door', 'sm')} Entra</button>
-      <button class="card-link" type="button" data-action="login-reset" style="margin:14px auto 0;display:block">Password dimenticata?</button>
+      <button class="btn primary block" type="submit">${icon('door', 'sm')} ${first ? 'Crea la casa' : 'Entra'}</button>
     </form>
   </section>`;
 }
 
-const MSG = {
-  'auth/invalid-credential': 'Email o password sbagliate',
-  'auth/wrong-password': 'Password sbagliata',
-  'auth/user-not-found': 'Nessun account con questa email',
-  'auth/invalid-email': 'Email non valida',
-  'auth/too-many-requests': 'Troppi tentativi: riprova tra qualche minuto',
-  'auth/network-request-failed': 'Niente connessione',
-};
-
 export const actions = {
-  login: async ({ form }) => {
+  codice: async ({ form }) => {
     const err = form.querySelector('#login-error');
-    err.hidden = true;
     const btn = form.querySelector('button[type=submit]');
+    const code = form.codice.value.trim().toLowerCase();
+    err.hidden = true;
+    if (code.length < 6) { err.textContent = 'Almeno 6 caratteri'; err.hidden = false; return; }
     btn.disabled = true;
-    try { await store.login(form.email.value.trim(), form.password.value); }
-    catch (e) { err.textContent = MSG[e.code] || 'Accesso non riuscito'; err.hidden = false; }
-    finally { btn.disabled = false; }
-  },
-  'login-reset': async ({ el }) => {
-    const email = el.closest('form').email.value.trim();
-    if (!email) { toast('Scrivi prima la tua email'); return; }
-    try { await store.resetPassword(email); toast('Ti ho mandato una mail per reimpostarla'); }
-    catch (e) { toast(MSG[e.code] || 'Non sono riuscito a mandare la mail'); }
+    try {
+      if (form.dataset.first) await api('setup', { method: 'POST', body: { codice: code } });
+      else await api('dati', { code });
+      const { startSync } = await import('../app.js');
+      startSync(code);
+    } catch (e) {
+      err.textContent = e instanceof AuthError ? 'Codice sbagliato' : (e.message || 'Non riesco a collegarmi');
+      err.hidden = false;
+    } finally {
+      btn.disabled = false;
+    }
   },
 };

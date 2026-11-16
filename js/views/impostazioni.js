@@ -1,14 +1,14 @@
 // Impostazioni: chi sei, nomi, compleanni, atmosfera, sincronizzazione, Alexa, film, backup
-import { html, raw, cap, lsGet, lsSet, uid, parseDMY, fmtDMY } from '../utils.js';
+import { html, raw, cap, lsGet, lsSet, uid, parseDMY, fmtDMY, timeAgo } from '../utils.js';
 import { icon } from '../icons.js';
 import { SEASONS } from '../data.js';
-import { ALEXA_INVOCATION, HOUSE_ID } from '../config.js';
+import { ALEXA_INVOCATION } from '../config.js';
 import { COLLECTIONS } from '../store.js';
-import { state, store, isCloud, settings, saveSettings, me, setMe, nameOf, openSheet, closeSheet, sheetError, toast, val, pageHead, rerender, confirmSheet } from '../core.js';
+import { state, store, isSynced, settings, saveSettings, me, setMe, nameOf, openSheet, closeSheet, sheetError, toast, val, pageHead, rerender, confirmSheet } from '../core.js';
 import { seasonOverride, setSeasonOverride } from '../season.js';
 import { seedData } from '../seed.js';
 
-export const VERSION = '1.1.0';
+export const VERSION = '1.2.0';
 
 const themeMode = () => lsGet('casa.theme', 'auto');
 export function applyTheme() {
@@ -55,13 +55,20 @@ export function render() {
 
     <div class="section-title"><span>Sincronizzazione</span></div>
     <div class="card">
-      ${isCloud ? html`
-        <p style="margin:0 0 4px;display:flex;align-items:center;gap:8px"><span class="status-dot on"></span><b>Condivisa tra i vostri telefoni</b></p>
-        <p class="muted small" style="margin:0 0 12px">Accesso come ${state.user ? state.user.email : '…'} · casa “${HOUSE_ID}”</p>
-        <button class="btn block" data-action="logout">${icon('logout', 'sm')} Esci</button>`
+      ${isSynced() ? html`
+        <p style="margin:0 0 4px;display:flex;align-items:center;gap:8px"><span class="status-dot ${store.offline ? '' : 'on'}"></span><b>${store.offline ? 'Senza rete: le modifiche partono appena torna' : 'Condivisa tra tutti i vostri dispositivi'}</b></p>
+        <p class="muted small" style="margin:0 0 12px">${store.lastSync ? `Ultimo aggiornamento ${timeAgo(store.lastSync)}` : 'Mi sto collegando…'}${store.queue && store.queue.length ? ` · ${store.queue.length} modifiche in attesa` : ''}</p>
+        <div class="btn-row">
+          <button class="btn" data-action="sync-now">${icon('refresh', 'sm')} Aggiorna</button>
+          <button class="btn" data-action="share-app">${icon('share', 'sm')} Invia il link</button>
+        </div>
+        <button class="card-link" data-action="logout" style="margin:14px auto 0;display:block;color:var(--text-3)">Scollega questo dispositivo</button>`
+      : state.backend && !state.backend.storage ? html`
+        <p style="margin:0 0 4px;display:flex;align-items:center;gap:8px"><span class="status-dot"></span><b>Manca il database</b></p>
+        <div class="prose small"><p>Su Vercel apri il progetto → <b>Storage</b> → <b>Create Database</b> → <b>Upstash for Redis</b> (gratis) → collegalo al progetto, poi <b>Redeploy</b>. Al prossimo avvio l'app vi chiederà il codice di famiglia.</p></div>`
       : html`
-        <p style="margin:0 0 4px;display:flex;align-items:center;gap:8px"><span class="status-dot"></span><b>Solo su questo telefono</b></p>
-        <div class="prose small"><p>Per vedere le stesse liste sui vostri due telefoni (e aggiungere cose con Alexa) collegate un database Firebase gratuito: le istruzioni passo passo sono nel file <b>README.md</b> del progetto, sezione “Sincronizzare i due telefoni”. Ci vogliono circa 10 minuti.</p></div>`}
+        <p style="margin:0 0 4px;display:flex;align-items:center;gap:8px"><span class="status-dot"></span><b>Solo su questo dispositivo</b></p>
+        <div class="prose small"><p>Aprite l'app dal suo indirizzo <b>Vercel</b> per avere gli stessi dati su tutti i vostri iPhone e iPad.</p></div>`}
     </div>
 
     <div class="section-title"><span>Alexa</span></div>
@@ -175,7 +182,19 @@ export const actions = {
     saveSettings({ tmdbKey: form.key.value.trim() });
     toast(form.key.value.trim() ? 'Chiave salvata: ora i film si aggiornano da soli' : 'Chiave rimossa');
   },
-  logout: async () => { await store.logout(); location.hash = '#/'; },
+  logout: () => confirmSheet({
+    title: 'Scollegare questo dispositivo?', text: 'I dati restano salvati per gli altri; qui servirà di nuovo il codice di famiglia.', yes: 'Scollega',
+    onYes: () => { store.forget(); location.hash = '#/'; location.reload(); },
+  }),
+  'sync-now': async () => { await store.sync(); toast(store.offline ? 'Niente rete, riprovo da solo' : 'Tutto aggiornato'); },
+  'share-app': async () => {
+    const url = location.origin + location.pathname;
+    const text = 'Ecco la nostra app di casa: aprila con Safari, poi Condividi → Aggiungi alla schermata Home. Il codice di famiglia te lo dico io ♡';
+    try {
+      if (navigator.share) await navigator.share({ title: 'Fam. Comperotto', text, url });
+      else { await navigator.clipboard.writeText(`${text}\n${url}`); toast('Link copiato'); }
+    } catch {}
+  },
   export: () => {
     const dump = { app: 'casa-comperotto', version: VERSION, at: new Date().toISOString(), data: state.data };
     download(`casa-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(dump, null, 2));

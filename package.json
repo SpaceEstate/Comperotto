@@ -1,0 +1,7 @@
+{
+  "name": "fam-comperotto",
+  "private": true,
+  "type": "module",
+  "description": "App di casa della Fam. Comperotto (sito statico + funzioni Vercel per i dati condivisi)",
+  "engines": { "node": ">=18" }
+}

@@ -12,6 +12,7 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   le routine non aprono le skill di prova; funziona "Alexa, chiedi a casa mia latte e uova".
 - **Dov'è:** posizioni da OwnTracks → `POST /api/posizione` (Basic auth: nome + codice di famiglia).
   "I nostri posti" (casa, lavoro…) si compilano dall'app; **mai indirizzi o dati personali nei file del repository**.
+  Solo gli iPhone mandano la posizione (OwnTracks installato solo lì; su iPad "Aggiorna la mia" è nascosto).
   Mappa con Leaflet incluso in `js/vendor/leaflet/`; coordinate dagli indirizzi con `/api/geocodifica`.
 - **Sito pulito:** niente spiegazioni tecniche nelle pagine dell'app; vanno date in chat.
 - **Stile:** pastello in tinta con la casa; le feste con i loro colori pieni (Natale verde/rosso/bianco,

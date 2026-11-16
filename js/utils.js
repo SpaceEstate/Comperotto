@@ -147,6 +147,8 @@ export const money = (n) => (Number(n) || 0).toLocaleString('it-IT', { style: 'c
 
 // ---------- iPhone / iPad ----------
 export const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+/** iPad (anche quando Safari si presenta come Mac): la posizione la mandano solo gli iPhone */
+export const isIPad = () => /iPad/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 export const isStandalone = () => window.navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
 
 /**

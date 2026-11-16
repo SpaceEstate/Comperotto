@@ -1,6 +1,6 @@
 // Dov'è: chi è a casa, al lavoro o fuori, con la mappa. Le posizioni arrivano da OwnTracks (in automatico)
 // o da "Aggiorna la mia"; per la posizione dal vivo c'è il pulsante per "Dov'è" di Apple.
-import { html, raw, timeAgo, vibrate, uid, cap } from '../utils.js';
+import { html, raw, timeAgo, vibrate, uid, cap, isIPad } from '../utils.js';
 import { icon } from '../icons.js';
 import { state, store, settings, saveSettings, me, nameOf, toast, pageHead, isSynced, openSheet, closeSheet, sheetError, val, confirmSheet } from '../core.js';
 
@@ -36,18 +36,31 @@ function where(k, p) {
 }
 
 /** "A casa da 2 ore", "Al lavoro", "Fuori · Via Roma, Torino" */
+/** "da 10 min", "da 4 h", "da 2 giorni" */
+export function durata(t) {
+  const m = Math.max(0, Math.round((Date.now() - t) / 60000));
+  if (m < 2) return 'da poco';
+  if (m < 60) return `da ${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `da ${h} h`;
+  const g = Math.floor(h / 24);
+  return g === 1 ? 'da 1 giorno' : `da ${g} giorni`;
+}
+
+/** "A casa da 4 h", "Al lavoro da 2 h", "Fuori da 10 min · Via Roma, Torino" */
 export function statusOf(k) {
   const raw = pos(k);
-  if (!raw) return { cls: '', label: 'Posizione non ancora condivisa', sub: '', stale: true };
+  if (!raw) return { cls: '', label: 'Posizione non ancora condivisa', since: '', place: '', stale: true };
   const w = where(k, raw);
   const p = { ...raw, home: w.home, luogo: w.luogo };
   const old = Date.now() - p.at > 6 * 3600 * 1000;
-  const since = (t) => { const r = timeAgo(t || p.at).replace(' fa', ''); return r === 'adesso' ? 'da poco' : `da ${r}`; };
-  if (p.home === true) return { cls: 'home', label: 'A casa', sub: since(raw.home === true ? p.homeSince : p.at), stale: old, p };
+  // da quando è in quello stato: lo sa il server se lo stato coincide, altrimenti dall'ultima posizione
+  if (p.home === true) return { cls: 'home', label: 'A casa', since: durata(raw.home === true ? raw.homeSince || raw.at : raw.at), place: '', stale: old, p };
   const l = p.luogo && p.luogo !== 'casa' ? luogoById(p.luogo) : null;
-  if (l) return { cls: 'work', label: /lavoro/i.test(l.nome) ? 'Al lavoro' : l.nome, sub: since(raw.luogo === l.id ? p.luogoSince : p.at), stale: old, p };
+  if (l) return { cls: 'work', label: /lavoro/i.test(l.nome) ? 'Al lavoro' : l.nome, since: durata(raw.luogo === l.id ? raw.luogoSince || raw.at : raw.at), place: '', stale: old, p };
   const place = raw.luogo && raw.place && /^(casa|lavoro)$/i.test(raw.place) ? '' : p.place;
-  return { cls: p.home === false ? 'out' : '', label: p.home === false ? 'Fuori' : place || 'Posizione', sub: p.home === false && place ? place : '', stale: old, p };
+  if (p.home === false) return { cls: 'out', label: 'Fuori', since: durata(!raw.luogo && raw.home === false ? raw.luogoSince || raw.homeSince || raw.at : raw.at), place, stale: old, p };
+  return { cls: '', label: place || 'Posizione', since: '', place: '', stale: old, p };
 }
 export const pillOf = (st) => (st.cls === 'home' ? 'ok' : st.cls === 'work' ? 'today' : st.cls === 'out' ? 'soon' : '');
 export const iconOf = (st) => (st.cls === 'home' ? 'home' : st.cls === 'work' ? 'briefcase' : 'pin');
@@ -74,9 +87,9 @@ export function render() {
         <div class="dove-main">
           <b>${nameOf(k)}</b>
           <div class="dove-status">
-            ${st.p ? html`<span class="pill ${pillOf(st)}">${icon(iconOf(st), 'xs')} ${st.label}</span>` : html`<span class="muted small">${st.label}</span>`}
-            ${st.sub ? html`<span class="small">${st.sub}</span>` : ''}
+            ${st.p ? html`<span class="pill ${pillOf(st)}">${icon(iconOf(st), 'xs')} ${st.label}${st.since ? ` ${st.since}` : ''}</span>` : html`<span class="muted small">${st.label}</span>`}
           </div>
+          ${st.place ? html`<p class="dove-place">${st.place}</p>` : ''}
           ${st.p ? html`<p class="dove-sub">Aggiornato ${timeAgo(st.p.at)}${st.p.batt != null ? html` · ${icon('battery', 'xs')} ${st.p.batt}%` : ''}</p>` : ''}
         </div>
         ${st.p ? html`<a class="icon-btn" href="${mapsUrl(st.p, nameOf(k))}" target="_blank" rel="noopener" aria-label="Apri ${nameOf(k)} in Mappe">${icon('map', 'sm')}</a>` : ''}
@@ -84,7 +97,7 @@ export function render() {
     })}</div>
 
     <div class="btn-row dove-actions">
-      <button class="btn" data-action="dove-io">${icon('pin', 'sm')} Aggiorna la mia</button>
+      ${isIPad() ? '' : html`<button class="btn" data-action="dove-io">${icon('pin', 'sm')} Aggiorna la mia</button>`}
       <a class="btn primary" href="findmy://">${icon('search', 'sm')} Apri Dov’è</a>
     </div>
 
@@ -264,7 +277,7 @@ function luogoSheet(l = null) {
 
 export const actions = {
   'dove-io': async ({ el }) => {
-    if (!me()) return;
+    if (!me() || isIPad()) return; // solo gli iPhone dicono dove siete
     el.disabled = true;
     try {
       const { coords } = await here();

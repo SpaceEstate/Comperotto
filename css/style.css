@@ -1200,3 +1200,4 @@ html:root[data-season="natale"][data-season] .home-top { background: linear-grad
 .pin-place { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: #FDE6CF; color: #8A4E22; border: 3px solid #fff; box-shadow: 0 4px 12px rgba(40, 28, 16, .25); }
 .pin-place.p2 { background: #F0E5FA; color: #6A4683; }
 .pin-place svg.i { width: 16px; height: 16px; }
+.dove-place { margin: 5px 0 0; font-size: 13.5px; color: var(--text-2); }

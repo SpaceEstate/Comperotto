@@ -1,9 +1,9 @@
-// Skill Alexa della Fam. Comperotto (nome di invocazione: "casa comperotto")
-//   «Alexa, chiedi a casa comperotto di aggiungere il latte»
-//   «Alexa, chiedi a casa comperotto cosa c'è da comprare»
-//   «Alexa, chiedi a casa comperotto di togliere il latte»
-//   «Alexa, chiedi a casa comperotto cosa si butta stasera»
-//   «Alexa, chiedi a casa comperotto cosa c'è da fare oggi»
+// Skill Alexa della Fam. Comperotto (nome di invocazione: "casa mia")
+//   «Alexa, chiedi a casa mia di aggiungere il latte»
+//   «Alexa, chiedi a casa mia cosa c'è da comprare»
+//   «Alexa, chiedi a casa mia di togliere il latte»
+//   «Alexa, chiedi a casa mia cosa si butta stasera»
+//   «Alexa, chiedi a casa mia cosa c'è da fare oggi»
 'use strict';
 
 // ============================================================================
@@ -140,7 +140,7 @@ const BINS = { umido: "l'umido", plastica: 'la plastica', carta: 'la carta', vet
 // ---------------------------------------------------------------------------
 // Risposte
 // ---------------------------------------------------------------------------
-// Se la skill è stata aperta ("Alexa, apri casa comperotto" o la Routine "Alexa, spesa")
+// Se la skill è stata aperta ("Alexa, apri casa mia" o la Routine "Alexa, spesa")
 // resta in ascolto: si può continuare a dire "latte", "uova"… e chiudere con "no" o "basta".
 function reply(h, text, { keepOpen = false } = {}) {
   const inSession = h.requestEnvelope.session && !h.requestEnvelope.session.new;

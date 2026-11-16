@@ -7,4 +7,4 @@
 //  tra tutti i dispositivi che conoscono il codice di famiglia.
 
 // Frase per la skill Alexa (deve coincidere con il nome di invocazione della skill).
-export const ALEXA_INVOCATION = 'casa comperotto';
+export const ALEXA_INVOCATION = 'casa mia';

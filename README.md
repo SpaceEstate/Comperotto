@@ -79,11 +79,11 @@ Le modifiche arrivano sugli altri dispositivi in pochi secondi. Senza rete l'app
 
 **Perché serve una skill**: dal **luglio 2024 Amazon non permette più** alle app esterne (AnyList, Todoist, Bring… e anche noi) di leggere o scrivere la lista della spesa *interna* di Alexa. L'unica strada ufficiale è una **skill personale**, che scrive direttamente nella vostra lista. Le frasi sono:
 
-- «Alexa, chiedi a **casa comperotto** di aggiungere il latte e le uova»
-- «Alexa, chiedi a casa comperotto cosa c'è da comprare»
-- «Alexa, chiedi a casa comperotto di togliere il latte»
-- «Alexa, chiedi a casa comperotto cosa si butta stasera» (o «domani»)
-- «Alexa, chiedi a casa comperotto cosa c'è da fare oggi»
+- «Alexa, chiedi a **casa mia** di aggiungere il latte e le uova»
+- «Alexa, chiedi a casa mia cosa c'è da comprare»
+- «Alexa, chiedi a casa mia di togliere il latte»
+- «Alexa, chiedi a casa mia cosa si butta stasera» (o «domani»)
+- «Alexa, chiedi a casa mia cosa c'è da fare oggi»
 
 Le cose aggiunte a voce compaiono nell'app con il bollino **Alexa**.
 
@@ -97,13 +97,13 @@ Le cose aggiunte a voce compaiono nell'app con il bollino **Alexa**.
    - `codice`: il vostro codice di famiglia.
 
    Poi **Save** → **Deploy**. Il codice resta solo nella console Amazon: non scrivetelo mai nel file del repository pubblico.
-5. Scheda **Test**: imposta *Skill testing is enabled in: Development* e prova a scrivere «chiedi a casa comperotto di aggiungere il latte».
+5. Scheda **Test**: imposta *Skill testing is enabled in: Development* e prova a scrivere «chiedi a casa mia di aggiungere il latte».
 
 Una skill "in sviluppo" funziona già su **tutti gli Echo collegati al vostro account**, senza pubblicarla nello store.
 
 **Più corto: la Routine «Alexa, spesa».** «Alexa, aggiungi latte» da solo finisce sempre nella lista interna di Amazon (non si può cambiare). Con una Routine basta dire «Alexa, spesa»: risponde «Cosa ti serve?», dite «latte e uova», lei chiede «Altro?» e chiudete con «no».
-App Alexa → **Altro → Routine → +** → *Quando succede questo*: **Voce** → «spesa» → *Aggiungi azione*: **Personalizzata** → «apri casa comperotto» → **Salva**.
-Per le cose che comprate più spesso potete fare anche Routine dirette, es. «Alexa, manca il latte» → *Personalizzata*: «chiedi a casa comperotto di aggiungere il latte».
+App Alexa → **Altro → Routine → +** → *Quando succede questo*: **Voce** → «spesa» → *Aggiungi azione*: **Personalizzata** → «apri casa mia» → **Salva**.
+Per le cose che comprate più spesso potete fare anche Routine dirette, es. «Alexa, manca il latte» → *Personalizzata*: «chiedi a casa mia di aggiungere il latte».
 
 ## 4. Film: copertine e dove vederli
 

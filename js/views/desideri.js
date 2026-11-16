@@ -2,7 +2,7 @@
 import { html, raw, cap, safeUrl, hostOf, money, vibrate, timeAgo } from '../utils.js';
 import { icon, catFace } from '../icons.js';
 import { WISH_CATS } from '../data.js';
-import { state, store, me, whoBadge, whoChoices, openSheet, closeSheet, toast, val, emptyState, ui, setUi } from '../core.js';
+import { state, store, me, whoBadge, whoChoices, openSheet, closeSheet, toast, val, emptyState, ui, setUi, pageHead } from '../core.js';
 
 function hearts(n) {
   return html`<span class="hearts" title="Quanto lo vogliamo">${[1, 2, 3].map((i) => icon('heart', i <= (n || 1) ? '' : 'off'))}</span>`;
@@ -33,6 +33,7 @@ export function render() {
   const showBought = ui('wish.showBought', false);
 
   return html`
+    ${pageHead('Desideri', { eyebrow: 'Cose da comprare, prima o poi' })}
     <div class="card wish-sum">
       <div><p class="muted small" style="margin:0">${open.length} ${open.length === 1 ? 'desiderio' : 'desideri'}${cat !== 'tutti' ? ` · ${WISH_CATS[cat]}` : ''}</p><b>${money(total)}</b></div>
       <span class="dot-ico tone-rose" style="width:46px;height:46px;border-radius:14px;display:grid;place-items:center">${icon('gift', 'lg')}</span>

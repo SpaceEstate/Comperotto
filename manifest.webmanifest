@@ -34,7 +34,7 @@
   "shortcuts": [
     {
       "name": "Spesa",
-      "url": "./#/spesa",
+      "url": "./#/casa/spesa",
       "icons": [
         {
           "src": "assets/icons/icon-192.png",
@@ -44,7 +44,7 @@
     },
     {
       "name": "Faccende",
-      "url": "./#/casa",
+      "url": "./#/casa/faccende",
       "icons": [
         {
           "src": "assets/icons/icon-192.png",

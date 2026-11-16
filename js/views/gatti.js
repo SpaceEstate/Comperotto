@@ -2,7 +2,7 @@
 import { html, raw, cap, todayIso, addDays, daysBetween, shortDate, relDay, ageFrom, resizeImage, safeImg, vibrate } from '../utils.js';
 import { icon, catFace } from '../icons.js';
 import { CAT_EVENTS } from '../data.js';
-import { state, store, openSheet, closeSheet, sheetError, toast, val, emptyState, me } from '../core.js';
+import { state, store, openSheet, closeSheet, sheetError, toast, val, emptyState, me, pageHead } from '../core.js';
 
 export const cats = () => [...state.data.gatti].sort((a, b) => (a.id === 'thor' ? -1 : b.id === 'thor' ? 1 : a.name.localeCompare(b.name)));
 
@@ -53,6 +53,8 @@ export function render() {
   const up = upcomingFor().filter((e) => e.days <= 45);
   const log = [...state.data.eventiGatti].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : (b.createdAt || 0) - (a.createdAt || 0))).slice(0, 25);
   return html`
+    <a class="back-link phone-only" href="#/">${icon('left', 'sm')} Home</a>
+    ${pageHead('Thor e Minù', { eyebrow: 'I nostri gatti' })}
     <div class="cat-cards">${list.map((c) => {
       const w = lastWeight(c.id);
       return html`<div class="card cat-card">

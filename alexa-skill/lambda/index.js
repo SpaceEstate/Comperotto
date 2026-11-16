@@ -6,14 +6,79 @@
 //   «Alexa, chiedi a casa comperotto cosa c'è da fare oggi»
 'use strict';
 
+// ============================================================================
+//  L'UNICA COSA DA CAMBIARE: l'indirizzo della vostra app + /api e il codice di famiglia
+// ============================================================================
+const CONFIG = {
+  apiUrl: 'https://VOSTRO-PROGETTO.vercel.app/api',
+  codice: 'il-vostro-codice',
+};
+// ============================================================================
+
 const Alexa = require('ask-sdk-core');
-const { createClient } = require('./api');
+const http = require('http');
+const https = require('https');
+
+function defaultTransport(method, url, body, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const data = body ? JSON.stringify(body) : null;
+    const lib = url.startsWith('http://') ? http : https;
+    const req = lib.request(url, {
+      method,
+      headers: { 'Content-Type': 'application/json', ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {}), ...headers },
+      timeout: 6000,
+    }, (res) => {
+      let raw = '';
+      res.setEncoding('utf8');
+      res.on('data', (c) => { raw += c; });
+      res.on('end', () => {
+        let json = {};
+        try { json = raw ? JSON.parse(raw) : {}; } catch (e) { json = { raw }; }
+        resolve({ status: res.statusCode, json });
+      });
+    });
+    req.on('timeout', () => req.destroy(new Error('timeout')));
+    req.on('error', reject);
+    if (data) req.write(data);
+    req.end();
+  });
+}
+
+/** apiUrl: es. "https://comperotto.vercel.app/api" — codice: il codice di famiglia. */
+function createClient({ apiUrl, codice, transport = defaultTransport }) {
+  const base = String(apiUrl || '').replace(/\/+$/, '');
+  async function call(method, path, body) {
+    const r = await transport(method, `${base}/${path}`, body, { 'x-famiglia': String(codice || '').trim().toLowerCase() });
+    if (r.status === 401) throw new Error('Codice di famiglia sbagliato');
+    if (r.status >= 300) throw new Error(`API ${r.status}: ${r.json && r.json.error}`);
+    return r.json;
+  }
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  return {
+    async list(col) {
+      const j = await call('GET', `dati?col=${encodeURIComponent(col)}`);
+      return Object.entries(j.items || {}).map(([id, v]) => ({ ...v, id }));
+    },
+    async get(col, id) {
+      const j = await call('GET', `dati?col=${encodeURIComponent(col)}`);
+      const v = (j.items || {})[id];
+      return v ? { ...v, id } : null;
+    },
+    async add(col, data, extraOps = []) {
+      const id = newId();
+      await call('POST', 'dati', { ops: [{ op: 'set', col, id, data }, ...extraOps] });
+      return id;
+    },
+    async remove(col, id) {
+      await call('POST', 'dati', { ops: [{ op: 'remove', col, id }] });
+    },
+  };
+}
+
 
 let client = null;
 function db() {
-  if (client) return client;
-  const cfg = require('./config'); // eslint-disable-line global-require
-  client = createClient({ apiUrl: cfg.apiUrl, codice: cfg.codice });
+  if (!client) client = createClient(CONFIG);
   return client;
 }
 // per i test
@@ -123,7 +188,7 @@ const AggiungiIntentHandler = {
     }
     let text = '';
     if (added.length) text += `Fatto: ho aggiunto ${joinIt(added.map((x) => x.toLowerCase()))} alla spesa.`;
-    if (already.length) text += ` ${cap(joinIt(already.map((x) => x.toLowerCase())))} ${already.length > 1 ? 'erano' : 'era'} già in lista.`;
+    if (already.length) text += ` C'era già: ${joinIt(already.map((x) => x.toLowerCase()))}.`;
     return reply(h, esc(text.trim()));
   },
 };
@@ -156,7 +221,7 @@ const RimuoviIntentHandler = {
     }
     let text = '';
     if (removed.length) text += `Ho tolto ${joinIt(removed.map((x) => x.toLowerCase()))} dalla lista.`;
-    if (missing.length) text += ` ${cap(joinIt(missing.map((x) => x.toLowerCase())))} non ${missing.length > 1 ? 'erano' : 'era'} in lista.`;
+    if (missing.length) text += ` Non ho trovato in lista: ${joinIt(missing.map((x) => x.toLowerCase()))}.`;
     return reply(h, esc(text.trim()));
   },
 };
@@ -240,4 +305,4 @@ exports.handler = Alexa.SkillBuilders.custom()
   .withCustomUserAgent('casa-comperotto/1.0')
   .lambda();
 
-exports._test = { setClient, splitItems, cleanItem, nextDue, todayRome };
+exports._test = { setClient, createClient, splitItems, cleanItem, nextDue, todayRome };

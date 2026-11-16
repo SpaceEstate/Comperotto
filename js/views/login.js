@@ -13,7 +13,7 @@ export function render(backend) {
         <input name="codice" type="password" autocomplete="${first ? 'new-password' : 'current-password'}" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="${first ? 'es. thorminu2025' : ''}" required ${raw('autofocus')}>
       </label>
       <p class="help" style="margin:-6px 2px 14px">${first
-        ? 'Almeno 6 caratteri. Lo scriverete una volta su ogni iPhone e iPad (e nella skill Alexa): poi i dati si aggiornano da soli su tutti.'
+        ? 'Almeno 6 caratteri. Lo scriverete una volta su ogni iPhone e iPad, poi tutto si aggiorna da solo.'
         : 'Lo stesso che avete scelto sul primo dispositivo.'}</p>
       <div class="form-error" id="login-error" hidden></div>
       <button class="btn primary block" type="submit">${icon('door', 'sm')} ${first ? 'Crea la casa' : 'Entra'}</button>

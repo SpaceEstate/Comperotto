@@ -3,17 +3,16 @@
 La casa della famiglia Comperotto, in tasca: Patrick, Serena, Thor e Minù.
 Un'app fatta su misura per **iPhone e iPad** (si installa dalla schermata Home e si apre a tutto schermo, come un'app vera) con:
 
-- **Spesa**: divisa per reparto in automatico, "spesso comprati" con un tocco, carrello e "svuota", e voci aggiunte con **Alexa**.
 - **Casa**
+  - **Spesa**: divisa per reparto in automatico, "spesso comprati" con un tocco, carrello e "svuota", e voci aggiunte con **Alexa**;
   - **Faccende** che si ripetono (lettiera, lavatrice, lenzuola, bagno…) con scadenze e chi le ha fatte;
   - **Lavori** da fare (tagliare le tende, sistemare i mobili…) per stanza e priorità;
   - **Rifiuti**: il calendario della raccolta. Ogni sera la Home dice cosa portare fuori.
 - **Ricette** per tema (Tutti i giorni, Natale, Capodanno, San Valentino, Pasqua, Estate, Halloween, Compleanni, Parigi e Canarie): si aggiungono e si modificano dall'app (tasto **+ Ricetta**, e **Modifica ricetta** in fondo a ognuna), con foto. Si spuntano gli ingredienti e finiscono nella spesa; c'è il dado "cosa cuciniamo?" e il tasto **Tieni lo schermo acceso** mentre si cucina.
-- **Noi**
-  - **Film e serie**, a tema e non, con **dove vederli in Italia** aggiornato dal vivo;
-  - **Musica** a tema del periodo, con il lettore Spotify integrato;
-  - **Desideri**: cose da comprare con prezzo, link e totale;
-  - **Thor e Minù**: foto, età, peso, antiparassitari, vaccini e veterinario, con promemoria.
+- **Film e serie**, a tema e non: copertina e **dove vederli in Italia** (abbonamento, noleggio, acquisto) arrivano da soli e si aggiornano ogni giorno; in cima un "Stasera guardiamo…".
+- **Desideri**: cose da comprare con prezzo, link e totale.
+- **Musica** a tema del periodo, con il lettore Spotify integrato (dalla Home o, su iPad, dalla barra laterale).
+- **Thor e Minù**: foto, età, peso, antiparassitari, vaccini e veterinario, con promemoria (dalla Home).
 - **Lavagnetta** in Home per lasciarsi biglietti, **conto alla rovescia** per le feste e i compleanni (Serena il 29/04, Patrick il 20/12, Thor e Minù il 04/10, il vostro anniversario il 18/07): il giorno giusto la Home fa festa.
 - **Atmosfere stagionali**: cambiano colori e decorazioni da sole.
 
@@ -43,7 +42,6 @@ Tutto funziona sia in chiaro sia in scuro. In *Impostazioni → Atmosfera* si pu
 | 2 | **Database** su Vercel (Neon, piano Free) | Sì: senza, ogni dispositivo ha i suoi dati | sezione 1 |
 | 3 | Scegliere il **codice di famiglia** e installarla su **ogni iPhone/iPad** | Sì | sezione 2 |
 | 4 | **Skill Alexa** | Per usare la voce | sezione 3 |
-| 5 | Chiave **TMDB** | Per locandine e "dove vederlo" | sezione 4 |
 
 Niente Firebase, niente account da creare per l'app: i dati stanno nel database di Vercel e si aprono con il **codice di famiglia**.
 
@@ -94,25 +92,20 @@ Le cose aggiunte a voce compaiono nell'app con il bollino **Alexa**.
 1. Vai su <https://developer.amazon.com/alexa/console/ask> ed entra con **lo stesso account Amazon dei vostri Echo**.
 2. **Create Skill** → nome "Fam. Comperotto", lingua **Italian (IT)**, tipo **Other → Custom**, hosting **Alexa-hosted (Node.js)**, template *Start from scratch*.
 3. Scheda **Build → Interaction Model → JSON Editor**: incolla il contenuto di [`alexa-skill/skill-package/interactionModels/custom/it-IT.json`](alexa-skill/skill-package/interactionModels/custom/it-IT.json) → **Save** → **Build skill**.
-4. Scheda **Code**: sostituisci `index.js` e `package.json` con quelli di [`alexa-skill/lambda/`](alexa-skill/lambda/), aggiungi il file `api.js` e crea un file **`config.js`** copiando [`config.example.js`](alexa-skill/lambda/config.example.js) con due valori:
+4. Scheda **Code**: apri `lambda/index.js`, cancella tutto e incolla il contenuto di [`alexa-skill/lambda/index.js`](alexa-skill/lambda/index.js). In alto cambia solo le due righe di `CONFIG`:
    - `apiUrl`: l'indirizzo Vercel dell'app seguito da `/api` (es. `https://comperotto.vercel.app/api`). Usate l'indirizzo di **produzione**, non quello di un'anteprima;
    - `codice`: il vostro codice di famiglia.
 
-   Poi **Save** → **Deploy**. `config.js` resta solo nella console Amazon e non va mai nel repository (è già escluso in `.gitignore`).
+   Poi **Save** → **Deploy**. Il codice resta solo nella console Amazon: non scrivetelo mai nel file del repository pubblico.
 5. Scheda **Test**: imposta *Skill testing is enabled in: Development* e prova a scrivere «chiedi a casa comperotto di aggiungere il latte».
 
 Una skill "in sviluppo" funziona già su **tutti gli Echo collegati al vostro account**, senza pubblicarla nello store.
 
 **Consiglio**: se a volte Alexa mette la cosa nella *sua* lista invece che nella vostra, dite prima «Alexa, apri casa comperotto» e poi «aggiungi il latte». Per non dire la frase lunga potete creare una **Routine** nell'app Alexa (es. «Alexa, spesa» → *Personalizzato*: «apri casa comperotto»).
 
-## 4. Film: dove vederli (opzionale, gratis)
+## 4. Film: copertine e dove vederli
 
-Il catalogo di Netflix, Prime Video, Disney+ e degli altri cambia di continuo, quindi l'app lo chiede **dal vivo** a TMDB (che usa i dati JustWatch per l'Italia):
-
-1. Crea un account su <https://www.themoviedb.org> → Impostazioni → **API** → richiedi una chiave (uso personale).
-2. Nell'app: **Impostazioni → Film** → incolla la chiave (va bene sia la "API Key" sia il "Read Access Token").
-
-Da quel momento la ricerca dei film mostra le locandine, e su ogni film compaiono le piattaforme (abbonamento, noleggio, acquisto), aggiornate ogni volta che lo aprite. La chiave sta nel vostro database, non nel codice pubblico. Senza chiave c'è comunque il tasto "Cerca su JustWatch".
+Non c'è niente da configurare: quando aggiungete un film o una serie l'app cerca da sola la copertina e su quali piattaforme si trova in Italia (Netflix, Prime Video, Disney+… in abbonamento, a noleggio o da comprare), usando i dati pubblici di JustWatch, e li ricontrolla una volta al giorno perché il catalogo cambia spesso. Toccando una piattaforma si apre direttamente il film.
 
 ## 5. Musica
 
@@ -133,9 +126,8 @@ js/core.js              stato, fogli dal basso, avvisi
 js/data.js              reparti, temi, stagioni, rifiuti, faccende
 js/season.js            atmosfere stagionali e decorazioni
 js/seed.js              esempi iniziali (ricette, film, musica, faccende)
-js/tmdb.js              film e "dove vederlo"
 js/views/*.js           le schermate
-api/                    funzioni Vercel: stato, setup del codice, dati (Neon/Postgres o Upstash Redis)
+api/                    funzioni Vercel: stato, setup del codice, dati (Neon/Postgres o Upstash Redis), film
 alexa-skill/            skill Alexa (modello italiano + codice)
 ```
 
@@ -153,6 +145,6 @@ npx vercel dev
 
 - **Colori**: le variabili all'inizio di `css/style.css` (ogni stagione ha il suo blocco in fondo).
 - **Date delle atmosfere**: `seasonFor()` in `js/data.js`.
-- **Compleanni e anniversari**: dall'app, *Impostazioni → Noi due* (compleanni e "insieme dal", già impostato al 18/07/2020) e *Ricorrenze* (formato gg/mm o gg/mm/aaaa). Nel codice pubblico ci sono solo giorno e mese; l'anno, se lo aggiungete dall'app, resta nel vostro database. Il giorno del compleanno la Home fa festa.
+- **Compleanni e anniversari**: dall'app, *Impostazioni → Famiglia* (compleanni e "insieme dal", già impostato al 18/07/2020) e *Ricorrenze* (formato gg/mm o gg/mm/aaaa). Nel codice pubblico ci sono solo giorno e mese; l'anno, se lo aggiungete dall'app, resta nel vostro database. Il giorno del compleanno la Home fa festa.
 - **Calendario rifiuti**: dall'app, *Casa → Rifiuti* (impostatelo con i giorni del vostro comune).
 - **Backup**: *Impostazioni → Scarica un backup* salva tutto in un file JSON.

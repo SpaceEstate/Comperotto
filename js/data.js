@@ -223,5 +223,4 @@ export const DEFAULT_SETTINGS = {
   rifiuti: { 0: [], 1: ['umido'], 2: ['plastica'], 3: ['umido', 'carta'], 4: ['secco'], 5: ['umido', 'vetro'], 6: [] },
   rifiutiFatto: null,
   ricorrenze: [],
-  tmdbKey: '',
 };

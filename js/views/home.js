@@ -36,8 +36,8 @@ function seasonCard(s) {
     </div>
     <div class="sc-links">
       <a href="#/ricette" data-action="ricette-theme" data-theme="${th}">${icon('chef', 'sm')}<span>${n('ricette')}</span>Ricette</a>
-      <a href="#/noi/musica">${icon('music', 'sm')}<span>${n('musica')}</span>Musica</a>
-      <a href="#/noi/film">${icon('film', 'sm')}<span>${n('film')}</span>Film</a>
+      <a href="#/musica" data-action="musica-theme-go" data-v="${th}">${icon('music', 'sm')}<span>${n('musica')}</span>Musica</a>
+      <a href="#/film" data-action="film-theme-go" data-v="${th}">${icon('film', 'sm')}<span>${n('film')}</span>Film</a>
     </div>
   </section>`;
 }
@@ -68,22 +68,58 @@ function installHint() {
   </div>`;
 }
 
+const WD = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
+const MO = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+const niceDate = (iso) => { const [y, m, d] = iso.split('-').map(Number); const dt = new Date(y, m - 1, d); return `${WD[dt.getDay()]} ${d} ${MO[m - 1]}`; };
+
+/** Conto alla rovescia: più ricorrenze vicine, una accanto all'altra (es. Natale e il compleanno di Patrick). */
+function countdowns(dates) {
+  const upcoming = dates.filter((d) => d.days > 0 || (d.days === 0 && !d.personal));
+  let list = upcoming.filter((d) => d.days <= 75);
+  if (list.length < 2) list = upcoming.slice(0, 2);
+  list = list.slice(0, 6);
+  if (!list.length) return '';
+  return html`<section class="cd-section">
+    <div class="section-title"><span>Conto alla rovescia</span></div>
+    <div class="cd-scroll">${list.map((d) => {
+      const kind = d.cats ? 'gatti' : d.anniversary ? 'amore' : d.who ? 'festa' : d.theme;
+      const go = !d.personal && THEMES[d.theme];
+      return html`<a class="cd-tile cd-${kind}" href="${go ? '#/ricette' : '#/'}" ${go ? raw(`data-action="ricette-theme" data-theme="${d.theme}"`) : raw('data-action="noop"')}>
+        <span class="cd-ico">${icon(d.cats ? 'paw' : d.icon || 'calendar')}</span>
+        <span class="cd-big">${d.days === 0 ? 'Oggi!' : d.days}</span>
+        ${d.days ? html`<span class="cd-unit">${d.days === 1 ? 'giorno' : 'giorni'}</span>` : ''}
+        <b>${d.label.replace('Compleanno di ', 'Compleanno di\u00a0')}</b>
+        <small>${niceDate(d.date)}${d.age ? ` · ${d.cats ? `${d.age} ${d.age === 1 ? 'anno' : 'anni'}` : d.anniversary ? `${d.age} anni insieme` : `${d.age} anni`}` : ''}</small>
+      </a>`;
+    })}</div>
+  </section>`;
+}
+
+function ring(pct) {
+  const r = 21, c = 2 * Math.PI * r;
+  return html`<svg class="ring" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="${r}" class="ring-bg"/><circle cx="26" cy="26" r="${r}" class="ring-fg" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${(c * (1 - pct)).toFixed(1)}"/></svg>`;
+}
+
 export function render() {
   const s = settings();
   const season = seasonInfo();
   const name = myName();
   const dates = upcomingDates(s, state.data.gatti);
   const bdays = dates.filter((d) => d.days === 0 && d.personal);
-  const next = dates.find((d) => d.days > 0 || (d.days === 0 && !d.personal));
-  const due = dueChores().filter((c) => c.lastDone !== todayIso());
+  const t = todayIso();
+  const due = dueChores().filter((c) => c.lastDone !== t);
+  const doneToday = state.data.routine.filter((c) => c.lastDone === t).length;
   const tonight = trashFor();
-  const trashDone = s.rifiutiFatto && s.rifiutiFatto.date === todayIso();
+  const trashDone = s.rifiutiFatto && s.rifiutiFatto.date === t;
+  const todayTotal = due.length + doneToday + (tonight.length ? 1 : 0);
+  const todayDone = doneToday + (tonight.length && trashDone ? 1 : 0);
   const notes = [...state.data.bacheca].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 6);
   const lavori = state.data.lavori.filter((l) => !l.done);
   const wishes = state.data.desideri.filter((w) => !w.bought);
   const films = state.data.film.filter((f) => !f.watched);
-  const theme = currentTheme();
   const shop = shopBadge();
+  const theme = currentTheme();
+  const songs = theme ? state.data.musica.filter((m) => (m.themes || []).includes(theme.id)).length : 0;
 
   return html`
     <div class="home-top">
@@ -98,61 +134,54 @@ export function render() {
       </header>
     </div>
 
-    ${installHint()}
-    ${bdays.map(birthdayCard)}
+    <div class="stagger">
+      ${installHint()}
+      ${bdays.map(birthdayCard)}
 
-    <div class="cats-strip">${cats().map((c) => html`
-      <a class="cat-chip" href="#/noi/gatti">${catAvatar(c)}<div><b>${c.name}</b><span>${catStatus(c)}</span></div></a>`)}</div>
+      <div class="cats-strip">${cats().map((c) => html`
+        <a class="cat-chip" href="#/gatti">${catAvatar(c)}<div><b>${c.name}</b><span>${catStatus(c)}</span></div></a>`)}</div>
 
-    <div class="home-grid">
-      <div class="home-col">
-        ${season ? seasonCard(season) : next ? html`
-          <a class="countdown" href="${THEMES[next.theme] && next.theme !== 'compleanni' ? '#/ricette' : '#/'}" ${THEMES[next.theme] && next.theme !== 'compleanni' ? raw(`data-action="ricette-theme" data-theme="${next.theme}"`) : ''}>
-            <div class="cd-card">
-              <div class="cd-num">${next.days}<small>${next.days === 1 ? 'giorno' : 'giorni'}</small></div>
-              <div class="cd-text"><span>${next.days === 1 ? 'Domani è' : next.days <= 10 ? 'Manca poco a' : 'Conto alla rovescia per'}</span><b>${next.label}</b>
-                <span>${theme && theme.id === next.theme ? 'Tocca per le ricette a tema' : ''}</span></div>
+      ${countdowns(dates)}
+
+      <div class="home-grid">
+        <div class="home-col">
+          ${season ? seasonCard(season) : ''}
+
+          <section class="card today-card">
+            <div class="today-head">
+              <div class="ring-wrap">${ring(todayTotal ? todayDone / todayTotal : 1)}<span>${todayTotal ? `${todayDone}/${todayTotal}` : icon('check', 'sm')}</span></div>
+              <div><h3>Oggi in casa</h3><p>${due.length ? `${due.length} ${due.length === 1 ? 'cosa da fare' : 'cose da fare'}` : 'Tutto fatto, bravissimi!'}</p></div>
+              <a class="card-link" href="#/casa/faccende">Tutte ${icon('right', 'xs')}</a>
             </div>
-          </a>` : ''}
-
-        ${tonight.length ? html`<div class="card">
-          <div class="card-head">
-            <h3 class="card-title"><span class="dot-ico tone-taupe">${icon('bin', 'sm')}</span>Stasera si butta</h3>
-            <button class="done-btn ${trashDone ? 'fresh' : 'due'}" data-action="trash-done">${icon('check', 'sm')} ${trashDone ? `Fatto${s.rifiutiFatto.by ? ` · ${nameOf(s.rifiutiFatto.by)}` : ''}` : 'Fatto'}</button>
-          </div>
-          <div class="trash-tonight">${binChips(tonight)}</div>
-        </div>` : ''}
-
-        <div class="card" style="padding:6px 0 4px">
-          <div class="card-head" style="padding:10px 16px 0">
-            <h3 class="card-title"><span class="dot-ico tone-oak">${icon('repeat', 'sm')}</span>Oggi in casa</h3>
-            <a class="card-link" href="#/casa/routine">Tutte ${icon('right', 'xs')}</a>
-          </div>
-          ${due.length ? html`<div>${due.slice(0, 5).map((c) => choreRow(c, { compact: true }))}</div>
-            ${due.length > 5 ? html`<p class="muted small" style="margin:4px 16px 10px">e altre ${due.length - 5}…</p>` : ''}`
-            : html`<p class="muted small" style="margin:6px 16px 12px">Niente in scadenza oggi. Divano?</p>`}
-        </div>
-      </div>
-
-      <div class="home-col">
-        <div class="hero-tiles">
-          <a class="tile tone-oak" href="#/spesa"><div class="tile-top"><span class="tile-ico">${icon('basket')}</span><span class="tile-num">${shop}</span></div><span class="tile-label">${shop === 1 ? 'Cosa da comprare' : 'Cose da comprare'}</span></a>
-          <a class="tile tone-sage" href="#/casa/lavori"><div class="tile-top"><span class="tile-ico">${icon('hammer')}</span><span class="tile-num">${lavori.length}</span></div><span class="tile-label">Lavori in sospeso</span></a>
-          <a class="tile tone-rose" href="#/noi/desideri"><div class="tile-top"><span class="tile-ico">${icon('gift')}</span><span class="tile-num">${wishes.length}</span></div><span class="tile-label">Desideri</span></a>
-          <a class="tile tone-sky" href="#/noi/film"><div class="tile-top"><span class="tile-ico">${icon('film')}</span><span class="tile-num">${films.length}</span></div><span class="tile-label">Film da vedere</span></a>
+            ${tonight.length ? html`<div class="today-trash">
+              <span class="tt-label">${icon('bin', 'sm')} Stasera</span>
+              <div class="trash-tonight">${binChips(tonight)}</div>
+              <button class="done-btn ${trashDone ? 'fresh' : 'due'}" data-action="trash-done" aria-label="Spazzatura portata fuori">${icon('check', 'sm')}${trashDone ? '' : ' Fatto'}</button>
+            </div>` : ''}
+            ${due.length ? html`<div>${due.slice(0, 4).map((c) => choreRow(c, { compact: true }))}</div>
+              ${due.length > 4 ? html`<a class="today-more" href="#/casa/faccende">e altre ${due.length - 4}</a>` : ''}` : ''}
+          </section>
         </div>
 
-        <div>
-          <div class="section-title"><span>Lavagnetta</span></div>
-          <div class="notes">
-            ${notes.map((n) => html`<button class="note c-${['oak', 'sage', 'sky', 'rose'].includes(n.color) ? n.color : 'oak'}" data-action="note-open" data-id="${n.id}">
-              <span>${n.text}</span><small>${nameOf(n.by) || ''}${n.createdAt ? ` · ${timeAgo(n.createdAt)}` : ''}</small></button>`)}
-            <button class="note note-add" data-action="note-new">${icon('plus', 'sm')} Scrivi un biglietto</button>
+        <div class="home-col">
+          <div class="hero-tiles">
+            <a class="tile t-oak" href="#/casa/spesa"><span class="tile-ico">${icon('basket')}</span><span class="tile-num">${shop}</span><span class="tile-label">${shop === 1 ? 'Cosa da comprare' : 'Da comprare'}</span><span class="tile-mark">${icon('basket')}</span></a>
+            <a class="tile t-sage" href="#/casa/lavori"><span class="tile-ico">${icon('hammer')}</span><span class="tile-num">${lavori.length}</span><span class="tile-label">Lavori</span><span class="tile-mark">${icon('hammer')}</span></a>
+            <a class="tile t-sky" href="#/film"><span class="tile-ico">${icon('film')}</span><span class="tile-num">${films.length}</span><span class="tile-label">Film da vedere</span><span class="tile-mark">${icon('film')}</span></a>
+            <a class="tile t-rose" href="#/desideri"><span class="tile-ico">${icon('gift')}</span><span class="tile-num">${wishes.length}</span><span class="tile-label">Desideri</span><span class="tile-mark">${icon('gift')}</span></a>
+            <a class="tile t-plum" href="#/musica"><span class="tile-ico">${icon('music')}</span><span class="tile-num">${songs || state.data.musica.length}</span><span class="tile-label">${songs ? `Musica di ${theme.label}` : 'Musica'}</span><span class="tile-mark">${icon('music')}</span></a>
+            <button class="tile t-gold" data-action="ricetta-random"><span class="tile-ico">${icon('dice')}</span><span class="tile-num tile-q">?</span><span class="tile-label">Cosa cuciniamo?</span><span class="tile-mark">${icon('chef')}</span></button>
+          </div>
+
+          <div>
+            <div class="section-title"><span>Lavagnetta</span></div>
+            <div class="notes">
+              ${notes.map((n) => html`<button class="note c-${['oak', 'sage', 'sky', 'rose'].includes(n.color) ? n.color : 'oak'}" data-action="note-open" data-id="${n.id}">
+                <span>${n.text}</span><small>${nameOf(n.by) || ''}${n.createdAt ? ` · ${timeAgo(n.createdAt)}` : ''}</small></button>`)}
+              <button class="note note-add" data-action="note-new">${icon('plus', 'sm')} Scrivi un biglietto</button>
+            </div>
           </div>
         </div>
-
-        ${dates.length ? html`<div><div class="section-title"><span>Prossime ricorrenze</span></div>
-          <div class="next-dates">${dates.filter((d) => d.days > 0).slice(0, 6).map((d) => html`<span>${d.label} · ${plural(d.days, 'giorno', 'giorni')}</span>`)}</div></div>` : ''}
       </div>
     </div>
   `;
@@ -176,6 +205,9 @@ function noteSheet() {
 }
 
 export const actions = {
+  noop: () => {},
+  'musica-theme-go': ({ el }) => { state.ui['musica.theme'] = el.dataset.v; location.hash = '#/musica'; },
+  'film-theme-go': ({ el }) => { state.ui['film.theme'] = el.dataset.v; state.ui['film.filter'] = 'tutti'; location.hash = '#/film'; },
   'hint-close': () => { lsSet('casa.hint.install', '1'); rerender(); },
   'note-new': () => noteSheet(),
   'note-open': ({ id }) => {

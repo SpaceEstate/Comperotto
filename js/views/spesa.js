@@ -2,8 +2,7 @@
 import { html, raw, norm, cap, parseQty, timeAgo, vibrate, plural } from '../utils.js';
 import { icon, catFace } from '../icons.js';
 import { SHOP_CATS, shopCat, classify } from '../data.js';
-import { ALEXA_INVOCATION } from '../config.js';
-import { state, store, me, whoBadge, openSheet, toast, val, pageHead, emptyState, confirmSheet, closeSheet, isSynced } from '../core.js';
+import { state, store, me, whoBadge, openSheet, toast, val, pageHead, emptyState, confirmSheet, closeSheet } from '../core.js';
 
 const catOf = (it) => it.category || classify(it.name);
 
@@ -42,8 +41,15 @@ export function render() {
 
   const groups = SHOP_CATS.map((c) => ({ ...c, items: todo.filter((i) => catOf(i) === c.id).sort((a, b) => a.name.localeCompare(b.name, 'it')) })).filter((g) => g.items.length);
 
+  const total = todo.length + done.length;
+  const pct = total ? Math.round((done.length / total) * 100) : 0;
   return html`
-    ${pageHead('Spesa', { eyebrow: todo.length ? plural(todo.length, 'cosa da prendere', 'cose da prendere') : 'Lista vuota', actions: done.length || todo.length ? html`<button class="icon-btn" data-action="spesa-menu" aria-label="Altre azioni">${icon('sliders')}</button>` : '' })}
+    ${total ? html`<div class="shop-progress">
+      <div><b>${todo.length ? plural(todo.length, 'cosa da prendere', 'cose da prendere') : 'Tutto nel carrello!'}</b>
+        <span>${done.length ? `${done.length} già nel carrello` : 'Buona spesa'}</span></div>
+      <button class="icon-btn" data-action="spesa-menu" aria-label="Condividi o svuota la lista">${icon('share', 'sm')}</button>
+      <i class="bar"><i style="width:${pct}%"></i></i>
+    </div>` : ''}
 
     <form class="quick-add" data-form="spesa-add">
       <input id="spesa-input" name="q" placeholder="Aggiungi… (es. 2 latte, uova)" enterkeyhint="done" autocomplete="off" aria-label="Aggiungi alla spesa">
@@ -54,10 +60,10 @@ export function render() {
       ${frequent.map((f) => html`<button class="chip" data-action="spesa-quick" data-name="${f.name}">${icon('plus', 'xs')} ${f.name}</button>`)}
     </div>` : ''}
 
-    ${!todo.length && !done.length ? emptyState('Frigo pieno, lista vuota', 'Scrivi qui sopra oppure chiedilo ad Alexa.', catFace('a')) : ''}
+    ${!todo.length && !done.length ? emptyState('Frigo pieno, lista vuota', 'Scrivi qui sopra cosa serve.', catFace('a')) : ''}
 
     <div class="shop-groups">${groups.map((g) => html`<section class="shop-group">
-      <div class="cat-head"><i style="background:${g.color}"></i>${g.label}<span class="muted" style="margin-left:auto">${g.items.length}</span></div>
+      <div class="cat-head" style="--c:${g.color}"><i></i>${g.label}<span class="cat-n">${g.items.length}</span></div>
       <div class="list">
         ${g.items.map((it) => html`
           <div class="row" id="s-${it.id}">
@@ -84,12 +90,6 @@ export function render() {
             <div class="row-main"><div class="row-title">${it.name}</div><div class="row-sub">${timeAgo(it.doneAt)}</div></div>
           </div>`)}
       </div>` : ''}
-
-    <div class="hint">${icon('mic', 'sm')}<div>
-      ${isSynced()
-        ? html`Con Alexa: <b>«Alexa, chiedi a ${ALEXA_INVOCATION} di aggiungere il latte»</b>. Le cose aggiunte a voce hanno il bollino <span class="pill alexa">${icon('mic', 'xs')} Alexa</span>.`
-        : html`Per condividerla tra i vostri dispositivi e usarla con Alexa aprite l'app dal suo indirizzo Vercel (vedi <b>Impostazioni</b>).`}
-    </div></div>
   `;
 }
 
@@ -125,8 +125,15 @@ export const actions = {
   'spesa-toggle': ({ id, el }) => {
     const it = state.data.spesa.find((i) => i.id === id);
     if (!it) return;
-    el.classList.add('pop');
     vibrate();
+    const row = el.closest('.row');
+    if (!it.done && row) {
+      // un attimo di soddisfazione: spunta, barra, poi va nel carrello
+      el.classList.add('on', 'pop');
+      row.classList.add('checking');
+      setTimeout(() => store.update('spesa', id, { done: true, doneAt: Date.now() }), 380);
+      return;
+    }
     store.update('spesa', id, { done: !it.done, doneAt: !it.done ? Date.now() : null });
   },
   'spesa-edit': ({ id }) => { const it = state.data.spesa.find((i) => i.id === id); if (it) editSheet(it); },

@@ -2,7 +2,7 @@
 import { html, raw, cap, safeUrl, vibrate } from '../utils.js';
 import { icon, catFace } from '../icons.js';
 import { THEMES, themeLabel, MUSIC_TYPES } from '../data.js';
-import { state, store, openSheet, closeSheet, toast, val, emptyState, ui, setUi, themeChoices, me, whoBadge } from '../core.js';
+import { state, store, openSheet, closeSheet, toast, val, emptyState, ui, setUi, themeChoices, me, whoBadge, pageHead } from '../core.js';
 import { currentTheme } from '../season.js';
 
 const TYPE_ICON = { brano: 'music', album: 'disc', playlist: 'headphones' };
@@ -44,6 +44,8 @@ export function render() {
   const rest = list.filter((m) => !seasonal.includes(m));
 
   return html`
+    <a class="back-link phone-only" href="#/">${icon('left', 'sm')} Home</a>
+    ${pageHead('Musica', { eyebrow: 'La colonna sonora di casa' })}
     <div class="chips" style="margin-top:0">
       <button class="chip ${theme === 'tutti' ? 'on' : ''}" data-action="musica-theme" data-v="tutti">Tutta</button>
       ${used.map((t) => html`<button class="chip ${theme === t ? 'on' : ''}" data-action="musica-theme" data-v="${t}">${icon(THEMES[t].icon, 'xs')} ${themeLabel(t, true)}</button>`)}
@@ -59,7 +61,6 @@ export function render() {
 
     ${!list.length ? emptyState('Silenzio in casa', 'Aggiungi le canzoni, gli album e le playlist che vi piacciono.', catFace('b')) : ''}
 
-    <div class="hint">${icon('info', 'sm')}<div>Incolla un link di <b>Spotify</b> (Condividi → Copia link) per ascoltarla direttamente qui. Con altri link, o senza, il tasto ▶ apre la ricerca.</div></div>
 
     <button class="fab" data-action="musica-new">${icon('plus')} Musica</button>`;
 }
@@ -74,7 +75,7 @@ function sheet(m = null) {
       <label class="field"><span>Titolo</span><input name="title" value="${m ? m.title : ''}" required ${m ? '' : raw('autofocus')}></label>
       <label class="field"><span>Artista</span><input name="artist" value="${m ? m.artist || '' : ''}"></label>
       <div class="field"><span>Tema</span>${themeChoices('themes', m ? m.themes || [] : cur ? [cur.id] : ['sempre'], THEMES)}</div>
-      <label class="field"><span>Link (Spotify, YouTube, Apple Music…)</span><input name="link" type="url" inputmode="url" value="${m ? m.link || '' : ''}" placeholder="https://open.spotify.com/…"></label>
+      <label class="field"><span>Link di Spotify o YouTube (facoltativo)</span><input name="link" type="url" inputmode="url" value="${m ? m.link || '' : ''}" placeholder="https://open.spotify.com/…"></label>
       ${m ? html`<div class="wish-actions">
         <a class="mini-btn" href="${spotifySearch(m)}" target="_blank" rel="noopener">${icon('search', 'xs')} Spotify</a>
         <a class="mini-btn" href="${ytSearch(m)}" target="_blank" rel="noopener">${icon('search', 'xs')} YouTube Music</a>

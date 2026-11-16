@@ -1,14 +1,12 @@
-// Impostazioni: chi sei, nomi, compleanni, atmosfera, sincronizzazione, Alexa, film, backup
+// Impostazioni: chi sei, aspetto, famiglia (nomi, compleanni, ricorrenze), copia dei dati
 import { html, raw, cap, lsGet, lsSet, uid, parseDMY, fmtDMY, timeAgo } from '../utils.js';
 import { icon } from '../icons.js';
 import { SEASONS } from '../data.js';
-import { ALEXA_INVOCATION } from '../config.js';
-import { COLLECTIONS } from '../store.js';
 import { state, store, isSynced, settings, saveSettings, me, setMe, nameOf, openSheet, closeSheet, sheetError, toast, val, pageHead, rerender, confirmSheet } from '../core.js';
 import { seasonOverride, setSeasonOverride } from '../season.js';
 import { seedData } from '../seed.js';
 
-export const VERSION = '1.2.0';
+export const VERSION = '1.3.0';
 
 const themeMode = () => lsGet('casa.theme', 'auto');
 export function applyTheme() {
@@ -23,79 +21,42 @@ export function render() {
   const ov = seasonOverride();
   const tm = themeMode();
   const ric = s.ricorrenze || [];
+  const other = n[me() === 'p1' ? 'p2' : 'p1'];
   return html`
-    <a class="back-link" href="#/">${icon('left', 'sm')} Home</a>
+    <a class="back-link phone-only" href="#/">${icon('left', 'sm')} Home</a>
     ${pageHead('Impostazioni')}
 
-    <div class="section-title"><span>Su questo telefono</span></div>
+    <div class="section-title"><span>Tu</span></div>
     <div class="card">
-      <div class="field" style="margin-bottom:4px"><span>Chi sei?</span>
+      <div class="field" style="margin-bottom:0"><span>Chi usa questo telefono?</span>
         <div class="radio-chips">${['p1', 'p2'].map((k) => html`<label><input type="radio" name="me" value="${k}" data-change="set-me" ${me() === k ? raw('checked') : ''}><span>${n[k]}</span></label>`)}</div>
-        <p class="help">Serve per firmare biglietti, faccende fatte e cose aggiunte alla spesa.</p>
       </div>
     </div>
+
+    <div class="section-title"><span>Aspetto</span></div>
     <div class="card">
       <div class="field"><span>Chiaro o scuro</span><div class="radio-chips">
         ${[['auto', 'auto', 'Automatico'], ['light', 'sun', 'Chiaro'], ['dark', 'moon', 'Scuro']].map(([v, ic, l]) => html`<label><input type="radio" name="theme" value="${v}" data-change="set-theme" ${tm === v ? raw('checked') : ''}><span>${icon(ic, 'xs')} ${l}</span></label>`)}
       </div></div>
-      <div class="field" style="margin-bottom:4px"><span>Atmosfera</span><div class="radio-chips">
-        <label><input type="radio" name="season" value="auto" data-change="set-season" ${ov === 'auto' ? raw('checked') : ''}><span>Segue il calendario</span></label>
+      <div class="field" style="margin-bottom:0"><span>Atmosfera</span><div class="radio-chips">
+        <label><input type="radio" name="season" value="auto" data-change="set-season" ${ov === 'auto' ? raw('checked') : ''}><span>${icon('calendar', 'xs')} Segue il calendario</span></label>
         <label><input type="radio" name="season" value="casa" data-change="set-season" ${ov === 'casa' ? raw('checked') : ''}><span>${icon('home', 'xs')} Casa</span></label>
         ${Object.entries(SEASONS).map(([k, v]) => html`<label><input type="radio" name="season" value="${k}" data-change="set-season" ${ov === k ? raw('checked') : ''}><span>${icon(v.icon, 'xs')} ${v.label}</span></label>`)}
-      </div>
-      <p class="help">In automatico: ottobre Halloween, aprile Parigi e Canarie (il mese di ${n.p2}), dal 20 novembre al 6 gennaio Natale, luglio e agosto mare.</p></div>
+      </div></div>
     </div>
 
-    <div class="section-title"><span>Casa</span></div>
+    <div class="section-title"><span>Famiglia</span></div>
     <div class="list">
-      <button class="set-row" data-action="set-names">${icon('users')}<div class="row-main"><b>${n.p1} e ${n.p2}</b><span>${s.compleanni && (s.compleanni.p1 || s.compleanni.p2) ? `Compleanni: ${[['p1', n.p1], ['p2', n.p2]].filter(([k]) => s.compleanni[k]).map(([k, x]) => `${x} ${fmtDMY(s.compleanni[k])}`).join(' · ')}` : 'Nomi e compleanni'}${s.anniversario ? ` · insieme dal ${fmtDMY(s.anniversario)}` : ''}</span></div>${icon('right', 'sm')}</button>
-      <button class="set-row" data-action="set-dates">${icon('calendar')}<div class="row-main"><b>Ricorrenze</b><span>${ric.length ? ric.map((r) => `${r.label} (${fmtDMY(r.date)})`).join(', ') : 'Anniversario, compleanni di amici e parenti…'}</span></div>${icon('right', 'sm')}</button>
+      <button class="set-row" data-action="set-names">${icon('users')}<div class="row-main"><b>${n.p1} e ${n.p2}</b><span>${[s.compleanni && s.compleanni.p1 ? `${n.p1} ${fmtDMY(s.compleanni.p1)}` : '', s.compleanni && s.compleanni.p2 ? `${n.p2} ${fmtDMY(s.compleanni.p2)}` : '', s.anniversario ? `insieme dal ${fmtDMY(s.anniversario)}` : ''].filter(Boolean).join(' · ') || 'Nomi e compleanni'}</span></div>${icon('right', 'sm')}</button>
+      <button class="set-row" data-action="set-dates">${icon('calendar')}<div class="row-main"><b>Ricorrenze</b><span>${ric.length ? ric.map((r) => `${r.label} (${fmtDMY(r.date)})`).join(', ') : 'Compleanni di amici e parenti…'}</span></div>${icon('right', 'sm')}</button>
+      <a class="set-row" href="#/gatti">${icon('cat')}<div class="row-main"><b>Thor e Minù</b><span>Foto, peso, vaccini</span></div>${icon('right', 'sm')}</a>
       <a class="set-row" href="#/casa/rifiuti">${icon('bin')}<div class="row-main"><b>Calendario rifiuti</b><span>I giorni della raccolta</span></div>${icon('right', 'sm')}</a>
+      ${isSynced() ? html`<button class="set-row" data-action="share-app">${icon('share')}<div class="row-main"><b>Invia l’app a ${other}</b><span>Il link per installarla sul suo telefono</span></div>${icon('right', 'sm')}</button>` : ''}
+      <button class="set-row" data-action="export">${icon('download')}<div class="row-main"><b>Scarica una copia</b><span>Tutti i dati di casa in un file</span></div></button>
     </div>
 
-    <div class="section-title"><span>Sincronizzazione</span></div>
-    <div class="card">
-      ${isSynced() ? html`
-        <p style="margin:0 0 4px;display:flex;align-items:center;gap:8px"><span class="status-dot ${store.offline ? '' : 'on'}"></span><b>${store.offline ? 'Senza rete: le modifiche partono appena torna' : 'Condivisa tra tutti i vostri dispositivi'}</b></p>
-        <p class="muted small" style="margin:0 0 12px">${store.lastSync ? `Ultimo aggiornamento ${timeAgo(store.lastSync)}` : 'Mi sto collegando…'}${store.queue && store.queue.length ? ` · ${store.queue.length} modifiche in attesa` : ''}</p>
-        <div class="btn-row">
-          <button class="btn" data-action="sync-now">${icon('refresh', 'sm')} Aggiorna</button>
-          <button class="btn" data-action="share-app">${icon('share', 'sm')} Invia il link</button>
-        </div>
-        <button class="card-link" data-action="logout" style="margin:14px auto 0;display:block;color:var(--text-3)">Scollega questo dispositivo</button>`
-      : state.backend && !state.backend.storage ? html`
-        <p style="margin:0 0 4px;display:flex;align-items:center;gap:8px"><span class="status-dot"></span><b>Manca il database</b></p>
-        <div class="prose small"><p>Su Vercel apri il progetto → <b>Storage</b> → <b>Create Database</b> → <b>Neon</b> (piano Free) e collegalo al progetto, poi <b>Redeploy</b>. Va bene anche un database Neon o Upstash che avete già (<b>Connect</b>). Al prossimo avvio l'app vi chiederà il codice di famiglia.</p></div>`
-      : html`
-        <p style="margin:0 0 4px;display:flex;align-items:center;gap:8px"><span class="status-dot"></span><b>Solo su questo dispositivo</b></p>
-        <div class="prose small"><p>Aprite l'app dal suo indirizzo <b>Vercel</b> per avere gli stessi dati su tutti i vostri iPhone e iPad.</p></div>`}
-    </div>
-
-    <div class="section-title"><span>Alexa</span></div>
-    <div class="card prose">
-      <p>Dal 2024 Amazon non permette più alle app esterne di leggere la lista della spesa di Alexa. Per questo la casa ha una sua <b>skill Alexa</b> (istruzioni nel README, cartella <span class="code">alexa-skill</span>). Una volta attiva:</p>
-      <p>«Alexa, chiedi a ${ALEXA_INVOCATION} di aggiungere il latte»<br>«Alexa, chiedi a ${ALEXA_INVOCATION} cosa c’è da comprare»<br>«Alexa, chiedi a ${ALEXA_INVOCATION} cosa si butta stasera»<br>«Alexa, chiedi a ${ALEXA_INVOCATION} cosa c’è da fare oggi»</p>
-      <p class="small muted" style="margin:0">Trucco: se Alexa mette la cosa nella sua lista invece che nella vostra, dite prima «Alexa, apri ${ALEXA_INVOCATION}» e poi «aggiungi il latte».</p>
-    </div>
-
-    <div class="section-title"><span>Film</span></div>
-    <div class="card">
-      <form data-form="tmdb-save">
-        <label class="field"><span>Chiave API di TMDB</span><input name="key" value="${s.tmdbKey || ''}" placeholder="Incolla qui la chiave" autocomplete="off" spellcheck="false"></label>
-        <p class="help" style="margin-top:-8px">Gratuita su themoviedb.org → Impostazioni → API. Serve per locandine e per sapere <b>dove vedere</b> ogni film (Netflix, Prime, Disney+…), sempre aggiornato.</p>
-        <button class="btn block" type="submit">${icon('check', 'sm')} Salva chiave</button>
-      </form>
-    </div>
-
-    <div class="section-title"><span>Backup</span></div>
-    <div class="list">
-      <button class="set-row" data-action="export">${icon('download')}<div class="row-main"><b>Scarica un backup</b><span>Un file con tutti i dati di casa</span></div></button>
-      <label class="set-row" style="cursor:pointer">${icon('upload')}<div class="row-main"><b>Ripristina da backup</b><span>Aggiunge i dati del file a quelli attuali</span></div><input type="file" accept="application/json,.json" hidden data-change="import"></label>
-      <button class="set-row" data-action="reseed">${icon('sparkles')}<div class="row-main"><b>Ricarica gli esempi</b><span>Ricette, film, musica e faccende di partenza</span></div></button>
-      <button class="set-row" data-action="wipe" style="color:var(--rose)">${icon('trash')}<div class="row-main"><b>Cancella tutto</b><span>Svuota la casa (per entrambi)</span></div></button>
-    </div>
-
-    <p class="muted small" style="text-align:center;margin-top:26px">Fam. Comperotto · v${VERSION}<br>Fatta con amore per ${n.p1}, ${n.p2}, Thor e Minù</p>`;
+    <p class="muted small" style="text-align:center;margin-top:28px">Fatta con amore per ${n.p1}, ${n.p2}, Thor e Minù</p>
+    ${isSynced() ? html`<button class="card-link" data-action="logout" style="margin:6px auto 0;display:block;color:var(--text-3);font-weight:500">Esci da questo dispositivo</button>` : ''}`;
 }
 
 function namesSheet() {
@@ -179,59 +140,20 @@ export const actions = {
     saveSettings({ ricorrenze: ric });
     closeSheet();
   },
-  'tmdb-save': ({ form }) => {
-    saveSettings({ tmdbKey: form.key.value.trim() });
-    toast(form.key.value.trim() ? 'Chiave salvata: ora i film si aggiornano da soli' : 'Chiave rimossa');
-  },
   logout: () => confirmSheet({
-    title: 'Scollegare questo dispositivo?', text: 'I dati restano salvati per gli altri; qui servirà di nuovo il codice di famiglia.', yes: 'Scollega',
+    title: 'Uscire da questo dispositivo?', text: 'Tutto resta salvato per gli altri. Per rientrare servirà il codice di famiglia.', yes: 'Esci',
     onYes: () => { store.forget(); location.hash = '#/'; location.reload(); },
   }),
-  'sync-now': async () => { await store.sync(); toast(store.offline ? 'Niente rete, riprovo da solo' : 'Tutto aggiornato'); },
   'share-app': async () => {
     const url = location.origin + location.pathname;
-    const text = 'Ecco la nostra app di casa: aprila con Safari, poi Condividi → Aggiungi alla schermata Home. Il codice di famiglia te lo dico io ♡';
+    const text = 'La nostra app di casa ♡ Aprila con Safari, poi Condividi → Aggiungi alla schermata Home. Il codice di famiglia te lo dico io.';
     try {
       if (navigator.share) await navigator.share({ title: 'Fam. Comperotto', text, url });
       else { await navigator.clipboard.writeText(`${text}\n${url}`); toast('Link copiato'); }
     } catch {}
   },
   export: () => {
-    const dump = { app: 'casa-comperotto', version: VERSION, at: new Date().toISOString(), data: state.data };
-    download(`casa-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(dump, null, 2));
+    const dump = { app: 'fam-comperotto', version: VERSION, at: new Date().toISOString(), data: state.data };
+    download(`fam-comperotto-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(dump, null, 2));
   },
-  import: async ({ el }) => {
-    const f = el.files && el.files[0];
-    if (!f) return;
-    try {
-      const dump = JSON.parse(await f.text());
-      if (!dump || !dump.data) throw new Error();
-      let count = 0;
-      COLLECTIONS.forEach((c) => (dump.data[c] || []).forEach((it) => {
-        if (!it || typeof it !== 'object' || !it.id) return;
-        const { id, ...rest } = it;
-        store.set(c, String(id), rest);
-        count++;
-      }));
-      toast(`Ripristinati ${count} elementi`);
-    } catch { toast('File di backup non valido'); }
-    el.value = '';
-  },
-  reseed: () => confirmSheet({
-    title: 'Ricaricare gli esempi?', text: 'Aggiunge di nuovo ricette, film, musica, faccende e lavori di esempio (i vostri dati restano).', yes: 'Ricarica',
-    onYes: () => {
-      const data = seedData();
-      ['ricette', 'musica', 'film', 'routine', 'lavori', 'desideri'].forEach((col) => data[col].forEach((it) => store.add(col, it)));
-      toast('Esempi aggiunti');
-    },
-  }),
-  wipe: () => confirmSheet({
-    title: 'Cancellare tutto?', text: 'Spariscono spesa, ricette, faccende, film… per entrambi. Conviene scaricare prima un backup.', yes: 'Cancella tutto',
-    onYes: async () => {
-      const { id: _, ...keep } = settings();
-      await store.wipe();
-      store.set('settings', 'main', { ...keep, ricorrenze: [], seeded: true });
-      toast('Casa svuotata');
-    },
-  }),
 };

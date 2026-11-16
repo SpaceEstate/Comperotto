@@ -1,5 +1,6 @@
 // Casa: faccende ricorrenti, lavori da fare, calendario rifiuti
-import { html, raw, todayIso, shortDate, parseIso, WEEKDAYS, WEEKDAYS_SHORT, addDays, vibrate, cap, timeAgo } from '../utils.js';
+import { render as spesaRender } from './spesa.js';
+import { html, raw, lsGet, lsSet, todayIso, shortDate, parseIso, WEEKDAYS, WEEKDAYS_SHORT, addDays, vibrate, cap, timeAgo } from '../utils.js';
 import { icon, catFace } from '../icons.js';
 import { ROOMS, CHORE_ICONS, CHORE_TONES, BINS, BIN_IDS, choreStatus, freqLabel } from '../data.js';
 import { state, store, me, nameOf, whoBadge, whoChoices, openSheet, closeSheet, toast, val, pageHead, emptyState, settings, saveSettings, ui, setUi, confirmSheet } from '../core.js';
@@ -111,20 +112,30 @@ function renderRifiuti() {
           <i style="background:${BINS[b].color}"></i>${BINS[b].label}
         </button>`)}</div>
     </div>
-    <div class="hint">${icon('info', 'sm')}<div>Controlla il calendario della raccolta del vostro comune e sistemalo una volta: poi ogni sera la Home vi dice cosa portare fuori${''}.</div></div>`;
+    <p class="muted small" style="margin:14px 4px 0">Ogni sera la Home vi ricorda cosa portare fuori.</p>`;
 }
 
+const SECTIONS = {
+  spesa: { label: 'Spesa', icon: 'basket', eyebrow: 'La lista della spesa' },
+  faccende: { label: 'Faccende', icon: 'repeat', eyebrow: 'Le cose di tutti i giorni' },
+  lavori: { label: 'Lavori', icon: 'hammer', eyebrow: 'Da sistemare in casa' },
+  rifiuti: { label: 'Rifiuti', icon: 'bin', eyebrow: 'Il calendario della raccolta' },
+};
+
 export function render(route) {
-  const tab = route[1] || 'routine';
+  let tab = route[1];
+  if (SECTIONS[tab]) lsSet('casa.tab', tab);
+  else tab = SECTIONS[lsGet('casa.tab')] ? lsGet('casa.tab') : 'spesa';
   const due = dueChores().filter((c) => c.lastDone !== todayIso()).length;
+  const shop = state.data.spesa.filter((i) => !i.done).length;
+  const counts = { spesa: shop, faccende: due };
   return html`
-    ${pageHead('Casa', { eyebrow: 'Faccende e lavori' })}
-    <nav class="segmented" aria-label="Sezioni casa">
-      <a href="#/casa/routine" class="${tab === 'routine' ? 'on' : ''}">${icon('repeat', 'sm')} Faccende ${due ? html`<span class="count">${due}</span>` : ''}</a>
-      <a href="#/casa/lavori" class="${tab === 'lavori' ? 'on' : ''}">${icon('hammer', 'sm')} Lavori</a>
-      <a href="#/casa/rifiuti" class="${tab === 'rifiuti' ? 'on' : ''}">${icon('bin', 'sm')} Rifiuti</a>
+    ${pageHead('Casa', { eyebrow: SECTIONS[tab].eyebrow })}
+    <nav class="segmented seg-icons" aria-label="Sezioni casa">
+      ${Object.entries(SECTIONS).map(([k, v]) => html`<a href="#/casa/${k}" class="${tab === k ? 'on' : ''}">
+        <span class="seg-ico">${icon(v.icon, 'sm')}${counts[k] ? html`<span class="count ${k === 'spesa' ? 'soft' : ''}">${counts[k]}</span>` : ''}</span><span>${v.label}</span></a>`)}
     </nav>
-    ${tab === 'lavori' ? renderLavori() : tab === 'rifiuti' ? renderRifiuti() : renderRoutine()}`;
+    ${tab === 'spesa' ? spesaRender() : tab === 'lavori' ? renderLavori() : tab === 'rifiuti' ? renderRifiuti() : renderRoutine()}`;
 }
 
 // ---------------------------------------------------------------------------

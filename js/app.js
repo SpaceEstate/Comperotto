@@ -8,22 +8,38 @@ import * as home from './views/home.js';
 import * as spesa from './views/spesa.js';
 import * as casa from './views/casa.js';
 import * as ricette from './views/ricette.js';
-import * as noi from './views/noi.js';
+import * as film from './views/film.js';
+import * as musica from './views/musica.js';
+import * as desideri from './views/desideri.js';
+import * as gatti from './views/gatti.js';
 import * as impostazioni from './views/impostazioni.js';
 import * as login from './views/login.js';
 
-const VIEWS = { '': home, spesa, casa, ricette, noi, impostazioni };
-const actions = { ...home.actions, ...spesa.actions, ...casa.actions, ...ricette.actions, ...noi.actions, ...impostazioni.actions, ...login.actions };
+const VIEWS = { '': home, casa, ricette, film, desideri, musica, gatti, impostazioni };
+const actions = {
+  ...home.actions, ...spesa.actions, ...casa.actions, ...ricette.actions, ...film.actions,
+  ...musica.actions, ...desideri.actions, ...gatti.actions, ...impostazioni.actions, ...login.actions,
+};
 
+// sul telefono: le 5 schede in basso; su iPad la barra laterale mostra anche Musica e Gatti
 const TABS = [
   { key: '', label: 'Home', icon: 'home', href: '#/' },
-  { key: 'spesa', label: 'Spesa', icon: 'basket', href: '#/spesa', badge: () => spesa.badge() },
-  { key: 'casa', label: 'Casa', icon: 'checks', href: '#/casa', badge: () => casa.badge() },
+  { key: 'casa', label: 'Casa', icon: 'basket', href: '#/casa', badge: () => spesa.badge() + casa.badge() },
   { key: 'ricette', label: 'Ricette', icon: 'chef', href: '#/ricette' },
-  { key: 'noi', label: 'Noi', icon: 'heart', href: '#/noi' },
+  { key: 'film', label: 'Film', icon: 'film', href: '#/film' },
+  { key: 'desideri', label: 'Desideri', icon: 'gift', href: '#/desideri' },
+  { key: 'musica', label: 'Musica', icon: 'music', href: '#/musica', side: true },
+  { key: 'gatti', label: 'Thor e Minù', icon: 'cat', href: '#/gatti', side: true },
 ];
 
-const route = () => (location.hash.replace(/^#\/?/, '') || '').split('/').map(decodeURIComponent);
+// vecchi indirizzi (link salvati, scorciatoie) → nuovi
+function alias(r) {
+  if (r[0] === 'spesa') return ['casa', 'spesa'];
+  if (r[0] === 'noi') return [r[1] || 'film', ...r.slice(2)];
+  if (r[0] === 'casa' && r[1] === 'routine') return ['casa', 'faccende'];
+  return r;
+}
+const route = () => alias((location.hash.replace(/^#\/?/, '') || '').split('/').map(decodeURIComponent));
 const wideMq = matchMedia('(min-width: 700px) and (min-height: 560px)');
 const wide = () => wideMq.matches;
 wideMq.addEventListener?.('change', () => rerender());
@@ -82,6 +98,8 @@ function render() {
     view.replaceChildren(tpl.content);
     window.scrollTo(0, 0);
     lastRoute = key;
+    const h = view.querySelector('h1');
+    topbar.querySelector('span').textContent = r[0] && h ? h.textContent.replace(/\s+/g, ' ').trim() : 'Fam. Comperotto';
   } else {
     morphChildren(view, tpl.content);
   }
@@ -94,11 +112,11 @@ function render() {
     <a class="side-brand" href="#/"><span class="mini-logo"></span><span>Fam. Comperotto</span></a>
     ${TABS.map((t) => {
       const n = t.badge ? t.badge() : 0;
-      const on = t.key === cur || (t.key === '' && cur === 'impostazioni' && !wide());
-      return html`<a class="tab ${on ? 'on' : ''}" href="${t.href}" ${on ? raw('aria-current="page"') : ''}>
+      const on = t.key === cur || (t.key === '' && ['impostazioni', 'musica', 'gatti'].includes(cur) && !wide());
+      return html`<a class="tab ${on ? 'on' : ''} ${t.side ? 'side-only side-mid' : ''}" href="${t.href}" ${on ? raw('aria-current="page"') : ''}>
         <span class="tab-ico">${icon(t.icon)}</span><span class="tab-label">${t.label}</span>${n ? html`<span class="badge">${n > 99 ? '99+' : n}</span>` : ''}</a>`;
     })}
-    <a class="tab side-only ${cur === 'impostazioni' ? 'on' : ''}" href="#/impostazioni"><span class="tab-ico">${icon('sliders')}</span><span class="tab-label">Impostazioni</span></a>
+    <a class="tab side-only side-end ${cur === 'impostazioni' ? 'on' : ''}" href="#/impostazioni"><span class="tab-ico">${icon('sliders')}</span><span class="tab-label">Impostazioni</span></a>
   </div>`.s;
   if (tabbar.firstElementChild) morphChildren(tabbar, tabsTpl.content); else tabbar.replaceChildren(tabsTpl.content);
 }
@@ -146,7 +164,22 @@ document.addEventListener('input', (ev) => {
 
 document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && sheetOpen()) closeSheet(); });
 
-window.addEventListener('hashchange', () => { closeSheet(); ricette.releaseWake(); render(); });
+// cambio pagina con una dissolvenza leggera (View Transitions, Safari 18+)
+window.addEventListener('hashchange', () => {
+  closeSheet();
+  ricette.releaseWake();
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (document.startViewTransition && !reduce && state.loaded.has('settings')) document.startViewTransition(() => render());
+  else render();
+});
+
+// iPhone: titolo piccolo in alto quando si scorre (come le app di sistema)
+const topbar = document.getElementById('topbar');
+let topShown = false;
+window.addEventListener('scroll', () => {
+  const show = window.scrollY > 64 && !state.needCode;
+  if (show !== topShown) { topShown = show; topbar.classList.toggle('show', show); }
+}, { passive: true });
 
 // iPhone/iPad: quando si apre la tastiera i fogli dal basso salgono sopra di lei
 if (window.visualViewport) {

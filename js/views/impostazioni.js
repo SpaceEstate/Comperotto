@@ -5,6 +5,8 @@ import { SEASONS } from '../data.js';
 import { state, store, isSynced, settings, saveSettings, me, setMe, nameOf, openSheet, closeSheet, sheetError, toast, val, pageHead, rerender, confirmSheet } from '../core.js';
 import { seasonOverride, setSeasonOverride } from '../season.js';
 import { seedData } from '../seed.js';
+import * as notifiche from '../notifiche.js';
+import { ui, setUi } from '../core.js';
 
 export const VERSION = '1.3.0';
 
@@ -45,6 +47,8 @@ export function render() {
       </div></div>
     </div>
 
+    ${notificheCard()}
+
     <div class="section-title"><span>Famiglia</span></div>
     <div class="list">
       <button class="set-row" data-action="set-names">${icon('users')}<div class="row-main"><b>${n.p1} e ${n.p2}</b><span>${[s.compleanni && s.compleanni.p1 ? `${n.p1} ${fmtDMY(s.compleanni.p1)}` : '', s.compleanni && s.compleanni.p2 ? `${n.p2} ${fmtDMY(s.compleanni.p2)}` : '', s.anniversario ? `insieme dal ${fmtDMY(s.anniversario)}` : ''].filter(Boolean).join(' · ') || 'Nomi e compleanni'}</span></div>${icon('right', 'sm')}</button>
@@ -57,6 +61,41 @@ export function render() {
 
     <p class="muted small" style="text-align:center;margin-top:28px">Fatta con amore per ${n.p1}, ${n.p2}, Thor e Minù</p>
     ${isSynced() ? html`<button class="card-link" data-action="logout" style="margin:6px auto 0;display:block;color:var(--text-3);font-weight:500">Esci da questo dispositivo</button>` : ''}`;
+}
+
+// ---------------------------------------------------------------------------
+// Notifiche di questo dispositivo
+// ---------------------------------------------------------------------------
+function notificheCard() {
+  const st = ui('push.stato', null);
+  if (!isSynced() || !st || st === 'no') return '';
+  const p = notifiche.prefs();
+  const corpo = st === 'accese'
+    ? html`<div class="list">
+        ${notifiche.TIPI.map(([k, titolo, cosa]) => html`<label class="set-row"><div class="row-main"><b>${titolo}</b><span>${cosa}</span></div>
+          <input class="sw" type="checkbox" data-change="push-tipo" data-tipo="${k}" ${p[k] ? raw('checked') : ''} aria-label="${titolo}"></label>`)}
+      </div>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn" data-action="push-prova">${icon('bell', 'sm')} Prova</button>
+        <button class="btn" data-action="push-off">Disattiva</button>
+      </div>`
+    : html`<div class="card">
+        <p class="prose" style="margin:0 0 ${st === 'spente' ? '12px' : '0'}">${st === 'installa'
+          ? html`Per riceverle apri l’app dalla schermata Home: in Safari tocca ${icon('share', 'xs')} Condividi e poi «Aggiungi alla schermata Home».`
+          : st === 'bloccate'
+            ? 'Su questo dispositivo sono bloccate. Per riaccenderle: Impostazioni dell’iPhone → Notifiche → Comperotto.'
+            : 'Un avviso quando l’altro arriva a casa o esce dal lavoro, la sera per la spazzatura, per i biglietti nuovi e per compleanni e richiami dei gatti.'}</p>
+        ${st === 'spente' ? html`<button class="btn primary block" data-action="push-on" ${ui('push.busy', false) ? raw('disabled') : ''}>${icon('bell', 'sm')} Attiva le notifiche</button>` : ''}
+      </div>`;
+  return html`<div class="section-title"><span>Notifiche</span></div>${corpo}`;
+}
+
+let chiesto = false;
+/** Dopo il disegno della pagina: guardo com'è messo questo dispositivo con le notifiche (una volta). */
+export function after() {
+  if (chiesto || !isSynced()) return;
+  chiesto = true;
+  notifiche.stato().then((s) => setUi('push.stato', s));
 }
 
 function namesSheet() {
@@ -125,7 +164,29 @@ export function seedAll() {
 }
 
 export const actions = {
-  'set-me': ({ el }) => { setMe(el.value); rerender(); toast(`Ciao ${nameOf(el.value)}!`); },
+  'set-me': ({ el }) => { setMe(el.value); rerender(); toast(`Ciao ${nameOf(el.value)}!`); notifiche.rinfresca(true); },
+  'push-on': async () => {
+    if (ui('push.busy', false)) return;
+    setUi('push.busy', true);
+    try {
+      const s = await notifiche.accendi();
+      setUi('push.stato', s);
+      if (s === 'accese') toast('Notifiche attive su questo dispositivo');
+    } catch (e) {
+      toast(e && /scegli chi/.test(e.message) ? e.message : 'Non sono riuscito ad attivarle: riprova tra poco', { ms: 5000 });
+    } finally { setUi('push.busy', false); }
+  },
+  'push-off': async () => {
+    try { await notifiche.spegni(); } catch {}
+    setUi('push.stato', await notifiche.stato());
+    toast('Notifiche disattivate su questo dispositivo');
+  },
+  'push-tipo': async ({ el }) => {
+    try { await notifiche.scegli(el.dataset.tipo, el.checked); } catch { toast('Non riesco a salvarlo adesso, riprova'); }
+  },
+  'push-prova': async () => {
+    try { toast((await notifiche.prova()) ? 'Mandata: arriva tra qualche secondo' : 'Non è partita: disattiva e riattiva le notifiche', { ms: 4500 }); } catch { toast('Non è partita: controlla la connessione'); }
+  },
   'set-theme': ({ el }) => {
     lsSet('casa.theme', el.value === 'auto' ? null : el.value);
     applyTheme();

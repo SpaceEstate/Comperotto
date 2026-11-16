@@ -139,6 +139,7 @@ class SyncStore extends LocalStore {
         // le mie modifiche non ancora spedite restano visibili
         this.queue.forEach((op) => { if (op.op === 'wipe') Object.keys(map).forEach((k) => delete map[k]); else if (op.col === c) applyOp(map, op); });
         this.versions[c] = r.v;
+        if (this.synced.has(c)) this.attivo = Date.now(); // l'altro sta cambiando qualcosa: resto sveglio
         this.synced.add(c);
         this.write(c, map);
       } else if (!this.synced.has(c)) {
@@ -153,6 +154,7 @@ class SyncStore extends LocalStore {
   sync() {
     if (this.busy) { this.again = true; return this.busy; }
     this.busy = (async () => {
+      const era = this.offline;
       try {
         await this.flush();
         await this.pull();
@@ -164,7 +166,8 @@ class SyncStore extends LocalStore {
         else this.offline = true;
       } finally {
         this.busy = null;
-        this.onChange();
+        // i dati nuovi ridisegnano già da soli la pagina: qui serve solo se cambia "in linea / non in linea"
+        if (this.offline !== era) this.onChange();
         if (this.again) { this.again = false; this.sync(); }
       }
     })();
@@ -173,15 +176,28 @@ class SyncStore extends LocalStore {
 
   start() {
     this.sync();
-    this.timer = setInterval(() => { if (!document.hidden) this.sync(); }, 6000);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) this.sync(); });
-    window.addEventListener('online', () => this.sync());
-    window.addEventListener('focus', () => this.sync());
+    // Mentre si usa l'app (o l'altro sta cambiando qualcosa) guardo il server ogni 6 secondi;
+    // se nessuno tocca niente rallento fino a 30: meno batteria e meno lavoro per il server.
+    this.attivo = Date.now();
+    const giro = () => {
+      const fermo = Date.now() - this.attivo;
+      this.timer = setTimeout(async () => {
+        if (!document.hidden) await this.sync();
+        if (!this.fermato) giro();
+      }, fermo < 60000 ? 6000 : fermo < 5 * 60000 ? 12000 : 30000);
+    };
+    giro();
+    const sveglia = () => { this.attivo = Date.now(); this.sync(); };
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) sveglia(); });
+    window.addEventListener('online', sveglia);
+    window.addEventListener('focus', sveglia);
+    window.addEventListener('pointerdown', () => { this.attivo = Date.now(); }, { passive: true });
   }
 
   /** Scollega questo dispositivo (i dati restano sul server). */
   forget() {
-    clearInterval(this.timer);
+    this.fermato = true;
+    clearTimeout(this.timer);
     ['casa.sync.code', 'casa.sync.v', 'casa.sync.q', 'casa.sync.at'].forEach((k) => lsSet(k, null));
     COLLECTIONS.forEach((c) => { try { localStorage.removeItem(this.prefix + c); } catch {} });
   }

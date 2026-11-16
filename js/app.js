@@ -1,10 +1,11 @@
 // Fam. Comperotto — avvio, navigazione, aggiornamento dello schermo
-import { html, raw, todayIso } from './utils.js';
+import { html, raw, todayIso, lsGet } from './utils.js';
 import { icon } from './icons.js';
 import { COLLECTIONS, setErrorHandler, detectBackend, savedCode, useSync } from './store.js';
 import { state, store, setRenderer, rerender, closeSheet, submitSheet, sheetOpen, sheetError, openSheet, toast, settings, saveSettings, me, setMe, val } from './core.js';
 import { applySeason } from './season.js';
 import { initGestures } from './gestures.js';
+import { rinfresca as rinfrescaNotifiche } from './notifiche.js';
 import * as home from './views/home.js';
 import * as spesa from './views/spesa.js';
 import * as casa from './views/casa.js';
@@ -211,6 +212,9 @@ if (window.visualViewport) {
   vv.addEventListener('scroll', upd);
 }
 
+// le scritte "da 5 min", "2 h fa" restano giuste anche se nel frattempo non cambia nulla
+setInterval(() => { if (!document.hidden && !sheetOpen()) rerender(); }, 60000);
+
 // aggiorna "oggi" se l'app resta aperta oltre la mezzanotte o torna in primo piano
 let lastDay = todayIso();
 document.addEventListener('visibilitychange', () => { if (!document.hidden && todayIso() !== lastDay) { lastDay = todayIso(); rerender(); } });
@@ -302,11 +306,21 @@ export function startSync(code) {
   subscribeAll();
   s.start();
   render();
+  setTimeout(rinfrescaNotifiche, 4000);
 }
 
 async function boot() {
   impostazioni.applyTheme();
   applySeason();
+  // Dispositivo già collegato: si parte subito dai dati salvati qui, senza aspettare la rete.
+  // Il server lo sento in sottofondo (se il codice non va più bene se ne accorge il primo aggiornamento).
+  const code = savedCode();
+  if (code && lsGet('casa.sync.seen')) {
+    state.backend = { app: 'comperotto', storage: true, claimed: true };
+    startSync(code);
+    detectBackend().then((info) => { if (info && info.storage) state.backend = info; });
+    return;
+  }
   const info = await detectBackend();
   state.backend = info;
   if (info && info.storage) {
@@ -319,8 +333,24 @@ async function boot() {
   subscribeAll();
 }
 
-if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || (location.hostname === '127.0.0.1' && location.search === '?sw'))) {
+  const sw = navigator.serviceWorker;
+  // Quando arriva una versione nuova dell'app la pagina si ricarica da sola (se non stai scrivendo qualcosa).
+  const aveva = Boolean(sw.controller);
+  let inAttesa = false;
+  const occupato = () => sheetOpen() || /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '');
+  const ricarica = () => { if (occupato()) inAttesa = true; else location.reload(); };
+  sw.addEventListener('controllerchange', () => { if (aveva) ricarica(); });
+  // tocco su una notifica con l'app già aperta: vado alla pagina giusta
+  sw.addEventListener('message', (ev) => { if (ev.data && typeof ev.data.vai === 'string' && ev.data.vai.startsWith('#/')) location.hash = ev.data.vai; });
+  let visto = Date.now();
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    if (inAttesa && !occupato()) { location.reload(); return; }
+    // l'app sulla schermata Home resta aperta per giorni: ogni tanto chiedo se c'è una versione nuova
+    if (Date.now() - visto > 30 * 60000) { visto = Date.now(); sw.getRegistration().then((r) => r && r.update()).catch(() => {}); }
+  });
+  window.addEventListener('load', () => sw.register('sw.js').catch(() => {}));
 }
 
 boot();

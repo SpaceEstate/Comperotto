@@ -140,12 +140,14 @@ const BINS = { umido: "l'umido", plastica: 'la plastica', carta: 'la carta', vet
 // ---------------------------------------------------------------------------
 // Risposte
 // ---------------------------------------------------------------------------
+// Se la skill è stata aperta ("Alexa, apri casa comperotto" o la Routine "Alexa, spesa")
+// resta in ascolto: si può continuare a dire "latte", "uova"… e chiudere con "no" o "basta".
 function reply(h, text, { keepOpen = false } = {}) {
-  const rb = h.responseBuilder.speak(text);
   const inSession = h.requestEnvelope.session && !h.requestEnvelope.session.new;
-  if (keepOpen || inSession) rb.reprompt('Ti serve altro?').withShouldEndSession(false);
-  else rb.withShouldEndSession(true);
-  return rb.getResponse();
+  if (keepOpen || inSession) {
+    return h.responseBuilder.speak(`${text} Altro?`).reprompt('Ti serve altro? Dimmi pure, oppure di\' no.').withShouldEndSession(false).getResponse();
+  }
+  return h.responseBuilder.speak(text).withShouldEndSession(true).getResponse();
 }
 const slot = (h, name) => {
   const s = Alexa.getSlot(h.requestEnvelope, name);
@@ -160,8 +162,9 @@ const slotId = (h, name) => {
 const LaunchRequestHandler = {
   canHandle: (h) => Alexa.getRequestType(h.requestEnvelope) === 'LaunchRequest',
   handle: (h) => h.responseBuilder
-    .speak('Ciao, sono la casa della famiglia Comperotto! Posso aggiungere cose alla spesa, leggerti la lista, dirti cosa si butta stasera o cosa c\'è da fare oggi. Cosa ti serve?')
-    .reprompt('Per esempio di\': aggiungi il latte.')
+    .speak('Cosa ti serve?')
+    .reprompt('Dimmi cosa aggiungere alla spesa, per esempio: latte e uova. Oppure chiedimi cosa si butta stasera.')
+    .withShouldEndSession(false)
     .getResponse(),
 };
 
@@ -256,6 +259,16 @@ const FaccendeIntentHandler = {
   },
 };
 
+const YesIntentHandler = {
+  canHandle: (h) => Alexa.getRequestType(h.requestEnvelope) === 'IntentRequest' && Alexa.getIntentName(h.requestEnvelope) === 'AMAZON.YesIntent',
+  handle: (h) => h.responseBuilder.speak('Dimmi pure.').reprompt('Cosa aggiungo alla spesa?').withShouldEndSession(false).getResponse(),
+};
+
+const NoIntentHandler = {
+  canHandle: (h) => Alexa.getRequestType(h.requestEnvelope) === 'IntentRequest' && Alexa.getIntentName(h.requestEnvelope) === 'AMAZON.NoIntent',
+  handle: (h) => h.responseBuilder.speak('Perfetto, a dopo!').withShouldEndSession(true).getResponse(),
+};
+
 const HelpIntentHandler = {
   canHandle: (h) => Alexa.getRequestType(h.requestEnvelope) === 'IntentRequest' && Alexa.getIntentName(h.requestEnvelope) === 'AMAZON.HelpIntent',
   handle: (h) => h.responseBuilder
@@ -272,7 +285,7 @@ const CancelAndStopIntentHandler = {
 
 const FallbackIntentHandler = {
   canHandle: (h) => Alexa.getRequestType(h.requestEnvelope) === 'IntentRequest' && Alexa.getIntentName(h.requestEnvelope) === 'AMAZON.FallbackIntent',
-  handle: (h) => h.responseBuilder.speak('Non ho capito. Prova con: aggiungi il latte.').reprompt('Cosa ti serve?').getResponse(),
+  handle: (h) => h.responseBuilder.speak('Non ho capito. Dimmi cosa aggiungere, per esempio: latte.').reprompt('Cosa ti serve?').getResponse(),
 };
 
 const SessionEndedRequestHandler = {
@@ -296,6 +309,8 @@ exports.handler = Alexa.SkillBuilders.custom()
     RimuoviIntentHandler,
     RifiutiIntentHandler,
     FaccendeIntentHandler,
+    YesIntentHandler,
+    NoIntentHandler,
     HelpIntentHandler,
     CancelAndStopIntentHandler,
     FallbackIntentHandler,

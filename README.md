@@ -101,7 +101,9 @@ Le cose aggiunte a voce compaiono nell'app con il bollino **Alexa**.
 
 Una skill "in sviluppo" funziona già su **tutti gli Echo collegati al vostro account**, senza pubblicarla nello store.
 
-**Consiglio**: se a volte Alexa mette la cosa nella *sua* lista invece che nella vostra, dite prima «Alexa, apri casa comperotto» e poi «aggiungi il latte». Per non dire la frase lunga potete creare una **Routine** nell'app Alexa (es. «Alexa, spesa» → *Personalizzato*: «apri casa comperotto»).
+**Più corto: la Routine «Alexa, spesa».** «Alexa, aggiungi latte» da solo finisce sempre nella lista interna di Amazon (non si può cambiare). Con una Routine basta dire «Alexa, spesa»: risponde «Cosa ti serve?», dite «latte e uova», lei chiede «Altro?» e chiudete con «no».
+App Alexa → **Altro → Routine → +** → *Quando succede questo*: **Voce** → «spesa» → *Aggiungi azione*: **Personalizzata** → «apri casa comperotto» → **Salva**.
+Per le cose che comprate più spesso potete fare anche Routine dirette, es. «Alexa, manca il latte» → *Personalizzata*: «chiedi a casa comperotto di aggiungere il latte».
 
 ## 4. Film: copertine e dove vederli
 

@@ -1,5 +1,5 @@
 // Casa: faccende ricorrenti, lavori da fare, calendario rifiuti
-import { render as spesaRender } from './spesa.js';
+import { render as spesaRender, tidyShopping } from './spesa.js';
 import { html, raw, lsGet, lsSet, todayIso, shortDate, parseIso, WEEKDAYS, WEEKDAYS_SHORT, addDays, vibrate, cap, timeAgo } from '../utils.js';
 import { icon, catFace } from '../icons.js';
 import { ROOMS, CHORE_ICONS, CHORE_TONES, BINS, BIN_IDS, choreStatus, freqLabel } from '../data.js';
@@ -264,3 +264,9 @@ export const actions = {
 };
 
 export const badge = () => dueChores().filter((c) => c.lastDone !== todayIso()).length;
+
+// in Spesa: unisce eventuali doppioni e sistema le maiuscole
+export function after(route) {
+  const tab = route[1] || lsGet('casa.tab') || 'spesa';
+  if (tab === 'spesa') tidyShopping();
+}

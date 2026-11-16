@@ -1,5 +1,5 @@
 // Service worker: l'app si apre anche senza rete e si aggiorna da sola in sottofondo.
-const CACHE = 'casa-v1.4.0';
+const CACHE = 'casa-v1.4.1';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css',
   'js/app.js', 'js/core.js', 'js/store.js', 'js/config.js', 'js/utils.js', 'js/icons.js', 'js/data.js', 'js/seed.js', 'js/season.js',

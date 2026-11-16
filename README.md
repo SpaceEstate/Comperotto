@@ -4,7 +4,7 @@ La casa della famiglia Comperotto, in tasca: Patrick, Serena, Thor e Minù.
 Un'app fatta su misura per **iPhone e iPad** (si installa dalla schermata Home e si apre a tutto schermo, come un'app vera) con:
 
 - **Casa**
-  - **Spesa**: divisa per reparto in automatico, "spesso comprati" con un tocco, carrello e "svuota", e voci aggiunte con **Alexa**;
+  - **Spesa**: divisa per reparto in automatico, "spesso comprati" con un tocco, carrello e "svuota", e voci aggiunte con **Alexa**. Niente doppioni: ogni cosa ha la maiuscola, se è già da comprare non si ripete e se era nel carrello torna da comprare;
   - **Faccende** che si ripetono (lettiera, lavatrice, lenzuola, bagno…) con scadenze e chi le ha fatte;
   - **Lavori** da fare (tagliare le tende, sistemare i mobili…) per stanza e priorità;
   - **Rifiuti**: il calendario della raccolta. Ogni sera la Home dice cosa portare fuori.

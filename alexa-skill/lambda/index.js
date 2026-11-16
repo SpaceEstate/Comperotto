@@ -72,6 +72,11 @@ function createClient({ apiUrl, codice, transport = defaultTransport }) {
     async remove(col, id) {
       await call('POST', 'dati', { ops: [{ op: 'remove', col, id }] });
     },
+    /** più modifiche in una sola chiamata */
+    async batch(ops) {
+      if (ops.length) await call('POST', 'dati', { ops });
+    },
+    newId,
   };
 }
 
@@ -177,18 +182,30 @@ const AggiungiIntentHandler = {
         .addElicitSlotDirective('prodotto').getResponse();
     }
     const list = await db().list('spesa');
-    const open = new Set(list.filter((i) => !i.done).map((i) => norm(i.name)));
+    const key = (x) => norm(cleanItem(x));
     const added = [];
     const already = [];
+    const ops = [];
     for (const name of items) {
-      if (open.has(norm(name))) { already.push(name); continue; }
-      const key = norm(name).replace(/[^a-z0-9]+/g, '-').slice(0, 60) || 'x';
+      const n = norm(name);
+      const same = list.filter((i) => key(i.name) === n);
+      if (same.some((i) => !i.done)) { already.push(name); continue; }
+      if (same.length) {
+        // era nel carrello: torna da comprare e dal carrello sparisce (niente doppioni)
+        const [keep, ...rest] = [...same].sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
+        ops.push({ op: 'update', col: 'spesa', id: keep.id, data: { name, done: false, doneAt: null, qty: '', by: '', source: 'alexa' } });
+        rest.forEach((r) => ops.push({ op: 'remove', col: 'spesa', id: r.id }));
+        keep.done = false;
+      } else {
+        const id = db().newId();
+        ops.push({ op: 'set', col: 'spesa', id, data: { name, qty: '', category: '', done: false, by: '', source: 'alexa', createdAt: Date.now() } });
+        list.push({ id, name, done: false });
+      }
       // anche Alexa alimenta i "spesso comprati" dell'app
-      await db().add('spesa', { name, qty: '', category: '', done: false, by: '', source: 'alexa', createdAt: Date.now() },
-        [{ op: 'bump', col: 'freq', id: key, data: { name } }]);
-      open.add(norm(name));
+      ops.push({ op: 'bump', col: 'freq', id: n.replace(/[^a-z0-9]+/g, '-').slice(0, 60) || 'x', data: { name } });
       added.push(name);
     }
+    await db().batch(ops);
     let text = '';
     if (added.length) text += `Fatto: ho aggiunto ${joinIt(added.map((x) => x.toLowerCase()))} alla spesa.`;
     if (already.length) text += ` C'era già: ${joinIt(already.map((x) => x.toLowerCase()))}.`;

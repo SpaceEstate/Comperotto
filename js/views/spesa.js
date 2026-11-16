@@ -6,27 +6,68 @@ import { state, store, me, whoBadge, openSheet, toast, val, emptyState, closeShe
 
 const catOf = (it) => it.category || classify(it.name);
 
+// "il latte" → "Latte": niente articoli, sempre con la maiuscola
+const ART = /^(?:(?:il|lo|la|i|gli|le|un|uno|una|del|dello|della|dei|degli|delle)\s+|(?:l|un|dell|d)['’]\s*)/i;
+export const cleanName = (s) => cap(String(s || '').trim().replace(ART, '').trim());
+const keyOf = (s) => norm(cleanName(s));
+const freqId = (name) => norm(name).replace(/[^a-z0-9]+/g, '-').slice(0, 60) || 'x';
+
+/**
+ * Aggiunge alla spesa senza doppioni:
+ *  - già da comprare → non lo aggiunge (aggiorna solo la quantità se indicata)
+ *  - già spuntato in passato → lo toglie dal carrello e lo rimette da comprare
+ * Restituisce i nomi aggiunti; in .already quelli che c'erano già.
+ */
 export function addShopping(text, extra = {}) {
   const items = state.data.spesa;
   const added = [];
+  added.already = [];
+  const seen = new Set();
   String(text).split(/\s*[,;\n]\s*/).filter(Boolean).forEach((part) => {
     const { qty, name } = parseQty(part);
-    const clean = cap(name);
+    const clean = cleanName(name);
     if (!clean) return;
     const n = norm(clean);
+    if (seen.has(n)) return;
+    seen.add(n);
+    const q = extra.qty || qty;
     // dalle ricette: "uova freschissime" vale come "uova" se è già in lista
     const loose = (x) => extra.recipe && (n.startsWith(x + ' ') || x.startsWith(n + ' '));
-    const dup = items.find((i) => !i.done && (norm(i.name) === n || loose(norm(i.name))));
-    if (dup) {
-      const q = extra.qty || qty;
-      if (q && dup.qty !== q) store.update('spesa', dup.id, { qty: q });
+    const same = items.filter((i) => keyOf(i.name) === n || loose(keyOf(i.name)));
+    const open = same.filter((i) => !i.done);
+    if (open.length) {
+      if (q && open[0].qty !== q) store.update('spesa', open[0].id, { qty: q });
+      added.already.push(clean);
       return;
     }
-    store.add('spesa', { name: clean, category: classify(clean), done: false, by: me() || '', source: 'app', ...extra, qty: extra.qty || qty });
-    store.bump('freq', norm(clean).replace(/[^a-z0-9]+/g, '-').slice(0, 60) || 'x', { name: clean, category: classify(clean) });
+    if (same.length) {
+      // era nel carrello: torna da comprare, e nel carrello non resta niente
+      const [keep, ...extraDone] = [...same].sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
+      store.update('spesa', keep.id, { name: clean, done: false, doneAt: null, qty: q || '', by: me() || '', source: extra.source || 'app', ...(extra.recipe ? { recipe: extra.recipe } : {}) });
+      extraDone.forEach((i) => store.remove('spesa', i.id));
+    } else {
+      store.add('spesa', { name: clean, category: classify(clean), done: false, by: me() || '', source: 'app', ...extra, qty: q });
+    }
+    store.bump('freq', freqId(clean), { name: clean, category: classify(clean) });
     added.push(clean);
   });
   return added;
+}
+
+/** Sistema la lista se ci sono doppioni o nomi senza maiuscola (es. aggiunti prima di questa regola). */
+export function tidyShopping() {
+  const groups = {};
+  state.data.spesa.forEach((i) => { (groups[keyOf(i.name)] ||= []).push(i); });
+  Object.values(groups).forEach((g) => {
+    let keep = g[0];
+    if (g.length > 1) {
+      const open = g.filter((i) => !i.done).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0) || String(a.id).localeCompare(String(b.id)));
+      keep = open[0] || [...g].sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0) || String(a.id).localeCompare(String(b.id)))[0];
+      g.forEach((i) => { if (i.id !== keep.id) store.remove('spesa', i.id); });
+    }
+    const nice = cleanName(keep.name);
+    if (nice && nice !== keep.name) store.update('spesa', keep.id, { name: nice });
+  });
 }
 
 export function render() {
@@ -68,7 +109,7 @@ export function render() {
           <div class="row" id="s-${it.id}">
             <button class="check" data-action="spesa-toggle" data-id="${it.id}" aria-label="Preso ${it.name}">${icon('check')}</button>
             <button class="row-edit" data-action="spesa-edit" data-id="${it.id}">
-              <div class="row-title">${it.name} ${it.qty ? html`<span class="muted" style="font-weight:500">· ${it.qty}</span>` : ''}</div>
+              <div class="row-title">${cleanName(it.name)} ${it.qty ? html`<span class="muted" style="font-weight:500">· ${it.qty}</span>` : ''}</div>
               ${it.note || it.source === 'alexa' || it.by ? html`<div class="row-sub">
                 ${it.source === 'alexa' ? html`<span class="pill alexa">${icon('mic', 'xs')} Alexa</span>` : ''}
                 ${it.note ? html`<span>${it.note}</span>` : ''}
@@ -86,7 +127,7 @@ export function render() {
         ${done.slice(0, 30).map((it) => html`
           <div class="row done">
             <button class="check on" data-action="spesa-toggle" data-id="${it.id}" aria-label="Rimetti ${it.name}">${icon('check')}</button>
-            <div class="row-main"><div class="row-title">${it.name}</div><div class="row-sub">${timeAgo(it.doneAt)}</div></div>
+            <div class="row-main"><div class="row-title">${cleanName(it.name)}</div><div class="row-sub">${timeAgo(it.doneAt)}</div></div>
           </div>`)}
       </div>` : ''}
   `;
@@ -106,7 +147,7 @@ function editSheet(it) {
       <label class="field"><span>Nota</span><input name="note" value="${it.note || ''}" placeholder="es. quello senza lattosio"></label>`,
     extra: html`<button class="btn danger" type="button" data-action="spesa-del" data-id="${it.id}">${icon('trash', 'sm')}</button>`,
     onSubmit: (fd) => {
-      const name = cap(val(fd, 'name'));
+      const name = cleanName(val(fd, 'name'));
       if (!name) return false;
       store.update('spesa', it.id, { name, qty: val(fd, 'qty'), category: val(fd, 'category'), note: val(fd, 'note') });
     },
@@ -119,6 +160,7 @@ export const actions = {
     const added = addShopping(input.value);
     input.value = '';
     if (added.length) vibrate();
+    if (added.already.length) toast(`${added.already.join(', ')}: ${added.already.length > 1 ? 'ci sono già' : 'c’è già'} in lista`);
   },
   'spesa-quick': ({ el }) => { addShopping(el.dataset.name); vibrate(); },
   'spesa-toggle': ({ id, el }) => {

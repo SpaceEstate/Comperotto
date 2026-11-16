@@ -1,10 +1,15 @@
 // Lista della spesa
 import { html, raw, norm, cap, parseQty, timeAgo, vibrate, plural } from '../utils.js';
 import { icon, catFace } from '../icons.js';
-import { SHOP_CATS, shopCat, classify } from '../data.js';
+import { SHOP_CATS, normCat, classify } from '../data.js';
 import { state, store, me, whoBadge, openSheet, toast, val, emptyState, closeSheet } from '../core.js';
 
-const catOf = (it) => it.category || classify(it.name);
+// Reparto: quello scelto a mano (per quel prodotto o ricordato dalle volte prima), altrimenti indovinato dal nome
+const learnedCat = (name) => {
+  const f = state.data.freq.find((x) => x.id === freqId(cleanName(name)));
+  return f && f.catManual ? normCat(f.category) : null;
+};
+const catOf = (it) => (it.catManual && it.category ? normCat(it.category) : learnedCat(it.name) || classify(cleanName(it.name)));
 
 // "il latte" → "Latte": niente articoli, sempre con la maiuscola
 const ART = /^(?:(?:il|lo|la|i|gli|le|un|uno|una|del|dello|della|dei|degli|delle)\s+|(?:l|un|dell|d)['’]\s*)/i;
@@ -46,9 +51,9 @@ export function addShopping(text, extra = {}) {
       store.update('spesa', keep.id, { name: clean, done: false, doneAt: null, qty: q || '', by: me() || '', source: extra.source || 'app', ...(extra.recipe ? { recipe: extra.recipe } : {}) });
       extraDone.forEach((i) => store.remove('spesa', i.id));
     } else {
-      store.add('spesa', { name: clean, category: classify(clean), done: false, by: me() || '', source: 'app', ...extra, qty: q });
+      store.add('spesa', { name: clean, done: false, by: me() || '', source: 'app', ...extra, qty: q });
     }
-    store.bump('freq', freqId(clean), { name: clean, category: classify(clean) });
+    store.bump('freq', freqId(clean), { name: clean });
     added.push(clean);
   });
   return added;
@@ -80,7 +85,7 @@ export function render() {
     .sort((a, b) => (b.count || 0) - (a.count || 0))
     .slice(0, 14);
 
-  const groups = SHOP_CATS.map((c) => ({ ...c, items: todo.filter((i) => catOf(i) === c.id).sort((a, b) => a.name.localeCompare(b.name, 'it')) })).filter((g) => g.items.length);
+  const groups = SHOP_CATS.map((c) => ({ ...c, items: todo.filter((i) => catOf(i) === c.id).sort((a, b) => cleanName(a.name).localeCompare(cleanName(b.name), 'it', { sensitivity: 'base' })) })).filter((g) => g.items.length);
 
   const total = todo.length + done.length;
   const pct = total ? Math.round((done.length / total) * 100) : 0;
@@ -149,7 +154,11 @@ function editSheet(it) {
     onSubmit: (fd) => {
       const name = cleanName(val(fd, 'name'));
       if (!name) return false;
-      store.update('spesa', it.id, { name, qty: val(fd, 'qty'), category: val(fd, 'category'), note: val(fd, 'note') });
+      const cat = val(fd, 'category');
+      const manual = cat !== classify(name);
+      store.update('spesa', it.id, { name, qty: val(fd, 'qty'), category: cat, catManual: manual, note: val(fd, 'note') });
+      // la prossima volta che si aggiunge questo prodotto va già nel reparto giusto
+      if (cat !== catOf(it) || manual) store.update('freq', freqId(name), { name, category: cat, catManual: manual });
     },
   });
 }

@@ -84,54 +84,84 @@ export function upcomingDates(settings, cats = [], ref = todayIso()) {
 // ---------------------------------------------------------------------------
 // Spesa
 // ---------------------------------------------------------------------------
+// Reparti nell'ordine del giro al supermercato (i surgelati alla fine, così restano freddi)
 export const SHOP_CATS = [
-  { id: 'frutta', label: 'Frutta e verdura', color: '#7E9B5A' },
-  { id: 'forno', label: 'Pane e forno', color: '#C99A63' },
-  { id: 'latticini', label: 'Latte, uova e formaggi', color: '#E1C16E' },
-  { id: 'carne', label: 'Carne e pesce', color: '#C27464' },
-  { id: 'dispensa', label: 'Dispensa', color: '#B58A5A' },
-  { id: 'surgelati', label: 'Surgelati', color: '#7FA8C4' },
-  { id: 'bevande', label: 'Bevande', color: '#6E91A6' },
-  { id: 'casa', label: 'Casa e pulizia', color: '#9A8D80' },
-  { id: 'gatti', label: 'Per Thor e Minù', color: '#A88BB0' },
-  { id: 'altro', label: 'Altro', color: '#B9B0A6' },
+  { id: 'frutta', label: 'Frutta e verdura', color: '#8DBF7E' },
+  { id: 'forno', label: 'Pane e forno', color: '#E2B47E' },
+  { id: 'freschi', label: 'Freschi: latte, formaggi, salumi', color: '#F2CF72' },
+  { id: 'carne', label: 'Carne e pesce', color: '#E59A8C' },
+  { id: 'dispensa', label: 'Dispensa', color: '#CFA57A' },
+  { id: 'bevande', label: 'Bevande', color: '#8FB9D8' },
+  { id: 'casa', label: 'Casa e igiene', color: '#B6A79A' },
+  { id: 'gatti', label: 'Per Thor e Minù', color: '#C3A5D6' },
+  { id: 'surgelati', label: 'Surgelati', color: '#9CC9E6' },
+  { id: 'altro', label: 'Altro', color: '#C9C0B6' },
 ];
-export const shopCat = (id) => SHOP_CATS.find((c) => c.id === id) || SHOP_CATS[SHOP_CATS.length - 1];
+const LEGACY_CATS = { latticini: 'freschi' };
+export const shopCat = (id) => SHOP_CATS.find((c) => c.id === (LEGACY_CATS[id] || id)) || SHOP_CATS[SHOP_CATS.length - 1];
+export const normCat = (id) => (SHOP_CATS.some((c) => c.id === (LEGACY_CATS[id] || id)) ? LEGACY_CATS[id] || id : 'altro');
 
+// Parole che fanno capire il reparto (separate da virgola; vanno bene anche più parole)
 const KW = {
-  frutta: 'frutta verdura mela mele banana banane pera pere arance arancia limone limoni lime insalata lattuga rucola valeriana pomodori pomodoro pomodorini patate patata cipolla cipolle cipollotti aglio carote carota zucchine zucchina zucca melanzane melanzana peperoni peperone spinaci funghi basilico prezzemolo rosmarino salvia menta fragole uva kiwi avocado sedano broccoli cavolfiore cavolo cavolini finocchi finocchio porri porro mandarini clementine ananas lamponi mirtilli pesche albicocche ciliegie anguria melone fichi radicchio cetrioli cetriolo zenzero fresco legumi freschi piselli freschi castagne melograno cachi',
-  forno: 'pane panini pancarre pan carre grissini piadine piadina focaccia cornetti brioche fette biscottate taralli panettone pandoro pangrattato',
-  latticini: 'latte yogurt burro panna uova uovo mozzarella mozzarelle parmigiano grana pecorino ricotta mascarpone formaggio formaggi stracchino gorgonzola scamorza fontina provola emmental robiola kefir besciamella',
-  carne: 'pollo petto di pollo manzo maiale macinato salsiccia salsicce prosciutto cotto crudo salame speck bresaola mortadella pancetta guanciale tacchino wurstel cotechino zampone vitello hamburger bistecca bistecche carne pesce salmone gamberi gamberetti merluzzo orata branzino spada cozze vongole calamari polpo arrosto fesa',
-  dispensa: 'pasta spaghetti rigatoni penne fusilli tagliatelle lasagne gnocchi riso farina zucchero sale olio aceto tonno passata pelati polpa concentrato ceci lenticchie fagioli caffe cialde capsule the tisana camomilla biscotti cereali muesli marmellata confettura miele nutella cioccolato cacao lievito brodo dado spezie pepe cannella noce moscata chiodi di garofano sugo pesto cracker crackers mais olive capperi savoiardi frutta secca mandorle noci nocciole pinoli uvetta amido vanillina zucchero a velo maionese ketchup senape legumi patatine popcorn zenzero curcuma paprika origano',
-  surgelati: 'surgelati surgelato gelato gelati piselli bastoncini spinaci surgelati minestrone ghiaccio pizza surgelata',
-  bevande: 'acqua vino birra succo succhi coca cola aranciata spumante prosecco bibite bibita tonica gin aperol limonata',
-  casa: 'detersivo detersivi sapone carta igienica scottex carta assorbente spugne spugna sacchetti sacchi ammorbidente candeggina pellicola alluminio carta forno lampadina lampadine pile batterie tovaglioli shampoo balsamo bagnoschiuma dentifricio spazzolino deodorante cotton fioc dischetti assorbenti rasoi anticalcare sgrassatore pastiglie lavastoviglie brillantante fazzoletti',
-  gatti: 'croccantini scatolette bustine gatti umido gatti cibo gatti lettiera sabbia gatti sabbia snack gatti erba gatta catnip antiparassitario tiragraffi giochini gatti gatto gatti',
+  frutta: `frutta, verdura, mela, mele, banana, banane, pera, pere, arancia, arance, limone, limoni, lime, insalata, insalata in busta, lattuga, rucola,
+    valeriana, songino, spinaci, pomodoro, pomodori, pomodorini, patata, patate, cipolla, cipolle, cipollotti, scalogno, aglio, carota, carote, zucchina,
+    zucchine, zucca, melanzana, melanzane, peperone, peperoni, funghi, champignon, basilico, prezzemolo, rosmarino, salvia, menta, erba cipollina,
+    fragole, uva, kiwi, avocado, sedano, broccoli, cavolfiore, cavolo, cavolini, verza, finocchio, finocchi, porro, porri, mandarini, clementine,
+    ananas, lamponi, mirtilli, frutti di bosco, pesche, albicocche, ciliegie, anguria, melone, fichi, radicchio, cetriolo, cetrioli, zenzero fresco,
+    castagne, melograno, cachi, asparagi, carciofi, fagiolini, piselli freschi, legumi freschi, mango, cocco, datteri, prugne, susine`,
+  forno: `pane, panini, pancarre, pan carre, pane in cassetta, pane integrale, grissini, piadina, piadine, focaccia, cornetti, croissant, brioche,
+    fette biscottate, taralli, cracker, crackers, gallette, panettone, pandoro, colomba, pangrattato, pan grattato, torta, crostata, ciambella`,
+  freschi: `latte, latte fresco, latte di soia, latte di mandorla, latte di avena, yogurt, yogurt greco, burro, panna, panna da cucina, uova, uovo, mozzarella,
+    mozzarelle, burrata, stracciatella, parmigiano, grana, grana padano, pecorino, ricotta, mascarpone, formaggio, formaggi, stracchino, crescenza,
+    gorgonzola, scamorza, fontina, provola, provolone, emmental, robiola, philadelphia, sottilette, feta, asiago, taleggio, kefir, besciamella,
+    prosciutto, prosciutto cotto, prosciutto crudo, salame, salamino, speck, bresaola, mortadella, pancetta, guanciale, affettati, affettato, wurstel,
+    coppa, porchetta, tacchino affettato, pasta fresca, tortellini, ravioli, gnocchi, pasta sfoglia, pasta brise, pasta frolla, impasto pizza,
+    lievito di birra, hummus, tofu, budino, budini, panna cotta, tiramisu`,
+  carne: `carne, carne macinata, macinato, pollo, petto di pollo, cosce di pollo, alette di pollo, manzo, maiale, vitello, agnello, coniglio, salsiccia, salsicce,
+    tacchino, hamburger, bistecca, bistecche, fettine, cotolette, spezzatino, arrosto, fesa, lonza, costine, cotechino, zampone, pesce, salmone,
+    tonno fresco, gamberi, gamberetti, merluzzo, orata, branzino, spigola, pesce spada, cozze, vongole, calamari, polpo, seppie, alici, sgombro`,
+  dispensa: `pasta, spaghetti, rigatoni, penne, fusilli, tagliatelle, lasagne, linguine, farfalle, mezze maniche, orecchiette, paccheri, riso, farina, zucchero,
+    sale, sale grosso, olio, olio extravergine, olio di semi, aceto, aceto balsamico, tonno, tonno in scatola, sgombro in scatola, passata,
+    passata di pomodoro, pelati, polpa di pomodoro, concentrato, ceci, lenticchie, fagioli, piselli in scatola, mais, caffe, cialde, capsule,
+    te, the, tisana, camomilla, biscotti, cereali, muesli, fiocchi di avena, marmellata, confettura, miele, nutella, crema spalmabile, cioccolato,
+    cioccolata, cacao, lievito, brodo, dado, spezie, pepe, cannella, noce moscata, chiodi di garofano, origano, paprika, curcuma, zenzero, sugo, pesto,
+    olive, capperi, savoiardi, frutta secca, mandorle, noci, nocciole, pinoli, uvetta, pistacchi, arachidi, amido, maizena, vanillina,
+    zucchero a velo, maionese, ketchup, senape, salsa, patatine, popcorn, snack, merendine, legumi, polenta, cous cous, latte a lunga conservazione, risotto, zuppa, minestra, burro di arachidi`,
+  bevande: `acqua, acqua frizzante, acqua naturale, vino, vino rosso, vino bianco, birra, birre, succo, succhi, succo di frutta, coca cola, aranciata,
+    spumante, prosecco, bibita, bibite, acqua tonica, tonica, gin, vodka, rum, aperol, campari, limonata, te freddo, energy drink, sciroppo`,
+  casa: `detersivo, detersivi, detersivo piatti, detersivo per i piatti, detersivo lavatrice, detersivo per la lavatrice, sapone, sapone mani, carta igienica,
+    scottex, carta assorbente, rotoloni, spugne, spugna, sacchetti, sacchi, sacchetti spazzatura, sacchetti della spazzatura, sacchi immondizia,
+    ammorbidente, candeggina, pellicola, alluminio, carta forno, carta da forno, lampadina, lampadine, pile, batterie, tovaglioli, fazzoletti, shampoo,
+    balsamo, bagnoschiuma, docciaschiuma, dentifricio, spazzolino, collutorio, deodorante, cotton fioc, dischetti, assorbenti, rasoi, crema mani,
+    crema corpo, crema viso, anticalcare, sgrassatore, pastiglie lavastoviglie, brillantante, sale lavastoviglie, guanti, profumatore, igienizzante`,
+  gatti: `croccantini, crocchette, scatolette, scatolette per i gatti, bustine, umido gatti, cibo gatti, cibo per gatti, cibo per i gatti, lettiera, sabbia,
+    sabbia gatti, sabbia per i gatti, snack gatti, snack per i gatti, erba gatta, catnip, antiparassitario, tiragraffi, giochini gatti, gatti, gatto`,
+  surgelati: `surgelati, surgelato, surgelata, gelato, gelati, piselli, piselli surgelati, spinaci surgelati, verdure surgelate, bastoncini, bastoncini di pesce,
+    minestrone surgelato, ghiaccio, pizza surgelata, pizze surgelate, patatine surgelate, sofficini, cordon bleu`,
 };
 
+// le parole più lunghe vincono ("pasta fresca" prima di "pasta", "sale lavastoviglie" prima di "sale")
 const KW_LIST = Object.entries(KW)
-  .flatMap(([cat, s]) => {
-    // le parole singole sono separate da spazio; le combinazioni note di più parole sono riconosciute sotto
-    const multi = ['petto di pollo', 'prosciutto cotto', 'prosciutto crudo', 'pan carre', 'fette biscottate', 'carta igienica', 'carta assorbente', 'carta forno', 'cotton fioc', 'umido gatti', 'cibo gatti', 'sabbia gatti', 'snack gatti', 'erba gatta', 'giochini gatti', 'noce moscata', 'chiodi di garofano', 'frutta secca', 'zucchero a velo', 'coca cola', 'pizza surgelata', 'spinaci surgelati', 'piselli freschi', 'legumi freschi', 'zenzero fresco', 'pastiglie lavastoviglie'];
-    const words = [];
-    let rest = ' ' + s + ' ';
-    multi.forEach((m) => { if (rest.includes(' ' + m + ' ')) { words.push(m); rest = rest.replace(' ' + m + ' ', ' '); } });
-    return [...words, ...rest.trim().split(/\s+/)].filter(Boolean).map((w) => [norm(w), cat]);
-  })
+  .flatMap(([cat, s]) => s.split(',').map((w) => norm(w)).filter(Boolean).map((w) => [w, cat]))
   .sort((a, b) => b[0].length - a[0].length);
 
-/** Indovina il reparto di un prodotto dal nome. */
+/** Indovina il reparto di un prodotto dal nome: conta di più la prima parola ("gelato al cioccolato" → surgelati). */
 export function classify(name) {
-  const t = ' ' + norm(name).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ') + ' ';
-  const words = t.trim().split(' ');
+  const t = norm(name).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const words = t.split(' ');
+  let best = null;
   for (const [kw, cat] of KW_LIST) {
-    if (kw.includes(' ')) { if (t.includes(' ' + kw + ' ')) return cat; continue; }
-    for (const w of words) {
-      if (kw.length <= 3 ? w === kw : (w === kw || (w.startsWith(kw) && w.length - kw.length <= 2))) return cat;
+    let pos = -1;
+    if (kw.includes(' ')) {
+      const i = (' ' + t + ' ').indexOf(' ' + kw + ' ');
+      if (i >= 0) pos = t.slice(0, i).split(' ').filter(Boolean).length;
+    } else {
+      pos = words.findIndex((w) => (kw.length <= 3 ? w === kw : w === kw || (w.startsWith(kw) && w.length - kw.length <= 2)));
     }
+    if (pos < 0) continue;
+    if (!best || pos < best.pos || (pos === best.pos && kw.length > best.len)) best = { pos, len: kw.length, cat };
   }
-  return 'altro';
+  return best ? best.cat : 'altro';
 }
 
 // ---------------------------------------------------------------------------

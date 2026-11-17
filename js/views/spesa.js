@@ -108,7 +108,7 @@ export function render() {
     ${!todo.length && !done.length ? emptyState('Frigo pieno, lista vuota', 'Scrivi qui sopra cosa serve.', catFace('a')) : ''}
 
     <div class="shop-groups">${groups.map((g) => html`<section class="shop-group">
-      <div class="cat-head" style="--c:${g.color}"><i></i>${g.label}<span class="cat-n">${g.items.length}</span></div>
+      <div class="cat-head" style="--c:${g.color}"><span class="cat-emo" aria-hidden="true">${g.emoji}</span>${g.label}<span class="cat-n">${g.items.length}</span></div>
       <div class="list">
         ${g.items.map((it) => html`
           <div class="row" id="s-${it.id}"${swipe(it.id, ['spesa-toggle', 'Preso'], ['spesa-del', 'Elimina'])}>
@@ -145,7 +145,7 @@ function editSheet(it) {
       <div class="field-row">
         <label class="field"><span>Quantità</span><input name="qty" value="${it.qty || ''}" placeholder="es. 2, 500 g"></label>
         <label class="field"><span>Reparto</span><select name="category">
-          ${SHOP_CATS.map((c) => html`<option value="${c.id}" ${c.id === catOf(it) ? raw('selected') : ''}>${c.label}</option>`)}
+          ${SHOP_CATS.map((c) => html`<option value="${c.id}" ${c.id === catOf(it) ? raw('selected') : ''}>${c.emoji} ${c.label}</option>`)}
         </select></label>
       </div>
       <label class="field"><span>Nota</span><input name="note" value="${it.note || ''}" placeholder="es. quello senza lattosio"></label>`,

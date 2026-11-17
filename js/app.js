@@ -1,12 +1,12 @@
 // Fam. Comperotto — avvio, navigazione, aggiornamento dello schermo
-import { html, raw, todayIso, lsGet } from './utils.js';
+import { html, raw, todayIso, lsGet, lsSet } from './utils.js';
 import { icon } from './icons.js';
 import { COLLECTIONS, setErrorHandler, detectBackend, savedCode, useSync } from './store.js';
 import { state, store, setRenderer, rerender, closeSheet, submitSheet, sheetOpen, sheetError, openSheet, toast, settings, saveSettings, me, setMe, val } from './core.js';
 import { applySeason } from './season.js';
 import { initGestures } from './gestures.js';
 import { rinfresca as rinfrescaNotifiche, stato as statoNotifiche } from './notifiche.js';
-import * as player from './player.js';
+import { sp as spotifyStato, eQui } from './spotify.js';
 import * as home from './views/home.js';
 import * as spesa from './views/spesa.js';
 import * as casa from './views/casa.js';
@@ -44,6 +44,15 @@ function alias(r) {
   if (r[0] === 'casa' && r[1] === 'routine') return ['casa', 'faccende'];
   return r;
 }
+// iPad: barra laterale stretta (solo icone) o aperta; ogni dispositivo ricorda la sua scelta
+const sideOpen = () => document.documentElement.dataset.side === 'aperta';
+actions['side-toggle'] = () => {
+  const v = sideOpen() ? 'stretta' : 'aperta';
+  document.documentElement.dataset.side = v;
+  lsSet('casa.side', v);
+  rerender();
+};
+
 const route = () => alias((location.hash.replace(/^#\/?/, '') || '').split('/').map(decodeURIComponent));
 const wideMq = matchMedia('(min-width: 700px) and (min-height: 560px)');
 const wide = () => wideMq.matches;
@@ -64,7 +73,7 @@ function patch(from, to) {
   if (from.nodeName === 'IFRAME' || from.hasAttribute('data-keep')) return; // lettori e mappe restano come sono
   if (from.nodeName === 'INPUT' || from.nodeName === 'TEXTAREA' || from.nodeName === 'SELECT') {
     if (from.type === 'checkbox' || from.type === 'radio') from.checked = to.hasAttribute('checked');
-    else if (document.activeElement !== from && from.type !== 'file' && from.nodeName !== 'SELECT') from.value = to.getAttribute('value') ?? to.value ?? '';
+    else if (document.activeElement !== from && !from._busy && from.type !== 'file' && from.nodeName !== 'SELECT') from.value = to.getAttribute('value') ?? to.value ?? '';
     if (from.nodeName === 'TEXTAREA') return;
   }
   morphChildren(from, to);
@@ -115,7 +124,10 @@ function render() {
   const tabsTpl = document.createElement('template');
   const cur = VIEWS[r[0]] ? r[0] : '';
   tabsTpl.innerHTML = html`<div class="tabbar-inner">
-    <a class="side-brand" href="#/"><span class="mini-logo"></span><span>Fam. Comperotto</span></a>
+    <div class="side-head">
+      <a class="side-brand" href="#/" aria-label="Fam. Comperotto"><span class="mini-logo"></span><span class="side-name">Fam. Comperotto</span></a>
+      <button class="side-toggle" data-action="side-toggle" aria-label="${sideOpen() ? 'Stringi il menu' : 'Allarga il menu'}" aria-expanded="${sideOpen() ? 'true' : 'false'}">${icon('sidebar')}</button>
+    </div>
     ${TABS.map((t) => {
       const n = t.badge ? t.badge() : 0;
       const on = t.key === cur || (t.key === '' && ['impostazioni', 'musica', 'gatti', 'dove'].includes(cur) && !wide());
@@ -168,17 +180,14 @@ document.addEventListener('input', (ev) => {
   inputTimer = setTimeout(() => run(el.dataset.input, { el, ev }), 150);
 });
 
-document.addEventListener('keydown', (ev) => {
-  if (ev.key !== 'Escape') return;
-  if (sheetOpen()) closeSheet();
-  else if (player.isExpanded()) player.riduci();
-});
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && sheetOpen()) closeSheet(); });
 
 // gesti dell'iPhone: fogli da trascinare giù, indietro dal bordo, tira giù per aggiornare, righe da scorrere
 initGestures({
   run,
   refresh: async () => {
     if (route()[0] === 'dove') { await dove.actions['dove-aggiorna'](); return; }
+    if (route()[0] === 'musica') await musica.refresh();
     if (store.mode === 'sync') await store.sync();
     rerender();
   },
@@ -187,7 +196,6 @@ initGestures({
 // cambio pagina con una dissolvenza leggera (View Transitions, Safari 18+)
 window.addEventListener('hashchange', () => {
   closeSheet();
-  player.riduci(); // la musica continua: si chiude solo la finestra grande
   ricette.releaseWake();
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const gesto = document.documentElement.dataset.gesto;
@@ -245,7 +253,6 @@ function subscribeAll() {
   unsubs = COLLECTIONS.map((c) => store.subscribe(c, (items, meta) => {
     state.data[c] = items;
     state.loaded.add(c);
-    if (c === 'musica') musica.aggiornaLettore();
     if (c === 'settings' && !meta.fromCache) maybeSeed(items);
     if (c === 'settings') maybeWelcome();
     rerender();
@@ -347,8 +354,9 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || (location
   // Quando arriva una versione nuova dell'app la pagina si ricarica da sola (se non stai scrivendo qualcosa).
   const aveva = Boolean(sw.controller);
   let inAttesa = false;
-  // non si ricarica mentre si scrive, con un foglio aperto o mentre suona la musica
-  const occupato = () => sheetOpen() || player.isPlaying() || /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '');
+  // non si ricarica mentre si scrive, con un foglio aperto o mentre Spotify suona dentro l'app (si fermerebbe la musica)
+  const suonaQui = () => { const p = spotifyStato.player; return Boolean(p && p.is_playing && p.device && eQui(p.device.id)); };
+  const occupato = () => sheetOpen() || suonaQui() || /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '');
   const ricarica = () => { if (occupato()) inAttesa = true; else location.reload(); };
   sw.addEventListener('controllerchange', () => { if (aveva) ricarica(); });
   // tocco su una notifica con l'app già aperta: vado alla pagina giusta
@@ -362,9 +370,5 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || (location
   });
   window.addEventListener('load', () => sw.register('sw.js').catch(() => {}));
 }
-
-// il lettore musicale vive fuori dalle pagine: si monta una volta sola
-player.mount();
-player.onChange(() => rerender());
 
 boot();

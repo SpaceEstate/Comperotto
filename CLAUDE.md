@@ -23,12 +23,6 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   a OwnTracks si mandano i nostri posti come zone (`setWaypoints`, una volta, o ogni 12 h finché non funzionano). Il codice di famiglia
   non si accetta mai nell'indirizzo (finirebbe nei log). Dall'app la posizione parte solo con l'interruttore acceso (e permesso già dato)
   o con un tocco; "Chiedi a…" manda una notifica all'altro (`#/dove/condividi`).
-- **Musica:** un solo lettore, `js/player.js`, montato una volta fuori da `#view` (mai iframe dentro le pagine: i ridisegni li
-  ricreerebbero). Stato unico in `S`; i motori (Spotify con la iFrame API ufficiale, `<audio>` per file e radio) mandano solo eventi,
-  filtrati per "giro". Regole provate sul riquadro Spotify: `play()` prima del pronto va in coda; `seek()` prima dell'avvio è ignorato;
-  `pause()` prima dell'avvio dà errore; subito dopo un seek arriva ancora la posizione vecchia (va scartata). Senza accesso a Spotify
-  sono anteprime di 30 s. Volume e uscita audio solo per `<audio>` e solo se il dispositivo li permette. Mentre suona l'app non si
-  ricarica da sola per gli aggiornamenti.
 - **Ricette online:** `api/ricette.js` (Wikibooks "Libro di cucina" via REST, TheMealDB, importazione da link con i dati schema.org;
   controlli contro indirizzi interni). Le miniature Wikimedia esistono solo in larghezze standard (120, 250, 330, 500…).
 - **Desideri e Amazon:** Amazon non ha un'API per leggere le liste dei desideri: si collegano (`settings.listeAmazon`) e i link dei
@@ -39,6 +33,23 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   aes128gcm fatta a mano e verificata contro la libreria `web-push`), `api/push.js` (iscrizioni), `api/promemoria.js` (cron serale in
   `vercel.json`: rifiuti, compleanni, gatti), avvisi di arrivo/partenza in `api/posizione.js`, biglietti in `api/dati.js`.
   Lato app: `js/notifiche.js`, interruttori in Impostazioni, gestione in `sw.js`. Su iPhone servono l'app sulla schermata Home e iOS 16.4+.
+- **Spotify** (`api/spotify.js` + `js/spotify.js`, pagina Musica): ognuno collega il suo account con OAuth PKCE (niente segreti:
+  il Client ID dell'app di developer.spotify.com si scrive dall'app e sta nel database, `fam_meta` `m:spotify:*`, insieme ai refresh token).
+  Redirect URI registrato: `https://comperotto.vercel.app/api/spotify`. I dispositivi chiedono a `/api/spotify?azione=token` un token di un'ora
+  e parlano direttamente con api.spotify.com. Pagine in `js/views/spotify.js`: `#/musica` (lettore, cerca, libreria), `#/musica/cerca`,
+  `/preferiti`, `/pl/<id>`, `/album/<id>`, `/artista/<id>`, foglio "⋯" del brano (coda, preferiti, playlist). Barra del brano trascinabile
+  (seek), niente volume. Suggerimenti: musica a tema del periodo (`MUSICA_TEMA` in `js/data.js`, periodo da `periodoMusica()` in
+  `season.js`, trovata con la ricerca e tenuta una settimana) e "Scelti per te" (artisti dei brani salvati → loro brani non salvati e
+  uscite dell'ultimo anno: le raccomandazioni di Spotify non ci sono più per le app nuove). "La nostra musica" non c'è più (i dati restano).
+  Lettore (`js/spotify.js`): dopo un comando lo schermo cambia subito e le "attese" tengono lo stato chiesto finché Spotify non lo
+  conferma (min 2,5 s, max 4,5 s: gli Echo rispondono in ritardo); comandi in fila uno alla volta; richieste con timeout di 10 s e
+  pausa automatica sui 429; si ridisegna solo se cambia brano/stato/dispositivo; la barra la muove un orologio locale (250 ms).
+  "Questo iPhone/iPad" = Web Playback SDK (`sdk.scdn.co`, caricato solo quando serve; `activateElement()` dentro il tocco;
+  vuole i permessi `streaming user-read-email user-read-private`, altrimenti "Invalid token scopes").
+  Regole 2026 (modalità sviluppo, max 5 utenti, proprietario Premium): ricerca max 10 per tipo, `tracks`→`items` nelle playlist,
+  preferiti con `PUT/DELETE me/library?uris=`, brani solo delle playlist proprie (`/playlists/{id}/items`, altrimenti 403).
+  Collegamenti senza i permessi nuovi → `completo: false` e la pagina chiede "Ricollega".
+- **Spesa:** reparti in `SHOP_CATS` (`js/data.js`) nell'ordine del giro; gli id vecchi passano da `LEGACY_CATS` (il vecchio `freschi` ora è `frigo`).
 - **Avvio e aggiornamenti:** un dispositivo già collegato parte subito dai dati salvati (non aspetta `/api/stato`). A ogni pubblicazione
   cambiare `CACHE` in `sw.js`: l'app aperta si ricarica da sola (non mentre si scrive). I caratteri sono in `assets/fonts/`.
 - **Controllo delle pagine:** prima di pubblicare modifiche di aspetto, provarle su iPhone piccolo (320 px), iPhone, iPad verticale
@@ -46,6 +57,8 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
 - **Sito pulito:** è un'app interna di famiglia: niente spiegazioni tecniche, crediti o link "obbligatori" nelle pagine (es. sulla mappa); le spiegazioni vanno date in chat.
 - **Stile:** pastello in tinta con la casa; le feste con i loro colori pieni (Natale verde/rosso/bianco,
   Halloween nero/arancione). Pensata per iPhone e iPad.
+- **iPad, barra laterale:** di base stretta (solo icone, `--side-w: 76px`); il tasto in alto la allarga/stringe e ogni dispositivo
+  ricorda la scelta (`localStorage` `casa.side`, applicata subito dallo script in `index.html`).
 - **Gesti iPhone** (`js/gestures.js`): fogli da trascinare giù, indietro dal bordo sinistro (solo app installata),
   tira giù per aggiornare, righe da scorrere (`swipe()` in `core.js`: destra = spunta, sinistra = elimina con Annulla).
 - Niente build: HTML/CSS/JS moderni (`index.html`, `css/`, `js/`), funzioni Vercel in `api/`.

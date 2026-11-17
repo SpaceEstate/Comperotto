@@ -54,7 +54,7 @@
   <link rel="modulepreload" href="js/season.js">
   <link rel="modulepreload" href="js/gestures.js">
   <link rel="modulepreload" href="js/notifiche.js">
-  <link rel="modulepreload" href="js/player.js">
+  <link rel="modulepreload" href="js/spotify.js">
   <link rel="modulepreload" href="js/config.js">
   <link rel="modulepreload" href="js/seed.js">
   <link rel="modulepreload" href="js/views/home.js">
@@ -63,6 +63,7 @@
   <link rel="modulepreload" href="js/views/ricette.js">
   <link rel="modulepreload" href="js/views/film.js">
   <link rel="modulepreload" href="js/views/musica.js">
+  <link rel="modulepreload" href="js/views/spotify.js">
   <link rel="modulepreload" href="js/views/desideri.js">
   <link rel="modulepreload" href="js/views/gatti.js">
   <link rel="modulepreload" href="js/views/dove.js">
@@ -72,6 +73,8 @@
   <script>
     // Applica subito il tema scelto su questo dispositivo (evita il "lampo" chiaro/scuro).
     try { var t = localStorage.getItem('casa.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+    // iPad: barra laterale stretta (solo icone) o aperta, come l'ultima volta su questo dispositivo
+    try { document.documentElement.dataset.side = localStorage.getItem('casa.side') === 'aperta' ? 'aperta' : 'stretta'; } catch (e) { document.documentElement.dataset.side = 'stretta'; }
   </script>
 </head>
 <body>

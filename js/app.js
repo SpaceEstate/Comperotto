@@ -72,7 +72,7 @@ function patch(from, to) {
   if (from.nodeName === 'IFRAME' || from.hasAttribute('data-keep')) return; // lettori e mappe restano come sono
   if (from.nodeName === 'INPUT' || from.nodeName === 'TEXTAREA' || from.nodeName === 'SELECT') {
     if (from.type === 'checkbox' || from.type === 'radio') from.checked = to.hasAttribute('checked');
-    else if (document.activeElement !== from && from.type !== 'file' && from.nodeName !== 'SELECT') from.value = to.getAttribute('value') ?? to.value ?? '';
+    else if (document.activeElement !== from && !from._busy && from.type !== 'file' && from.nodeName !== 'SELECT') from.value = to.getAttribute('value') ?? to.value ?? '';
     if (from.nodeName === 'TEXTAREA') return;
   }
   morphChildren(from, to);

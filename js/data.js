@@ -259,6 +259,52 @@ export const CAT_EVENTS = {
 
 export const MUSIC_TYPES = { brano: 'Brano', album: 'Album', playlist: 'Playlist' };
 
+// Musica a tema del periodo: titolo e artista, l'app li trova da sola su Spotify (pagina Musica, "Da ascoltare adesso")
+export const MUSICA_TEMA = {
+  natale: { label: 'Natale', tile: 'Musica di Natale', icon: 'tree', brani: [
+    ['All I Want for Christmas Is You', 'Mariah Carey'], ['Last Christmas', 'Wham!'], ['Jingle Bell Rock', 'Bobby Helms'],
+    ['Rockin\u2019 Around the Christmas Tree', 'Brenda Lee'], ['It\u2019s Beginning to Look a Lot Like Christmas', 'Michael Bublé'],
+    ['Let It Snow! Let It Snow! Let It Snow!', 'Dean Martin'], ['Feliz Navidad', 'José Feliciano'], ['Santa Tell Me', 'Ariana Grande'],
+    ['Underneath the Tree', 'Kelly Clarkson'], ['Happy Xmas (War Is Over)', 'John Lennon'], ['White Christmas', 'Bing Crosby'],
+    ['Do They Know It\u2019s Christmas?', 'Band Aid'], ['Christmas (Baby Please Come Home)', 'Michael Bublé'], ['Natale', 'Francesco De Gregori'],
+  ] },
+  halloween: { label: 'Halloween', tile: 'Musica di Halloween', icon: 'pumpkin', brani: [
+    ['This Is Halloween', 'The Citizens of Halloween'], ['Thriller', 'Michael Jackson'], ['Ghostbusters', 'Ray Parker Jr.'], ['Monster Mash', 'Bobby Pickett'],
+    ['Somebody\u2019s Watching Me', 'Rockwell'], ['Time Warp', 'The Rocky Horror Picture Show'], ['Bad Moon Rising', 'Creedence Clearwater Revival'],
+    ['Superstition', 'Stevie Wonder'], ['Disturbia', 'Rihanna'], ['Zombie', 'The Cranberries'], ['Spooky Scary Skeletons', 'Andrew Gold'], ['Highway to Hell', 'AC/DC'],
+  ] },
+  estate: { label: 'Estate', tile: 'Musica d\u2019estate', icon: 'wave', brani: [
+    ['Azzurro', 'Adriano Celentano'], ['Sapore di sale', 'Gino Paoli'], ['Una vita in vacanza', 'Lo Stato Sociale'], ['Vamos a la playa', 'Righeira'],
+    ['L\u2019estate addosso', 'Jovanotti'], ['Abbronzatissima', 'Edoardo Vianello'], ['Tropicana', 'Gruppo Italiano'], ['Estate', 'Negramaro'],
+    ['Despacito', 'Luis Fonsi'], ['Walking on Sunshine', 'Katrina and the Waves'], ['Summer of \u201969', 'Bryan Adams'], ['Andiamo a comandare', 'Fabio Rovazzi'],
+  ] },
+  aprile: { label: 'Parigi e Canarie', tile: 'Parigi e Canarie', icon: 'eiffel', brani: [
+    ['La Vie en rose', 'Édith Piaf'], ['Les Champs-Élysées', 'Joe Dassin'], ['Non, je ne regrette rien', 'Édith Piaf'], ['Je veux', 'Zaz'],
+    ['Dernière danse', 'Indila'], ['Formidable', 'Stromae'], ['Bailando', 'Enrique Iglesias'], ['Vivir mi vida', 'Marc Anthony'],
+    ['La Bicicleta', 'Carlos Vives'], ['Volare', 'Gipsy Kings'], ['Danza Kuduro', 'Don Omar'], ['Despacito', 'Luis Fonsi'],
+  ] },
+  sanvalentino: { label: 'San Valentino', tile: 'Musica per San Valentino', icon: 'heart', brani: [
+    ['Perfect', 'Ed Sheeran'], ['La cura', 'Franco Battiato'], ['Can\u2019t Help Falling in Love', 'Elvis Presley'], ['Vivo per lei', 'Andrea Bocelli'],
+    ['Thinking Out Loud', 'Ed Sheeran'], ['L\u2019emozione non ha voce', 'Adriano Celentano'], ['All of Me', 'John Legend'], ['Sei nell\u2019anima', 'Gianna Nannini'],
+    ['Your Song', 'Elton John'], ['Grande amore', 'Il Volo'], ['La donna cannone', 'Francesco De Gregori'], ['A te', 'Jovanotti'],
+  ] },
+  autunno: { label: 'Autunno', tile: 'Musica d\u2019autunno', icon: 'leaf', brani: [
+    ['Autumn Leaves', 'Nat King Cole'], ['Harvest Moon', 'Neil Young'], ['La canzone dell\u2019amore perduto', 'Fabrizio De André'], ['Il cielo in una stanza', 'Mina'],
+    ['Wake Me Up When September Ends', 'Green Day'], ['Settembre', 'Peppino Gagliardi'], ['Albachiara', 'Vasco Rossi'], ['Fix You', 'Coldplay'],
+    ['Banana Pancakes', 'Jack Johnson'], ['Riptide', 'Vance Joy'], ['Hallelujah', 'Jeff Buckley'], ['Novembre', 'Giusy Ferreri'],
+  ] },
+  inverno: { label: 'Inverno', tile: 'Musica d\u2019inverno', icon: 'moon', brani: [
+    ['Make You Feel My Love', 'Adele'], ['Yellow', 'Coldplay'], ['Il mondo', 'Jimmy Fontana'], ['La notte', 'Arisa'], ['Someone Like You', 'Adele'],
+    ['Vivere', 'Vasco Rossi'], ['Shallow', 'Lady Gaga'], ['Halo', 'Beyoncé'], ['Una carezza in un pugno', 'Adriano Celentano'],
+    ['The Scientist', 'Coldplay'], ['Sally', 'Vasco Rossi'], ['Viva la vida', 'Coldplay'],
+  ] },
+  primavera: { label: 'Primavera', tile: 'Musica di primavera', icon: 'plant', brani: [
+    ['Here Comes the Sun', 'The Beatles'], ['Happy', 'Pharrell Williams'], ['Mr. Blue Sky', 'Electric Light Orchestra'], ['Felicità', 'Al Bano'],
+    ['Margherita', 'Riccardo Cocciante'], ['Don\u2019t Stop Me Now', 'Queen'], ['Lovely Day', 'Bill Withers'], ['50 Special', 'Lùnapop'],
+    ['L\u2019ombelico del mondo', 'Jovanotti'], ['Good Vibrations', 'The Beach Boys'], ['Primavera', 'Marina Rei'], ['Lemon Tree', 'Fools Garden'],
+  ] },
+};
+
 export const DEFAULT_SETTINGS = {
   names: { p1: 'Patrick', p2: 'Serena' },
   // solo giorno e mese: il repository è pubblico (l'anno si può aggiungere dall'app)

@@ -1,135 +1,19 @@
-// Musica: Spotify in cima (lettore, ricerca, libreria: vedi views/spotify.js) e "La nostra musica",
-// la lista di famiglia anche a tema del periodo (Natale, Halloween, mare, Parigi…).
-import { html, raw, cap, safeUrl, vibrate } from '../utils.js';
+// Musica: tutto da Spotify (vedi views/spotify.js): cosa suona e dove, ricerca, musica a tema del periodo,
+// suggerimenti per te e la libreria (preferiti e playlist).
+import { html } from '../utils.js';
 import { icon, catFace } from '../icons.js';
-import { THEMES, themeLabel, MUSIC_TYPES } from '../data.js';
-import { state, store, openSheet, closeSheet, toast, val, emptyState, ui, setUi, themeChoices, me, whoBadge, pageHead, isSynced } from '../core.js';
-import { currentTheme } from '../season.js';
-import * as S from '../spotify.js';
+import { pageHead, isSynced, emptyState } from '../core.js';
 import * as SPV from './spotify.js';
-
-const TYPE_ICON = { brano: 'music', album: 'disc', playlist: 'headphones' };
-
-/** Riconosce i link di Spotify per mostrare il lettore integrato. */
-export function spotifyEmbed(link) {
-  const m = String(link || '').match(/^https:\/\/open\.spotify\.com\/(?:intl-[a-z-]+\/)?(track|album|playlist|artist|episode|show)\/([A-Za-z0-9]{10,40})/);
-  return m ? `https://open.spotify.com/embed/${m[1]}/${m[2]}?utm_source=generator` : '';
-}
-const query = (m) => `${m.title} ${m.artist || ''}`.trim();
-export const spotifySearch = (m) => `https://open.spotify.com/search/${encodeURIComponent(query(m))}`;
-export const ytSearch = (m) => `https://music.youtube.com/search?q=${encodeURIComponent(query(m))}`;
-
-function row(m) {
-  const open = ui('musica.open', null) === m.id;
-  const embed = spotifyEmbed(m.link);
-  const link = safeUrl(m.link);
-  // con Spotify collegato i nostri brani partono sul dispositivo scelto (anche quelli senza link: li cerco)
-  const connect = isSynced() && S.chi() && (embed || !link);
-  return html`
-    <div class="row music-row" id="m-${m.id}">
-      <span class="chore-ico dot-ico tone-${m.type === 'playlist' ? 'sky' : m.type === 'album' ? 'plum' : 'oak'}">${icon(TYPE_ICON[m.type] || 'music')}</span>
-      <button class="row-edit" data-action="musica-edit" data-id="${m.id}">
-        <div class="row-title">${m.title}</div>
-        <div class="row-sub">${m.artist ? html`<span>${m.artist}</span>` : ''}${(m.themes || []).filter((t) => t !== 'sempre').slice(0, 2).map((t) => html`<span class="pill">${icon(THEMES[t].icon, 'xs')} ${themeLabel(t, true)}</span>`)}${m.by ? whoBadge(m.by) : ''}</div>
-      </button>
-      ${connect
-        ? html`<button class="icon-btn" data-action="musica-sp" data-id="${m.id}" aria-label="Fai partire ${m.title}">${icon('play', 'sm')}</button>`
-        : embed
-          ? html`<button class="icon-btn" data-action="musica-play" data-id="${m.id}" aria-label="Ascolta ${m.title}" style="${open ? 'background:var(--oak);color:var(--oak-ink)' : ''}">${icon(open ? 'x' : 'play', 'sm')}</button>`
-          : html`<a class="icon-btn" href="${link || spotifySearch(m)}" target="_blank" rel="noopener" aria-label="Ascolta ${m.title}">${icon('play', 'sm')}</a>`}
-    </div>
-    ${open && embed && !connect ? html`<div class="embed"><iframe title="${m.title}" src="${embed}" height="${m.type === 'brano' ? 152 : 352}" frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>` : ''}`;
-}
 
 export function render(r = []) {
   if (SPV.SOTTO.includes(r[1])) return SPV.render(r);
-  const theme = ui('musica.theme', 'tutti');
-  const all = [...state.data.musica].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  const cur = currentTheme();
-  const used = Object.keys(THEMES).filter((t) => all.some((m) => (m.themes || []).includes(t)));
-  const list = all.filter((m) => theme === 'tutti' || (m.themes || []).includes(theme));
-  const seasonal = cur && theme === 'tutti' ? list.filter((m) => (m.themes || []).includes(cur.id)) : [];
-  const rest = list.filter((m) => !seasonal.includes(m));
   const spot = SPV.blocco();
-
   return html`
     <a class="back-link phone-only" href="#/">${icon('left', 'sm')} Home</a>
     ${pageHead('Musica', { eyebrow: 'La colonna sonora di casa' })}
-    ${spot}
-    ${spot && all.length ? html`<div class="section-title"><span>La nostra musica</span><span>${all.length}</span></div>` : ''}
-    ${used.length ? html`<div class="chips" style="margin-top:0">
-      <button class="chip ${theme === 'tutti' ? 'on' : ''}" data-action="musica-theme" data-v="tutti">Tutta</button>
-      ${used.map((t) => html`<button class="chip ${theme === t ? 'on' : ''}" data-action="musica-theme" data-v="${t}">${icon(THEMES[t].icon, 'xs')} ${themeLabel(t, true)}</button>`)}
-    </div>` : ''}
-
-    ${seasonal.length ? html`
-      <div class="section-title"><span>${icon(THEMES[cur.id].icon, 'xs')} Da ascoltare adesso · ${THEMES[cur.id].label}</span></div>
-      <div class="list">${seasonal.map(row)}</div>` : ''}
-
-    ${rest.length ? html`
-      ${seasonal.length || !spot ? html`<div class="section-title"><span>${seasonal.length ? 'Il resto della nostra musica' : 'La nostra musica'}</span><span>${rest.length}</span></div>` : ''}
-      <div class="list">${rest.map(row)}</div>` : ''}
-
-    ${!list.length ? emptyState('Silenzio in casa', 'Aggiungi le canzoni, gli album e le playlist che vi piacciono.', catFace('b')) : ''}
-
-
-    <button class="fab" data-action="musica-new">${icon('plus')} Musica</button>`;
+    ${!isSynced() ? emptyState('Musica da Spotify', 'Si collega quando l’app usa il codice di famiglia.', catFace('b')) : spot || html`<p class="muted small sp-wait">Un attimo…</p>`}`;
 }
 
 export const after = (r = []) => SPV.after(r);
 export const refresh = () => SPV.refresh();
-
-function sheet(m = null) {
-  const cur = currentTheme();
-  openSheet({
-    title: m ? 'Modifica' : 'Nuova musica',
-    body: html`
-      <div class="field"><span>Cos’è</span><div class="radio-chips">${Object.entries(MUSIC_TYPES).map(([k, l]) => html`
-        <label><input type="radio" name="type" value="${k}" ${(m ? m.type : 'brano') === k ? raw('checked') : ''}><span>${icon(TYPE_ICON[k], 'xs')} ${l}</span></label>`)}</div></div>
-      <label class="field"><span>Titolo</span><input name="title" value="${m ? m.title : ''}" required ${m ? '' : raw('autofocus')}></label>
-      <label class="field"><span>Artista</span><input name="artist" value="${m ? m.artist || '' : ''}"></label>
-      <div class="field"><span>Tema</span>${themeChoices('themes', m ? m.themes || [] : cur ? [cur.id] : ['sempre'], THEMES)}</div>
-      <label class="field"><span>Link di Spotify o YouTube (facoltativo)</span><input name="link" type="url" inputmode="url" value="${m ? m.link || '' : ''}" placeholder="https://open.spotify.com/…"></label>
-      ${m ? html`<div class="wish-actions">
-        <a class="mini-btn" href="${spotifySearch(m)}" target="_blank" rel="noopener">${icon('search', 'xs')} Spotify</a>
-        <a class="mini-btn" href="${ytSearch(m)}" target="_blank" rel="noopener">${icon('search', 'xs')} YouTube Music</a>
-      </div>` : ''}`,
-    extra: m ? html`<button class="btn danger" type="button" data-action="musica-del" data-id="${m.id}">${icon('trash', 'sm')}</button>` : '',
-    onSubmit: (fd) => {
-      const title = cap(val(fd, 'title'));
-      if (!title) return false;
-      const data = { title, artist: val(fd, 'artist'), type: val(fd, 'type') || 'brano', themes: fd.getAll('themes').length ? fd.getAll('themes') : ['sempre'], link: safeUrl(val(fd, 'link')) };
-      if (m) store.update('musica', m.id, data);
-      else store.add('musica', { ...data, by: me() || '' });
-    },
-  });
-}
-
-export const actions = {
-  ...SPV.actions,
-  'musica-theme': ({ el }) => setUi('musica.theme', el.dataset.v),
-  'musica-new': () => sheet(),
-  'musica-edit': ({ id }) => sheet(state.data.musica.find((m) => m.id === id)),
-  'musica-play': ({ id }) => { vibrate(); setUi('musica.open', ui('musica.open', null) === id ? null : id); },
-  'musica-del': ({ id }) => {
-    const m = state.data.musica.find((x) => x.id === id);
-    closeSheet();
-    if (!m) return;
-    store.remove('musica', id);
-    toast(`Tolto: ${m.title}`, { undo: () => { const { id: _, ...rest } = m; store.set('musica', id, rest); } });
-  },
-  // un brano/album/playlist della nostra lista su Spotify: dal link, o cercandolo per titolo e artista
-  'musica-sp': SPV.prova(async ({ id }) => {
-    const m = state.data.musica.find((x) => x.id === id);
-    if (!m) return;
-    vibrate();
-    let target = S.uriDaLink(m.link);
-    if (!target) {
-      const tipo = m.type === 'album' ? 'album' : m.type === 'playlist' ? 'playlist' : 'track';
-      const r = await S.cerca(query(m), tipo);
-      if (!r) { toast('Non lo trovo su Spotify'); return; }
-      target = tipo === 'track' ? { uris: [r.uri] } : { context: r.uri };
-    }
-    await SPV.suonaQui(target);
-  }),
-};
+export const actions = { ...SPV.actions };

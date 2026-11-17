@@ -1,11 +1,11 @@
 // Home: buongiorno, gatti, cosa si butta stasera, faccende di oggi, atmosfera del periodo, lavagnetta
 import { html, raw, longDate, todayIso, timeAgo, vibrate, cap, plural, isIOS, isStandalone, lsGet, lsSet } from '../utils.js';
 import { icon } from '../icons.js';
-import { THEMES, upcomingDates, CAT_EVENTS } from '../data.js';
+import { THEMES, upcomingDates, CAT_EVENTS, MUSICA_TEMA } from '../data.js';
 import { state, store, settings, me, nameOf, myName, openSheet, toast, val, confirmSheet, rerender, ui, isSynced } from '../core.js';
 import { dueChores, choreRow, trashFor, binChips } from './casa.js';
 import { cats, catAvatar, upcomingFor, lastWeight } from './gatti.js';
-import { seasonInfo, currentTheme, seasonDeco } from '../season.js';
+import { seasonInfo, seasonDeco, periodoMusica } from '../season.js';
 import { badge as shopBadge } from './spesa.js';
 import { statusOf, personBadge, pillOf, iconOf } from './dove.js';
 
@@ -37,7 +37,7 @@ function seasonCard(s) {
     </div>
     <div class="sc-links">
       <a href="#/ricette" data-action="ricette-theme" data-theme="${th}">${icon('chef', 'sm')}<span>${n('ricette')}</span>Ricette</a>
-      <a href="#/musica" data-action="musica-theme-go" data-v="${th}">${icon('music', 'sm')}<span>${n('musica')}</span>Musica</a>
+      <a href="#/musica">${icon('music', 'sm')}<span>${(MUSICA_TEMA[th] || { brani: [] }).brani.length}</span>Musica</a>
       <a href="#/film" data-action="film-theme-go" data-v="${th}">${icon('film', 'sm')}<span>${n('film')}</span>Film</a>
     </div>
   </section>`;
@@ -144,8 +144,7 @@ export function render() {
   const wishes = state.data.desideri.filter((w) => !w.bought);
   const films = state.data.film.filter((f) => !f.watched);
   const shop = shopBadge();
-  const theme = currentTheme();
-  const songs = theme ? state.data.musica.filter((m) => (m.themes || []).includes(theme.id)).length : 0;
+  const musica = periodoMusica();
 
   return html`
     <div class="home-top">
@@ -198,7 +197,7 @@ export function render() {
             <a class="tile t-sage" href="#/casa/lavori"><span class="tile-ico">${icon('hammer')}</span><span class="tile-num">${lavori.length}</span><span class="tile-label">Lavori</span><span class="tile-mark">${icon('hammer')}</span></a>
             <a class="tile t-sky" href="#/film"><span class="tile-ico">${icon('film')}</span><span class="tile-num">${films.length}</span><span class="tile-label">Film da vedere</span><span class="tile-mark">${icon('film')}</span></a>
             <a class="tile t-rose" href="#/desideri"><span class="tile-ico">${icon('gift')}</span><span class="tile-num">${wishes.length}</span><span class="tile-label">Desideri</span><span class="tile-mark">${icon('gift')}</span></a>
-            <a class="tile t-plum" href="#/musica"><span class="tile-ico">${icon('music')}</span><span class="tile-num">${songs || state.data.musica.length}</span><span class="tile-label">${songs ? `Musica di ${theme.label}` : 'Musica'}</span><span class="tile-mark">${icon('music')}</span></a>
+            <a class="tile t-plum" href="#/musica"><span class="tile-ico">${icon('music')}</span><span class="tile-num">${musica.brani.length}</span><span class="tile-label">${musica.tile}</span><span class="tile-mark">${icon('music')}</span></a>
             <button class="tile t-gold" data-action="ricetta-random"><span class="tile-ico">${icon('dice')}</span><span class="tile-num tile-q">?</span><span class="tile-label">Cosa cuciniamo?</span><span class="tile-mark">${icon('chef')}</span></button>
           </div>
 
@@ -235,7 +234,6 @@ function noteSheet() {
 
 export const actions = {
   noop: () => {},
-  'musica-theme-go': ({ el }) => { state.ui['musica.theme'] = el.dataset.v; location.hash = '#/musica'; },
   'film-theme-go': ({ el }) => { state.ui['film.theme'] = el.dataset.v; state.ui['film.filter'] = 'tutti'; location.hash = '#/film'; },
   'hint-close': () => { lsSet('casa.hint.install', '1'); rerender(); },
   'hint-push-close': () => { lsSet('casa.hint.push', '1'); rerender(); },

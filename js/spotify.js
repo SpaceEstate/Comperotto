@@ -214,14 +214,14 @@ export async function casuale() {
   await call(`me/player/shuffle?state=${on}`, { method: 'PUT' });
 }
 
-let volT;
-export function volume(v) {
+/** Avanti e indietro nel brano (in millisecondi). */
+export async function vaiA(ms) {
   const p = sp.player;
-  if (p && p.device) p.device.volume_percent = v;
-  clearTimeout(volT);
-  return new Promise((ok, ko) => {
-    volT = setTimeout(() => call(`me/player/volume?volume_percent=${Math.round(v)}`, { method: 'PUT' }).then(ok, ko), 250);
-  });
+  ms = Math.max(0, Math.round(ms));
+  if (p) { p.progress_ms = ms; sp.playerAt = Date.now(); }
+  if (qui.player && p && eQui(p.device && p.device.id)) await qui.player.seek(ms);
+  else await call(`me/player/seek?position_ms=${ms}`, { method: 'PUT' });
+  setTimeout(() => aggiorna(), 800);
 }
 
 /** Cerca su Spotify (es. un brano della nostra lista senza link) e restituisce il primo risultato. */
@@ -273,14 +273,26 @@ const errori = new Map();
 /** Dato già letto (o undefined). */
 export const letto = (key) => (cache.get(key) || {}).data;
 export const fallito = (key) => errori.get(key) || null;
-/** Legge una volta e tiene a mente per qualche minuto; ridisegna la pagina quando arriva. */
-export function leggi(key, fn, { maxAge = 5 * 60000, forza = false } = {}) {
-  const c = cache.get(key);
+/**
+ * Legge una volta e tiene a mente per qualche minuto; ridisegna la pagina quando arriva.
+ * Con "conserva" resta anche sul dispositivo (i suggerimenti si vedono subito alla prossima apertura).
+ */
+export function leggi(key, fn, { maxAge = 5 * 60000, forza = false, conserva = false } = {}) {
+  let c = cache.get(key);
+  if (!c && conserva) {
+    const salvato = parse(lsGet(`casa.spotify.c.${key}`));
+    if (salvato && salvato.data) { c = salvato; cache.set(key, c); if (conserva.dopo) conserva.dopo(c.data); }
+  }
   if (!forza && c && Date.now() - c.at < maxAge) return Promise.resolve(c.data);
+  if (conserva && conserva.dopo) fn = ((f) => () => f().then((d) => { conserva.dopo(d); return d; }))(fn);
   if (inVolo.has(key)) return inVolo.get(key);
   errori.delete(key);
   const pr = fn()
-    .then((data) => { cache.set(key, { at: Date.now(), data }); return data; })
+    .then((data) => {
+      cache.set(key, { at: Date.now(), data });
+      if (conserva) lsSet(`casa.spotify.c.${key}`, JSON.stringify({ at: Date.now(), data }));
+      return data;
+    })
     .catch((e) => { errori.set(key, e); throw e; })
     .finally(() => { inVolo.delete(key); rerender(); });
   inVolo.set(key, pr);
@@ -314,7 +326,7 @@ export function brano(t, album = null) {
     ok: t.is_playable !== false && !t.is_local,
   };
 }
-export const albumBreve = (a) => a && ({ id: a.id, uri: a.uri, name: a.name || '', img: bestImage(a.images, 300), anno: String(a.release_date || '').slice(0, 4), artists: (a.artists || []).map((x) => ({ id: x.id, name: x.name })), tipo: a.album_type || '' });
+export const albumBreve = (a) => a && ({ id: a.id, uri: a.uri, name: a.name || '', img: bestImage(a.images, 300), anno: String(a.release_date || '').slice(0, 4), data: a.release_date || '', artists: (a.artists || []).map((x) => ({ id: x.id, name: x.name })), tipo: a.album_type || '' });
 export const artistaBreve = (a) => a && ({ id: a.id, uri: a.uri, name: a.name || '', img: bestImage(a.images, 300) });
 export function playlistBreve(p, io = '') {
   return p && {
@@ -326,7 +338,7 @@ export function playlistBreve(p, io = '') {
 }
 /** Tutti i brani conosciuti per uri: servono al foglio "⋯" di un brano. */
 export const brani = new Map();
-const registra = (list) => { list.forEach((t) => t && brani.set(t.uri, t)); return list; };
+export const registra = (list) => { (list || []).forEach((t) => t && brani.set(t.uri, t)); return list; };
 
 // ---------------------------------------------------------------------------
 // Ricerca
@@ -508,4 +520,72 @@ export function attivaQui() {
   }
   if (qui.player.activateElement) qui.player.activateElement();
   return qui.pronto;
+}
+
+// ---------------------------------------------------------------------------
+// Suggerimenti: musica a tema del periodo e "scelti per te"
+// ---------------------------------------------------------------------------
+/** Trova su Spotify una lista di [titolo, artista] (4 ricerche alla volta). */
+export async function trovaBrani(coppie) {
+  const uno = async ([t, a]) => {
+    for (const q of [`track:${t} artist:${a}`, `${t} ${a}`]) {
+      const j = await call(`search?type=track&limit=1&market=from_token&q=${encodeURIComponent(q)}`).catch(() => null);
+      const b = j && brano(tutti(j.tracks)[0]);
+      if (b) return b;
+    }
+    return null;
+  };
+  const out = [];
+  for (let i = 0; i < coppie.length; i += 4) out.push(...(await Promise.all(coppie.slice(i, i + 4).map(uno))));
+  const visti = new Set();
+  return registra(out.filter((b) => b && !visti.has(b.uri) && visti.add(b.uri)));
+}
+
+/**
+ * "Scelti per te": i tuoi artisti preferiti (dai brani salvati, o dalle tue playlist) → i loro brani più
+ * ascoltati che non hai ancora salvato, e le loro uscite dell'ultimo anno.
+ * (Spotify non dà più i "brani consigliati" alle app nuove: questo è il modo per avvicinarsi.)
+ */
+export async function perTe() {
+  const piace = [];
+  for (let o = 0; o < 150; o += 50) {
+    const j = await call(`me/tracks?limit=50&offset=${o}&market=from_token`);
+    piace.push(...tutti(j).map((x) => brano(x.item || x.track)).filter(Boolean));
+    if (!j.next) break;
+  }
+  piace.forEach((t) => salvatiMap.set(t.uri, true));
+  if (piace.length < 10) {
+    // pochi preferiti: guardo anche le mie playlist
+    const mie = ((sp.playlists[chi()] || {}).list || []).filter((p) => p.own).slice(0, 3);
+    for (const p of mie) {
+      const j = await call(`playlists/${encodeURIComponent(p.id)}/items?limit=50&market=from_token`).catch(() => null);
+      piace.push(...tutti(j).map((x) => brano(x.item || x.track)).filter(Boolean));
+    }
+  }
+  const conta = new Map();
+  piace.forEach((t) => {
+    const a = t.artists[0];
+    if (!a || !a.id) return;
+    conta.set(a.id, { ...a, n: ((conta.get(a.id) || {}).n || 0) + 1 });
+  });
+  const top = [...conta.values()].sort((a, b) => b.n - a.n).slice(0, 6);
+  const gia = new Set(piace.map((t) => t.uri));
+  const nomi = new Set(piace.map((t) => `${t.name}|${t.artists[0] && t.artists[0].id}`.toLowerCase()));
+  const perArtista = await Promise.all(top.map(async (a) => {
+    const j = await call(`search?type=track&limit=10&market=from_token&q=${encodeURIComponent(`artist:"${a.name}"`)}`).catch(() => null);
+    return tutti(j && j.tracks).map((t) => brano(t))
+      .filter((t) => t && t.ok && t.artists.some((x) => x.id === a.id) && !gia.has(t.uri) && !nomi.has(`${t.name}|${a.id}`.toLowerCase()))
+      .slice(0, 3);
+  }));
+  // un po' per artista, alternati
+  const scelti = [];
+  for (let r = 0; r < 3; r++) perArtista.forEach((l) => { if (l[r] && !scelti.some((x) => x.name === l[r].name)) scelti.push(l[r]); });
+  // uscite dell'ultimo anno
+  const limite = Date.now() - 365 * 86400000;
+  const nuovi = (await Promise.all(top.map((a) => call(`artists/${encodeURIComponent(a.id)}/albums?include_groups=album,single&limit=10&market=from_token`).then((j) => tutti(j).map(albumBreve)).catch(() => []))))
+    .flat()
+    .filter((x) => x && Date.parse(x.data.length === 4 ? `${x.data}-01-01` : x.data) >= limite);
+  const visti = new Set();
+  const novita = nuovi.sort((a, b) => String(b.data).localeCompare(String(a.data))).filter((x) => !visti.has(x.name + x.artists.map((y) => y.id).join()) && visti.add(x.name + x.artists.map((y) => y.id).join())).slice(0, 10);
+  return { scelti: registra(scelti.slice(0, 12)), novita, artisti: top.map(({ id, name }) => ({ id, name })) };
 }

@@ -11,7 +11,7 @@ Un'app fatta su misura per **iPhone e iPad** (si installa dalla schermata Home e
 - **Ricette** per tema (Tutti i giorni, Natale, Capodanno, San Valentino, Pasqua, Estate, Halloween, Compleanni, Parigi e Canarie): si aggiungono e si modificano dall'app (tasto **+ Ricetta**, e **Modifica ricetta** in fondo a ognuna), con foto. Si spuntano gli ingredienti e finiscono nella spesa; c'è il dado "cosa cuciniamo?" e il tasto **Tieni lo schermo acceso** mentre si cucina.
 - **Film e serie**, a tema e non: copertina e **dove vederli in Italia** (abbonamento, noleggio, acquisto) arrivano da soli e si aggiornano ogni giorno; in cima un "Stasera guardiamo…".
 - **Desideri**: cose da comprare con prezzo, link e totale.
-- **Musica** a tema del periodo e **Spotify** collegato: cosa suona, play/pausa/avanti/volume, le vostre playlist con un tocco e la scelta di dove ascoltare (iPhone, iPad, **Echo**…). Dalla Home o, su iPad, dalla barra laterale.
+- **Musica** con **Spotify**: cosa suona e dove (iPhone, iPad, **Echo**…), ricerca, preferiti, playlist, musica a tema del periodo e suggerimenti "Scelti per te". Dalla Home o, su iPad, dalla barra laterale.
 - **Thor e Minù**: foto, età, peso, antiparassitari, vaccini e veterinario, con promemoria (dalla Home).
 - **Lavagnetta** in Home per lasciarsi biglietti, **conto alla rovescia** per le feste e i compleanni (Serena il 29/04, Patrick il 20/12, Thor e Minù il 04/10, il vostro anniversario il 18/07): il giorno giusto la Home fa festa.
 - **Atmosfere stagionali**: cambiano colori e decorazioni da sole.
@@ -137,15 +137,13 @@ Ogni tipo si può spegnere dal singolo dispositivo; "Prova" manda una notifica d
 
 ## 7. Musica e Spotify
 
-Aggiungete brani, album o playlist con un tema (Natale, Halloween, Estate, Parigi e Canarie…). Se incollate un **link Spotify** (Condividi → Copia link) si ascolta direttamente nell'app. Nel periodo giusto la sezione mette in cima la musica a tema.
-
-**Spotify collegato** (serve Premium), come nell'app di Spotify:
-- in cima a *Musica* cosa sta suonando e dove, con casuale, indietro, play/pausa, avanti, volume e ♥;
+La musica arriva da **Spotify** (serve Premium), come nell'app di Spotify:
+- in cima a *Musica* cosa sta suonando e dove, con la barra del brano da trascinare (avanti e indietro), casuale, indietro, play/pausa, avanti e ♥ (il volume si regola dal dispositivo);
+- **musica a tema del periodo** (Natale, Halloween, estate, Parigi e Canarie, San Valentino, autunno, inverno, primavera: le liste sono in `js/data.js`, `MUSICA_TEMA`) e **Scelti per te** (brani dei vostri artisti preferiti non ancora salvati) con le **novità** dei vostri artisti;
 - **Cerca** brani, artisti, album e playlist; pagine di playlist, album e artista con *Riproduci* e *Casuale*;
 - **Brani che ti piacciono** (il ♥ accanto a ogni brano), album e playlist salvati nella libreria;
 - **playlist vostre**: crearle, rinominarle, eliminarle, aggiungere e togliere brani (⋯ accanto al brano → *Aggiungi a una playlist*), e *Aggiungi in coda*;
-- **Dove ascoltare?**: *questo iPhone/iPad* (la musica suona dentro l'app), gli altri dispositivi con Spotify aperto e gli **Echo**;
-- il ▶ della nostra musica la fa partire lì (se un brano non ha il link, l'app lo cerca su Spotify), e da ⋯ un brano di Spotify si aggiunge alla nostra musica.
+- **Dove ascoltare?**: *questo iPhone/iPad* (la musica suona dentro l'app), gli altri dispositivi con Spotify aperto e gli **Echo**.
 
 Una volta sola, da un computer:
 

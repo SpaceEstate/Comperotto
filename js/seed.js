@@ -47,7 +47,6 @@ export function seedData() {
       .map((name, i) => ({ id: name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-'), name, count: 12 - i })),
 
     ricette: RICETTE,
-    musica: MUSICA,
     film: FILM,
   };
 }
@@ -166,22 +165,6 @@ const RICETTE = [
       'Servi le patate intere con il mojo a parte, come alle Canarie.',
     ],
   },
-];
-
-const MUSICA = [
-  { title: 'All I Want for Christmas Is You', artist: 'Mariah Carey', type: 'brano', themes: ['natale'], link: '' },
-  { title: 'Last Christmas', artist: 'Wham!', type: 'brano', themes: ['natale'], link: '' },
-  { title: 'Jingle Bell Rock', artist: 'Bobby Helms', type: 'brano', themes: ['natale'], link: '' },
-  { title: 'This Is Halloween', artist: 'Danny Elfman', type: 'brano', themes: ['halloween'], link: '' },
-  { title: 'Thriller', artist: 'Michael Jackson', type: 'brano', themes: ['halloween'], link: '' },
-  { title: 'Ghostbusters', artist: 'Ray Parker Jr.', type: 'brano', themes: ['halloween'], link: '' },
-  { title: 'Azzurro', artist: 'Adriano Celentano', type: 'brano', themes: ['estate'], link: '' },
-  { title: 'Sapore di sale', artist: 'Gino Paoli', type: 'brano', themes: ['estate'], link: '' },
-  { title: 'Una vita in vacanza', artist: 'Lo Stato Sociale', type: 'brano', themes: ['estate'], link: '' },
-  { title: 'La Vie en rose', artist: 'Édith Piaf', type: 'brano', themes: ['aprile'], link: '' },
-  { title: 'Les Champs-Élysées', artist: 'Joe Dassin', type: 'brano', themes: ['aprile'], link: '' },
-  { title: 'Bailando', artist: 'Enrique Iglesias', type: 'brano', themes: ['aprile', 'estate'], link: '' },
-  { title: 'Vivir mi vida', artist: 'Marc Anthony', type: 'brano', themes: ['aprile'], link: '' },
 ];
 
 const FILM = [

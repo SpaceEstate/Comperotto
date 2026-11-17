@@ -1,5 +1,5 @@
 // Atmosfera stagionale: ottobre → Halloween, 20 nov–6 gen → Natale, luglio–agosto → mare.
-import { SEASONS, THEMES, seasonFor, upcomingDates } from './data.js';
+import { SEASONS, THEMES, MUSICA_TEMA, seasonFor, upcomingDates } from './data.js';
 import { lsGet, lsSet, html } from './utils.js';
 import { state, settings } from './core.js';
 
@@ -13,6 +13,20 @@ export const seasonInfo = () => {
   const n = settings().names;
   return { id: s, ...SEASONS[s], sub: SEASONS[s].sub.replace('{p2}', n.p2) };
 };
+
+/**
+ * La musica del periodo: quella della festa o della stagione (Natale, Halloween, San Valentino…),
+ * altrimenti quella del mese (autunno, inverno, primavera, estate). A novembre si aspetta già il Natale.
+ */
+export function periodoMusica(d = new Date()) {
+  const cur = currentTheme();
+  const id = cur && (cur.id === 'pasqua' ? 'primavera' : cur.id === 'capodanno' ? 'natale' : cur.id);
+  if (id && MUSICA_TEMA[id]) return { id, ...MUSICA_TEMA[id], label: cur.days ? `Aspettando ${MUSICA_TEMA[id].label}` : MUSICA_TEMA[id].label };
+  const m = d.getMonth() + 1;
+  if (m === 11 && d.getDate() >= 8) return { id: 'natale', ...MUSICA_TEMA.natale, label: 'Aspettando il Natale' };
+  const per = m >= 9 && m <= 11 ? 'autunno' : m === 12 || m <= 2 ? 'inverno' : m <= 5 ? 'primavera' : 'estate';
+  return { id: per, ...MUSICA_TEMA[per] };
+}
 
 /** Il tema "del periodo": quello della stagione attiva, altrimenti la prossima festa entro 30 giorni. */
 export function currentTheme() {

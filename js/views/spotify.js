@@ -884,7 +884,7 @@ function devList() {
     </div>
     ${!list ? html`<p class="muted small" style="padding:10px 4px 0">Cerco gli altri dispositivi…</p>` : ''}
     ${list ? html`<details class="sp-echo-aiuto" ${!visibili.length && !celati.length ? raw('open') : ''}><summary>${icon('speaker', 'xs')} Manca un Echo di casa?</summary>
-      <p class="small muted">Qui compaiono gli Echo collegati allo Spotify di ${nameOf(S.chi())}. Nell’app Alexa: Altro → Impostazioni → Musica e podcast → Spotify, e collega il suo account. Per un attimo basta anche dire all’Echo «Alexa, Spotify Connect» e sceglierlo dall’app Spotify.</p></details>` : ''}
+      <p class="small muted">Spotify fa vedere alle app solo gli Echo «svegli»: di’ all’Echo «Alexa, Spotify Connect» (o fagli mettere un brano da Spotify) e in pochi secondi compare qui. Se non compare nemmeno così, l’Alexa di casa è collegata a un altro Spotify: nell’app Alexa, Altro → Impostazioni → Musica e podcast → Spotify, collega quello di ${nameOf(S.chi())}.</p></details>` : ''}
     ${celati.length ? html`<p class="small muted sp-celati">${icon('eyeoff', 'xs')} Nascosti: ${celati.join(', ')} <button class="card-link" type="button" data-action="sp-mostra">Mostrali</button></p>` : ''}
     ${tocco ? html`<button class="card-link sp-apri" type="button" data-action="sp-apri-app">${icon('link', 'xs')} Apri l’app Spotify</button>` : ''}`;
 }
@@ -898,9 +898,35 @@ function devSheet(msg = '') {
       <div class="btn-row" style="margin-top:12px"><button class="btn" type="button" data-action="sp-cerca-dev">${icon('refresh', 'sm')} Aggiorna</button></div>`,
   });
   aggiornaDev();
+  seguiDispositivi();
 }
 
-function ridisegnaDev() { const box = document.getElementById('sp-devlist'); if (box) box.innerHTML = devList().s; }
+/** Ridisegna la lista solo se è cambiata (e lascia aperto o chiuso l'aiuto come l'ha messo chi guarda). */
+function ridisegnaDev() {
+  const box = document.getElementById('sp-devlist');
+  if (!box) return;
+  const nuovo = devList().s;
+  if (box._html === nuovo) return;
+  const aiuto = box.querySelector('.sp-echo-aiuto');
+  const aperto = aiuto ? aiuto.open : null;
+  box.innerHTML = nuovo;
+  box._html = nuovo;
+  const dopo = box.querySelector('.sp-echo-aiuto');
+  if (dopo && aperto != null) dopo.open = aperto;
+}
+// Mentre "Dove ascoltare?" è aperto la lista si aggiorna da sola (ogni 4 secondi, per due minuti): un Echo appena
+// svegliato («Alexa, Spotify Connect») compare senza toccare niente.
+let seguiT = null;
+function seguiDispositivi() {
+  clearTimeout(seguiT);
+  const fino = Date.now() + 120000;
+  const giro = async () => {
+    if (!document.getElementById('sp-devlist') || Date.now() > fino) return;
+    if (!document.hidden) { await S.aggiorna({ dispositivi: true }); ridisegnaDev(); }
+    seguiT = setTimeout(giro, 4000);
+  };
+  seguiT = setTimeout(giro, 4000);
+}
 async function aggiornaDev() {
   const btn = document.querySelector('[data-action="sp-cerca-dev"] svg');
   if (btn) btn.classList.add('spin');

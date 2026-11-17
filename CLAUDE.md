@@ -66,8 +66,10 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   e parlano direttamente con api.spotify.com. Pagine in `js/views/spotify.js`: `#/musica` (lettore, cerca, libreria), `#/musica/cerca`,
   `/preferiti`, `/pl/<id>`, `/album/<id>`, `/artista/<id>`, foglio "⋯" del brano (coda, preferiti, playlist). Barra del brano trascinabile
   (seek), niente volume. In "Dove ascoltare?" ogni dispositivo si può nascondere (nomi in `settings.spotifyNascosti`, per tutta la casa;
-  quello che suona si vede sempre). In fondo "Manca un Echo di casa?" (chiuso): gli Echo compaiono solo per l'account Spotify collegato
-  nell'app Alexa di quella casa (Altro → Impostazioni → Musica e podcast); per un attimo anche «Alexa, Spotify Connect». Suggerimenti: musica a tema del periodo (`MUSICA_TEMA` in `js/data.js`, periodo da `periodoMusica()` in
+  quello che suona si vede sempre). La Web API elenca solo i dispositivi "attivi e comandabili": gli Echo a riposo spesso mancano (l'app
+  Spotify li vede anche sul Wi-Fi). Con il foglio aperto la lista si aggiorna da sola ogni 4 s per 2 minuti (`seguiDispositivi()`), così un
+  Echo svegliato con «Alexa, Spotify Connect» compare da solo; in fondo "Manca un Echo di casa?" (chiuso) lo spiega, e ricorda che gli
+  Echo compaiono solo per l'account Spotify collegato nell'app Alexa (Altro → Impostazioni → Musica e podcast). Suggerimenti: musica a tema del periodo (`MUSICA_TEMA` in `js/data.js`, periodo da `periodoMusica()` in
   `season.js`, trovata con la ricerca e tenuta una settimana) e "Scelti per te" (artisti dei brani salvati → loro brani non salvati e
   uscite dell'ultimo anno: le raccomandazioni di Spotify non ci sono più per le app nuove). "La nostra musica" non c'è più (i dati restano).
   Lettore (`js/spotify.js`): dopo un comando lo schermo cambia subito e le "attese" tengono lo stato chiesto finché Spotify non lo

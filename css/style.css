@@ -406,9 +406,18 @@ svg.i.lg { width: 28px; height: 28px; stroke-width: 1.6; }
 
 /* ---------- ricette ---------- */
 .search { position: relative; margin-bottom: 12px; }
-.search input { width: 100%; height: 46px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); padding: 0 14px 0 42px; outline: none; font-size: 16px; }
+.search input { width: 100%; height: 46px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); padding: 0 44px 0 42px; outline: none; font-size: 16px; }
 .search input:focus { border-color: var(--oak); }
-.search svg { position: absolute; left: 13px; top: 12px; color: var(--text-3); }
+.search > svg { position: absolute; left: 13px; top: 12px; color: var(--text-3); }
+/* la X per cancellare la ricerca: compare appena si scrive qualcosa */
+.search-x { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; color: var(--text-3); background: transparent; }
+.search-x svg.i { width: 15px; height: 15px; padding: 3px; box-sizing: content-box; border-radius: 50%; background: color-mix(in srgb, var(--text) 12%, transparent); color: var(--text-2); }
+.search-x:active svg.i { background: color-mix(in srgb, var(--text) 22%, transparent); }
+input:placeholder-shown + .search-x { display: none; }
+.cerca-box { position: relative; flex: 1; min-width: 0; display: flex; }
+.cerca-box input { width: 100%; padding-right: 46px !important; }
+.quick-add .search-x { width: 36px; height: 36px; border-radius: 50%; background: transparent; color: var(--text-3); box-shadow: none; }
+.quick-add .search-x:active { transform: translateY(-50%); }
 
 .season-banner {
   display: flex; align-items: center; gap: 12px; border-radius: var(--radius); padding: 14px; margin-bottom: 14px; text-decoration: none; color: inherit;
@@ -696,7 +705,7 @@ svg.i.lg { width: 28px; height: 28px; stroke-width: 1.6; }
 .sp-q { display: flex; align-items: center; gap: 10px; height: 50px; padding: 0 6px 0 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-1); color: var(--text-3); }
 .sp-q input { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; font: inherit; font-size: 16px; color: var(--text); outline: none; -webkit-appearance: none; appearance: none; }
 .sp-q input::-webkit-search-cancel-button { display: none; }
-.sp-q-x { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; color: var(--text-3); }
+.sp-q .search-x { position: static; transform: none; flex: none; }
 .sp-wait { padding: 8px 4px 0; }
 .sp-perche { margin: -4px 4px 8px; }
 .sp-wait-box { text-align: center; padding: 18px 0 4px; }
@@ -762,15 +771,24 @@ svg.i.lg { width: 28px; height: 28px; stroke-width: 1.6; }
 .sp-actions .btn { flex: 1; min-width: 0; max-width: 220px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .sp-save.on { color: var(--rose); }
 
-/* barretta "in riproduzione" nelle sottopagine */
-.sp-mini-space { height: 76px; }
-.sp-mini { position: fixed; z-index: 25; left: var(--pad-l); right: var(--pad-r); bottom: calc(var(--safe-bottom) + 84px); display: flex; align-items: center; gap: 4px; padding: 7px 6px 7px 7px; border-radius: 16px; background: color-mix(in srgb, var(--surface) 92%, transparent); -webkit-backdrop-filter: saturate(1.4) blur(16px); backdrop-filter: saturate(1.4) blur(16px); border: 1px solid var(--line); box-shadow: var(--shadow-2); }
+/* mini lettore in basso: su tutte le pagine tranne Musica, sopra la barra delle schede (fuori dalla pagina, resta cambiando pagina) */
+.sp-mini { position: fixed; z-index: 25; left: var(--pad-l); right: var(--pad-r); bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 20px); max-width: 528px; margin: 0 auto; display: flex; align-items: center; gap: 2px; padding: 7px 4px 9px 7px; border-radius: 16px; background: color-mix(in srgb, var(--surface) 94%, transparent); -webkit-backdrop-filter: saturate(1.4) blur(16px); backdrop-filter: saturate(1.4) blur(16px); border: 1px solid var(--line); box-shadow: var(--shadow-2); overflow: hidden; animation: mini-in .3s cubic-bezier(.2,.8,.2,1); }
+@keyframes mini-in { from { transform: translateY(14px); opacity: 0; } }
 .sp-mini-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
 .sp-mini-main .row-main { display: flex; flex-direction: column; min-width: 0; }
 .sp-mini-main b, .sp-mini-main .row-main span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sp-mini-main b { font-size: 14.5px; }
 .sp-mini-main .row-main span { font-size: 12.5px; color: var(--text-3); }
+.sp-mini-main em { font-style: normal; font-weight: 700; color: var(--sage); }
+.sp-mini-main em svg.i { width: 12px; height: 12px; vertical-align: -1.5px; margin-right: 3px; }
 .sp-mini .sp-tcover { width: 42px; height: 42px; }
+.sp-mini .sp-btn { width: 42px; height: 42px; color: var(--text); }
+.sp-mini-bar { position: absolute; left: 10px; right: 10px; bottom: 3px; height: 2px; border-radius: 2px; background: color-mix(in srgb, var(--text) 12%, transparent); overflow: hidden; pointer-events: none; }
+.sp-mini-bar > i { display: block; height: 100%; border-radius: inherit; background: var(--text-2); transition: width .25s linear; }
+/* con il mini lettore: la pagina finisce sopra di lui, il pulsante + e gli avvisi salgono */
+.con-mini .view { padding-bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 100px); }
+.con-mini .view:has(.fab) { padding-bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 172px); }
+.con-mini .fab, .con-mini .toast-layer { bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 90px); }
 
 /* fogli */
 .sp-devrow { font: inherit; }
@@ -788,7 +806,7 @@ svg.i.lg { width: 28px; height: 28px; stroke-width: 1.6; }
   .sp-meta > b { font-size: 17px; }
   .sp-ic.big { width: 34px; height: 34px; }
 }
-@media (prefers-reduced-motion: reduce) { .sp-eq i { animation: none; } .sp-bar > i { transition: none; } .tabbar, .view { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .sp-eq i { animation: none; } .sp-bar > i, .sp-mini-bar > i { transition: none; } .sp-mini { animation: none; } .tabbar, .view, .sp-mini { transition: none !important; } }
 @media (min-width: 700px) and (min-height: 560px) {
   .sp-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 18px 14px; }
   .sp-hs { grid-auto-columns: 150px; margin: 0; padding: 2px 0 6px; scroll-padding: 0; }
@@ -796,7 +814,11 @@ svg.i.lg { width: 28px; height: 28px; stroke-width: 1.6; }
   .sp-hero-img { width: 200px; height: 200px; }
   .sp-hero-txt h1 { font-size: 40px; }
   .sp-search, .sp-q { max-width: 680px; }
-  .sp-mini { left: calc(var(--side-w) + max(24px, (100vw - var(--side-w) - 760px) / 2)); right: max(24px, (100vw - var(--side-w) - 760px) / 2); bottom: calc(var(--safe-bottom) + 18px); }
+  .sp-mini { left: calc(var(--side-w) + max(24px, (100vw - var(--side-w) - 760px) / 2)); right: max(24px, (100vw - var(--side-w) - 760px) / 2); bottom: calc(var(--safe-bottom) + 18px); max-width: none; margin: 0; transition: left .26s cubic-bezier(.2,.8,.2,1); }
+  .con-mini .view { padding-bottom: calc(var(--safe-bottom) + 120px); }
+  .con-mini .view:has(.fab) { padding-bottom: calc(var(--safe-bottom) + 176px); }
+  .con-mini .fab { bottom: calc(var(--safe-bottom) + 92px); }
+  .con-mini .toast-layer { bottom: calc(var(--safe-bottom) + 92px); }
 }
 
 /* home stagionale */
@@ -1516,6 +1538,14 @@ label.set-row { cursor: pointer; }
 .web-msg b { display: block; font-size: 14.5px; }
 .web-msg span { font-size: 13px; color: var(--text-3); }
 .web-none { margin: 10px 4px 0; }
+/* la ricerca di Fatto in casa da Benedetta: si apre sul suo sito */
+.web-link { margin-bottom: 10px; padding: 8px 10px; align-items: center; color: inherit; text-decoration: none; }
+.web-link > svg.i { color: var(--text-3); flex: none; }
+.web-link .wc-body b { font-size: 15.5px; }
+.wc-logo { width: 44px; height: 44px; flex: none; border-radius: 12px; display: grid; place-items: center; }
+.wc-logo.bene { background: #F9E3E1; color: #B4473F; }
+:root[data-theme="dark"] .wc-logo.bene { background: #4A2A27; color: #F3B7AF; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .wc-logo.bene { background: #4A2A27; color: #F3B7AF; } }
 .web-more { margin: 12px 4px 0; font-size: 13px; color: var(--text-3); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .web-more a { color: var(--oak-deep); font-weight: 700; }
 .web-spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent; animation: spin .8s linear infinite; display: inline-block; }
@@ -1535,13 +1565,58 @@ label.set-row { cursor: pointer; }
 /* ==========================================================================
    Desideri: liste Amazon collegate
    ========================================================================== */
-.amz-lists { display: grid; gap: 8px; margin-top: 12px; }
-.amz-list { display: flex; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-1); padding: 4px 4px 4px 0; }
-.amz-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 8px 6px 8px 12px; text-decoration: none; color: inherit; }
-.amz-open .dot-ico { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; flex: none; }
-.amz-open b { display: block; font-size: 15px; }
-.amz-open .row-main span { font-size: 12.5px; color: var(--text-3); }
-.amz-open > svg.i { color: var(--text-3); }
+/* Desideri: le liste in fila (su iPad a griglia) */
+.wl-rail { display: grid; grid-auto-flow: column; grid-auto-columns: 132px; gap: 10px; overflow-x: auto; padding: 2px var(--pad-r) 10px var(--pad-l); margin: 0 calc(-1 * var(--pad-r)) 4px calc(-1 * var(--pad-l)); scrollbar-width: none; scroll-snap-type: x proximity; scroll-padding: 0 var(--pad-r) 0 var(--pad-l); }
+.wl-rail::-webkit-scrollbar { display: none; }
+.wl-tile { scroll-snap-align: start; display: flex; flex-direction: column; align-items: stretch; gap: 2px; min-width: 0; padding: 8px; border-radius: var(--radius); background: var(--surface); border: 1.5px solid var(--line); box-shadow: var(--shadow-1); text-align: left; color: inherit; font: inherit; }
+.wl-tile b { font-size: 14px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 6px; }
+.wl-tile > span:last-child { font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wl-tile.on { border-color: var(--oak); background: var(--oak-soft); }
+.wl-tile.on b { color: var(--oak-deep); }
+.wl-tile:active { transform: scale(.97); }
+.wl-cover { position: relative; aspect-ratio: 4 / 3; border-radius: 11px; overflow: hidden; display: grid; place-items: center; background: var(--rose-soft, var(--surface-2)); color: var(--rose); }
+.wl-cover svg.i { width: 28px; height: 28px; }
+.wl-tile.nostra .wl-cover { background: var(--sage-soft); color: var(--sage); }
+.wl-tile.amazon .wl-cover { background: #FFF; color: var(--oak-deep); border: 1px solid var(--line); }
+.wl-tile.add { border-style: dashed; box-shadow: none; background: transparent; }
+.wl-tile.add .wl-cover { background: var(--surface-2); color: var(--oak-deep); }
+.wl-collage { position: absolute; inset: 0; display: grid; gap: 2px; background: #FFF; padding: 4px; }
+.wl-collage.n2, .wl-collage.n3, .wl-collage.n4 { grid-template-columns: 1fr 1fr; }
+.wl-collage.n3 img:first-child { grid-row: span 2; }
+.wl-collage img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+.wish.with-img { align-items: center; }
+.wish-img { width: 54px; height: 54px; flex: none; border-radius: 10px; background: #FFF; border: 1px solid var(--line); display: grid; place-items: center; overflow: hidden; }
+.wish-img img { width: 100%; height: 100%; object-fit: contain; }
+/* una lista di Amazon: i prodotti con foto, nome e prezzo */
+.amz-head { display: flex; align-items: center; gap: 10px; padding: 12px 8px 12px 12px; }
+.amz-head .row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.amz-head .row-main b { font-family: var(--font-serif); font-weight: 500; font-size: 20px; line-height: 1.15; overflow-wrap: anywhere; }
+.amz-head .row-main span { font-size: 12.5px; color: var(--text-3); margin-top: 2px; }
+.amz-logo { width: 42px; height: 42px; flex: none; border-radius: 12px; display: grid; place-items: center; background: var(--oak-soft); color: var(--oak-deep); }
+.amz-note { display: flex; align-items: flex-start; gap: 6px; margin: 10px 4px 0; }
+.amz-note svg.i { flex: none; margin-top: 2px; }
+.amz-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 10px; margin-top: 12px; }
+.amz-item { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 8px 8px 10px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-1); color: inherit; text-decoration: none; }
+.amz-item:active { transform: scale(.98); }
+.amz-img { position: relative; aspect-ratio: 1; border-radius: 12px; background: #FFF; display: grid; place-items: center; overflow: hidden; color: var(--line-2); }
+.amz-img svg.i { width: 30px; height: 30px; }
+.amz-img img { position: absolute; inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); object-fit: contain; }
+.amz-item b { font-size: 13.5px; font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; margin-top: 4px; }
+.amz-price { font-family: var(--font-serif); font-size: 18px; font-weight: 500; margin-top: auto; }
+.amz-price.na { font-family: var(--font-sans); font-size: 12px; color: var(--text-3); }
+.amz-item.preso { opacity: .62; }
+.amz-preso { position: absolute; left: 6px; top: 6px; display: inline-flex; align-items: center; gap: 3px; padding: 3px 7px; border-radius: 999px; background: var(--sage); color: #fff; font-size: 11px; font-weight: 700; }
+.amz-item.sk .amz-img, .amz-item.sk i { background: linear-gradient(90deg, var(--surface-2), var(--line), var(--surface-2)); background-size: 200% 100%; animation: sk 1.2s ease-in-out infinite; }
+.amz-item.sk i { display: block; height: 11px; border-radius: 6px; margin-top: 6px; width: 80%; }
+.amz-item.sk i:last-child { width: 45%; }
+.amz-open-all { display: flex; width: max-content; margin: 18px auto 0; gap: 6px; align-items: center; }
+:root[data-theme="dark"] .amz-img, :root[data-theme="dark"] .wish-img, :root[data-theme="dark"] .wl-collage, :root[data-theme="dark"] .wl-tile.amazon .wl-cover { background: #F4EFEA; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .amz-img, :root:not([data-theme="light"]) .wish-img, :root:not([data-theme="light"]) .wl-collage, :root:not([data-theme="light"]) .wl-tile.amazon .wl-cover { background: #F4EFEA; } }
+@media (min-width: 560px) { .amz-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 700px) and (min-height: 560px) {
+  .wl-rail { grid-auto-flow: row; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); grid-auto-columns: auto; overflow: visible; margin: 0 0 6px; padding: 2px 0 8px; }
+  .amz-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 16px 14px; }
+}
 .mini-btn.amz { background: var(--oak-soft); color: var(--oak-deep); border-color: transparent; }
 
 /* Film: categorie (due file di scelte: quali film, poi la categoria) */
@@ -1550,6 +1625,7 @@ label.set-row { cursor: pointer; }
 .poster-ph.th-thriller { background: linear-gradient(160deg, #DFE4EC, #B6C0D0); color: #2E3A4F; }
 .poster-ph.th-azione { background: linear-gradient(160deg, #F8DCCD, #EBA98E); color: #7A2E14; }
 .poster-ph.th-horror { background: linear-gradient(160deg, #3D3142, #1D1621); color: #EED7E6; }
+.poster-ph.th-cartoni { background: linear-gradient(160deg, #DCEBFB, #D8CDF3); color: #3B3A7A; }
 @media (min-width: 700px) and (min-height: 560px) {
   /* su iPad le categorie stanno tutte in vista (vanno a capo invece di scorrere) */
   .chips.film-cats { flex-wrap: wrap; overflow: visible; margin-right: 0; padding-right: 0; }

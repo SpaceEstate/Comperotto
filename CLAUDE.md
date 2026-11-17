@@ -23,10 +23,18 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   a OwnTracks si mandano i nostri posti come zone (`setWaypoints`, una volta, o ogni 12 h finché non funzionano). Il codice di famiglia
   non si accetta mai nell'indirizzo (finirebbe nei log). Dall'app la posizione parte solo con l'interruttore acceso (e permesso già dato)
   o con un tocco; "Chiedi a…" manda una notifica all'altro (`#/dove/condividi`).
-- **Ricette online:** `api/ricette.js` (Wikibooks "Libro di cucina" via REST, TheMealDB, importazione da link con i dati schema.org;
-  controlli contro indirizzi interni). Le miniature Wikimedia esistono solo in larghezze standard (120, 250, 330, 500…).
-- **Desideri e Amazon:** Amazon non ha un'API per leggere le liste dei desideri: si collegano (`settings.listeAmazon`) e i link dei
-  prodotti si ripuliscono; `api/link.js` segue i link brevi (spotify.link, amzn.eu) solo verso Spotify/Amazon.
+- **Ricette online:** `api/ricette.js` cerca su GialloZafferano (pagina pubblica dei risultati: ordine dall'`ItemList` schema.org,
+  foto/voto/difficoltà/tempo dalle schede, solo `ricette.giallozafferano.it`) e importa da link con i dati schema.org (controlli contro
+  indirizzi interni; nei passaggi di GZ si tolgono i rimandi alle foto). Fatto in casa da Benedetta blocca i programmi (verifica
+  Cloudflare, anche da qui): l'app apre la sua ricerca (`/?s=`) nel browser e, se si incolla un suo link, spiega di copiare a mano.
+  Non aggirare quelle verifiche.
+- **Desideri e liste:** raccolta `liste` (`tipo: 'nostra' | 'amazon'`); "Desideri di casa" è la lista di sempre (desideri senza
+  `lista`). Eliminare una lista riporta i suoi desideri a casa. Le liste Amazon: `GET /api/link?lista=` legge la pagina pubblica della
+  lista (Amazon non ha un'API; pagine successive da `showMoreUrl` fino a `endOfListMarker`, una al secondo, niente insistenze se
+  Amazon rifiuta) e l'app salva l'ultima lettura nella lista (`articoli`, `aggiornata`; si rilegge dopo 6 h o con "Aggiorna";
+  dopo un rifiuto non riprova da sola per 30 min). Foto solo da `m.media-amazon.com`, link solo `amazon.xx/dp/ASIN`.
+  Le vecchie `settings.listeAmazon` sono passate una volta a `liste` (`settings.listeV2`). `api/link.js` segue anche i link brevi
+  (spotify.link, amzn.eu) solo verso Spotify/Amazon. Siamo a 11 funzioni in `api/` (il piano Hobby di Vercel ne permette 12).
 - **Sicurezza:** ogni funzione protetta inizia con `respingi(req, res)` (`api/_lib.js`): 10 codici diversi sbagliati in 15 minuti
   dallo stesso indirizzo → bloccato per 15 minuti (lo stesso codice vecchio ripetuto da un telefono non blocca).
 - **Notifiche** (Web Push, senza servizi esterni): `api/_push.js` (chiavi VAPID create da sole e tenute nel database, cifratura
@@ -44,11 +52,18 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   Lettore (`js/spotify.js`): dopo un comando lo schermo cambia subito e le "attese" tengono lo stato chiesto finché Spotify non lo
   conferma (min 2,5 s, max 4,5 s: gli Echo rispondono in ritardo); comandi in fila uno alla volta; richieste con timeout di 10 s e
   pausa automatica sui 429; si ridisegna solo se cambia brano/stato/dispositivo; la barra la muove un orologio locale (250 ms).
-  "Questo iPhone/iPad" = Web Playback SDK (`sdk.scdn.co`, caricato solo quando serve; `activateElement()` dentro il tocco;
+  "Questo iPhone/iPad" = Web Playback SDK (`sdk.scdn.co`, caricato e preparato entrando in Musica; `activateElement()` dentro il tocco;
   vuole i permessi `streaming user-read-email user-read-private`, altrimenti "Invalid token scopes").
+  Di base la musica parte qui (`doveSuonare()` → `QUI`): un altro dispositivo solo se scelto in "Dove ascoltare?" e ancora collegato
+  (è quello attivo o scelto da meno di 30 min; `casa.spotify.dev` = `{ id, at }`). Mini lettore fisso (`miniLettore()`, nel
+  `#mini` fuori dalla pagina, su tutte le pagine tranne `#/musica`): il giro di aggiornamento continua anche fuori da Musica
+  (10 s se suona, 30 s in pausa, 60 s senza niente; mai con l'app in secondo piano) e parte all'avvio (`avviaSpotify()`).
   Regole 2026 (modalità sviluppo, max 5 utenti, proprietario Premium): ricerca max 10 per tipo, `tracks`→`items` nelle playlist,
   preferiti con `PUT/DELETE me/library?uris=`, brani solo delle playlist proprie (`/playlists/{id}/items`, altrimenti 403).
   Collegamenti senza i permessi nuovi → `completo: false` e la pagina chiede "Ricollega".
+- **Film:** categorie in `FILM_CATS` (`js/data.js`): Famiglia, Natale, Halloween, Sempre, Thriller, Azione, Horror, Cartoni; dai generi
+  di JustWatch (`ani` → cartoni) e di Apple si propongono da sole. Gli esempi si aggiornano una volta (`settings.filmCats`, ora 2).
+- **Caselle di ricerca:** la X per cancellare è `cancella(id, poi)` di `core.js` (si vede solo con del testo, via `:placeholder-shown`).
 - **Spesa:** reparti in `SHOP_CATS` (`js/data.js`) nell'ordine del giro; gli id vecchi passano da `LEGACY_CATS` (il vecchio `freschi` ora è `frigo`).
 - **Avvio e aggiornamenti:** un dispositivo già collegato parte subito dai dati salvati (non aspetta `/api/stato`). A ogni pubblicazione
   cambiare `CACHE` in `sw.js`: l'app aperta si ricarica da sola (non mentre si scrive). I caratteri sono in `assets/fonts/`.

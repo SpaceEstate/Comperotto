@@ -15,5 +15,7 @@ export function render(r = []) {
 }
 
 export const after = (r = []) => SPV.after(r);
+/** Il mini lettore in basso (su tutte le pagine tranne Musica). */
+export const mini = (r = []) => SPV.miniLettore(r);
 export const refresh = () => SPV.refresh();
 export const actions = { ...SPV.actions };

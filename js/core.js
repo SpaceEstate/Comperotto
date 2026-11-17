@@ -195,6 +195,14 @@ export function pageHead(title, { eyebrow = '', actions = '' } = {}) {
   </header>`;
 }
 
+/**
+ * La X in fondo a una casella di ricerca: cancella tutto con un tocco e rimette il cursore lì.
+ * Si vede solo quando c'è scritto qualcosa (CSS); "poi" = azione da fare dopo (es. chiudere i risultati).
+ */
+export function cancella(id, poi = '') {
+  return html`<button type="button" class="search-x" data-action="search-x" data-for="${id}" ${poi ? raw(`data-poi="${poi}"`) : ''} aria-label="Cancella la ricerca">${icon('x', 'sm')}</button>`;
+}
+
 export function emptyState(title, text, art = '') {
   return html`<div class="empty fade-in">${art}<p><b>${title}</b></p>${text ? html`<p class="small">${text}</p>` : ''}</div>`;
 }

@@ -11,7 +11,7 @@
 
 import { uid, lsGet, lsSet } from './utils.js';
 
-export const COLLECTIONS = ['settings', 'spesa', 'freq', 'lavori', 'routine', 'ricette', 'desideri', 'gatti', 'eventiGatti', 'bacheca', 'musica', 'film', 'posizioni'];
+export const COLLECTIONS = ['settings', 'spesa', 'freq', 'lavori', 'routine', 'ricette', 'desideri', 'gatti', 'eventiGatti', 'bacheca', 'musica', 'film', 'posizioni', 'liste'];
 
 let onError = (e) => console.error(e);
 export const setErrorHandler = (fn) => { onError = fn; };

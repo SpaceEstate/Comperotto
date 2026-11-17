@@ -26,6 +26,7 @@ export const FILM_CATS = {
   thriller: { label: 'Thriller', icon: 'eye' },
   azione: { label: 'Azione', icon: 'bolt' },
   horror: { label: 'Horror', icon: 'ghost' },
+  cartoni: { label: 'Cartoni', icon: 'balloon' },
 };
 /** Le categorie di un film. I temi di prima che non sono più categorie (es. "Parigi e Canarie", "Estate")
  *  restano salvati ma non si mostrano: se non resta niente, il film è in "Sempre". */

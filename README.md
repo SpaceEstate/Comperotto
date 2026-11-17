@@ -9,9 +9,9 @@ Un'app fatta su misura per **iPhone e iPad** (si installa dalla schermata Home e
   - **Lavori** da fare (tagliare le tende, sistemare i mobili…) per stanza e priorità;
   - **Rifiuti**: il calendario della raccolta. Ogni sera la Home dice cosa portare fuori.
 - **Ricette** per tema (Tutti i giorni, Natale, Capodanno, San Valentino, Pasqua, Estate, Halloween, Compleanni, Parigi e Canarie): si aggiungono e si modificano dall'app (tasto **+ Ricetta**, e **Modifica ricetta** in fondo a ognuna), con foto. Si spuntano gli ingredienti e finiscono nella spesa; c'è il dado "cosa cuciniamo?" e il tasto **Tieni lo schermo acceso** mentre si cucina. La ricerca guarda prima nel vostro ricettario e poi **anche online** (vedi sezione 8), e una ricetta si può **importare da un link**.
-- **Film e serie** per categoria (**Famiglia, Natale, Halloween, Sempre, Thriller, Azione, Horror**): copertina e **dove vederli in Italia** (abbonamento, noleggio, acquisto) arrivano da soli e si aggiornano ogni giorno, e cercando un titolo la categoria si propone dal genere; in cima un "Stasera guardiamo…".
-- **Desideri**: cose da comprare con prezzo, link e totale; le **liste Amazon** si collegano per aprirle con un tocco e i link dei prodotti Amazon si ripuliscono da soli (sezione 9).
-- **Musica** con **Spotify**: cosa suona e dove (iPhone, iPad, **Echo**…), ricerca, preferiti, playlist, musica a tema del periodo e suggerimenti "Scelti per te". Dalla Home o, su iPad, dalla barra laterale.
+- **Film e serie** per categoria (**Famiglia, Natale, Halloween, Sempre, Thriller, Azione, Horror, Cartoni**): copertina e **dove vederli in Italia** (abbonamento, noleggio, acquisto) arrivano da soli e si aggiornano ogni giorno, e cercando un titolo la categoria si propone dal genere; in cima un "Stasera guardiamo…".
+- **Desideri**: più **liste** (quella di casa e quelle che create voi) con prezzo, link e totale, e le **liste dei desideri di Amazon** con foto, nome e prezzo di ogni prodotto: un tocco apre il prodotto su Amazon (sezione 9).
+- **Musica** con **Spotify**: di base suona sul dispositivo che state usando, oppure su iPad, **Echo**…; mini lettore sempre in basso, ricerca, preferiti, playlist, musica a tema del periodo e suggerimenti "Scelti per te". Dalla Home o, su iPad, dalla barra laterale.
 - **Thor e Minù**: foto, età, peso, antiparassitari, vaccini e veterinario, con promemoria (dalla Home).
 - **Lavagnetta** in Home per lasciarsi biglietti, **conto alla rovescia** per le feste e i compleanni (Serena il 29/04, Patrick il 20/12, Thor e Minù il 04/10, il vostro anniversario il 18/07): il giorno giusto la Home fa festa.
 - **Atmosfere stagionali**: cambiano colori e decorazioni da sole.
@@ -148,7 +148,8 @@ La musica arriva da **Spotify** (serve Premium), come nell'app di Spotify:
 - **Cerca** brani, artisti, album e playlist; pagine di playlist, album e artista con *Riproduci* e *Casuale*;
 - **Brani che ti piacciono** (il ♥ accanto a ogni brano), album e playlist salvati nella libreria;
 - **playlist vostre**: crearle, rinominarle, eliminarle, aggiungere e togliere brani (⋯ accanto al brano → *Aggiungi a una playlist*), e *Aggiungi in coda*;
-- **Dove ascoltare?**: *questo iPhone/iPad* (la musica suona dentro l'app), gli altri dispositivi con Spotify aperto e gli **Echo**.
+- **Dove ascoltare?**: di base la musica parte **sul dispositivo che state usando** (toccando un brano sull'iPhone suona subito lì, dentro l'app); si può scegliere un altro dispositivo con Spotify aperto o un **Echo**, e finché resta collegato i brani partono lì;
+- il **mini lettore** resta in basso su tutte le pagine (copertina, titolo, dove suona, play/pausa e avanti): un tocco riapre *Musica*.
 
 Una volta sola, da un computer:
 
@@ -161,17 +162,18 @@ Gli Echo compaiono in *Dove ascoltare?* se Spotify è collegato nell'app Alexa (
 
 ## 8. Ricette anche da internet
 
-Scrivendo nella ricerca delle Ricette (almeno 3 lettere), dopo un attimo compaiono a parte anche le ricette trovate online:
-- **Wikibooks – Libro di cucina**, in italiano (licenza libera CC BY-SA: si possono importare citando la fonte);
-- **TheMealDB**, ricette di tutto il mondo, in inglese.
+Scrivendo nella ricerca delle Ricette (almeno 3 lettere), dopo un attimo compaiono a parte anche le ricette di **GialloZafferano**, con foto, voto, difficoltà e tempo. **Importa** apre la ricetta già compilata (ingredienti, passaggi, foto) da controllare e salvare; in fondo alla ricetta resta la fonte.
 
-**Importa** apre la ricetta già compilata (ingredienti, passaggi, foto) da controllare e salvare; in fondo alla ricetta resta la fonte. In più, in **+ Ricetta** c'è **"Da un sito di ricette"**: si incolla il link di una ricetta (GialloZafferano, Misya, Cucchiaio d'argento e quasi tutti gli altri) e l'app legge i dati che quei siti pubblicano apposta in formato standard. Sotto i risultati ci sono anche i collegamenti per cercare su GialloZafferano e Google. Niente chiavi né abbonamenti.
+**Fatto in casa da Benedetta** non lascia leggere il suo sito ai programmi (ha una verifica anti-robot): il pulsante *Cerca «…» su Fatto in casa da Benedetta* apre la sua ricerca con le stesse parole, nel browser. Le sue ricette si aggiungono con **+ Ricetta**, copiando ingredienti e preparazione.
 
-## 9. Desideri e Amazon
+In **+ Ricetta** c'è anche **"Da un sito di ricette"**: si incolla il link di una ricetta (GialloZafferano, Misya, Cucchiaio d'argento e quasi tutti gli altri) e l'app legge i dati che quei siti pubblicano apposta in formato standard. Niente chiavi né abbonamenti.
 
-Amazon **non permette alle app di leggere le liste dei desideri** (non c'è un'API pubblica per farlo). Quindi:
-- **Collega una lista Amazon** (Amazon → la lista → Condividi → Copia link): in Desideri compare la scheda che la apre con un tocco nell'app Amazon;
-- per aggiungere un prodotto si **incolla il suo link** nel nuovo desiderio (va bene anche il link breve `amzn.eu/…`): il link viene ripulito dal tracciamento e, se c'è, il nome del prodotto si compila da solo. Il prezzo lo scrivete voi.
+## 9. Desideri e liste
+
+- **Desideri di casa** è la lista di sempre; con **Nuova lista → Nostra** se ne creano altre (es. *Compleanno di Serena*) e nel desiderio si sceglie in che lista va. Eliminando una lista i suoi desideri tornano in *Desideri di casa*.
+- **Nuova lista → Da Amazon** (Amazon → la lista → Condividi → Copia link; la lista deve essere *pubblica* o *condivisa*): l'app mostra i prodotti della lista con **foto, nome e prezzo**, e un tocco apre il prodotto su Amazon. La lista si rilegge da sola ogni qualche ora, o con *Aggiorna*.
+- Amazon **non ha un'API** per le liste dei desideri: l'app legge la pagina pubblica della lista, come farebbe il browser. Se un giorno Amazon non la apre (succede, ogni tanto rifiuta le richieste automatiche), restano i prodotti dell'ultima lettura con la data, e si riprova più tardi.
+- Per un prodotto singolo si **incolla il suo link** nel nuovo desiderio (va bene anche il link breve `amzn.eu/…`): il link viene ripulito dal tracciamento e, se c'è, il nome del prodotto si compila da solo.
 
 ---
 

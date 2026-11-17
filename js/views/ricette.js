@@ -2,7 +2,7 @@
 import { html, raw, norm, cap, parseQty, resizeImage, safeImg, safeUrl, hostOf, vibrate } from '../utils.js';
 import { icon, catFace } from '../icons.js';
 import { THEMES, themeLabel } from '../data.js';
-import { state, store, openSheet, closeSheet, toast, val, lines, pageHead, emptyState, ui, setUi, navigate, themeChoices, confirmSheet, rerender, isSynced, sheetError } from '../core.js';
+import { state, store, openSheet, closeSheet, toast, val, lines, pageHead, emptyState, ui, setUi, navigate, themeChoices, confirmSheet, rerender, isSynced, sheetError, cancella } from '../core.js';
 import { addShopping } from './spesa.js';
 import { currentTheme, seasonInfo } from '../season.js';
 
@@ -44,7 +44,7 @@ export function render(route) {
       <div><b>${season ? season.title : sTheme.label}</b><span>${seasonCount ? `${seasonCount} ricette di ${THEMES[sTheme.id].label}` : `Aggiungi le vostre ricette di ${THEMES[sTheme.id].label}`}${sTheme.days != null ? ` · mancano ${sTheme.days} giorni` : ''}</span></div>
     </a>` : ''}
 
-    <div class="search">${icon('search', 'sm')}<input id="ricette-q" type="search" placeholder="Cerca per nome o ingrediente" value="${ui('ricette.q', '')}" data-input="ricette-q" aria-label="Cerca ricette"></div>
+    <div class="search">${icon('search', 'sm')}<input id="ricette-q" type="search" placeholder="Cerca per nome o ingrediente" value="${ui('ricette.q', '')}" data-input="ricette-q" aria-label="Cerca ricette">${cancella('ricette-q')}</div>
 
     <div class="chips" style="margin-top:0">
       <button class="chip ${theme === 'tutte' ? 'on' : ''}" data-action="ricette-theme" data-theme="tutte">Tutte</button>
@@ -63,10 +63,14 @@ export function render(route) {
 }
 
 // ---------------------------------------------------------------------------
-// Ricerca anche online (Wikibooks in italiano + TheMealDB): parte solo quando si smette di scrivere,
-// con almeno 3 lettere; le richieste vecchie si annullano e i risultati restano in memoria.
+// Ricerca anche online: le ricette di GialloZafferano (foto, voto, difficoltà, tempo; importabili con un
+// tocco) e la ricerca di Fatto in casa da Benedetta, che si apre sul suo sito (non si lascia leggere dalle
+// app). Parte solo quando si smette di scrivere, con almeno 3 lettere; le richieste vecchie si annullano
+// e i risultati restano in memoria.
 // ---------------------------------------------------------------------------
-const FONTI = { wikibooks: 'Wikibooks · Libro di cucina', themealdb: 'TheMealDB · in inglese' };
+const FONTI = { giallozafferano: 'GialloZafferano' };
+const suGz = (t) => `https://www.giallozafferano.it/ricerca-ricette/${encodeURIComponent(t).replace(/%20/g, '+')}/`;
+const suBenedetta = (t) => `https://www.fattoincasadabenedetta.it/?s=${encodeURIComponent(t).replace(/%20/g, '+')}`;
 const webCache = new Map();
 let webT = 0;
 let webCtrl = null;
@@ -100,10 +104,14 @@ async function cercaWeb(k, testo) {
 
 function online(q, all) {
   const testo = ui('ricette.q', '').trim();
-  const altrove = html`<p class="web-more">${icon('search', 'xs')} Cerca anche su
-    <a href="https://www.giallozafferano.it/ricerca-ricette/${encodeURIComponent(testo)}/" target="_blank" rel="noopener">GialloZafferano</a> ·
-    <a href="https://www.google.com/search?q=${encodeURIComponent(`ricetta ${testo}`)}" target="_blank" rel="noopener">Google</a></p>`;
-  if (!isSynced()) return altrove;
+  // Benedetta: la sua ricerca si apre sul suo sito, con le stesse parole
+  const benedetta = html`<a class="web-card web-link" href="${suBenedetta(testo)}" target="_blank" rel="noopener">
+    <span class="wc-logo bene" aria-hidden="true">${icon('chef')}</span>
+    <span class="wc-body"><b>Cerca «${testo}» su Fatto in casa da Benedetta</b><span class="wc-src">Si apre il suo sito</span></span>
+    ${icon('right', 'sm')}</a>`;
+  const altrove = html`<p class="web-more">${icon('search', 'xs')} Tutti i risultati su
+    <a href="${suGz(testo)}" target="_blank" rel="noopener">GialloZafferano</a></p>`;
+  if (!isSynced()) return html`${benedetta}${altrove}`;
   const w = ui('ricette.web', null);
   if (q.length < 3) return html`<p class="muted small web-none">Con almeno 3 lettere cerco anche online.</p>`;
   if (!w || w.k !== q) return '';
@@ -112,10 +120,10 @@ function online(q, all) {
   if (w.stato === 'attesa' || w.stato === 'carico') {
     corpo = html`<div class="web-results" aria-busy="true">${[1, 2].map(() => html`<div class="web-card sk"><div class="wc-img"></div><div class="wc-body"><i></i><i></i><i></i></div></div>`)}</div>`;
   } else if (w.stato === 'errore') {
-    corpo = html`<div class="card web-msg">${icon('info', 'sm')}<div><b>Le ricette online non rispondono adesso.</b><span>${w.msg && !/^Errore \d/.test(w.msg) ? w.msg : 'Controlla la connessione e riprova.'}</span>
+    corpo = html`<div class="card web-msg">${icon('info', 'sm')}<div><b>GialloZafferano non risponde adesso.</b><span>${w.msg && !/^Errore \d/.test(w.msg) ? w.msg : 'Controlla la connessione e riprova.'}</span>
       <button class="mini-btn" data-action="ricette-web-riprova" style="margin-top:8px">${icon('refresh', 'xs')} Riprova</button></div></div>`;
   } else if (!w.risultati.length) {
-    corpo = html`<p class="muted small web-none">Online non ho trovato ricette per «${testo}». Prova con un nome più semplice (es. «lasagne»).</p>`;
+    corpo = html`<p class="muted small web-none">Su GialloZafferano non ho trovato ricette per «${testo}». Prova con un nome più semplice (es. «lasagne»).</p>`;
   } else {
     corpo = html`<div class="web-results">${w.risultati.map((r) => {
       const gia = nostre.get(norm(r.titolo));
@@ -127,7 +135,7 @@ function online(q, all) {
           ${r.descrizione ? html`<p>${r.descrizione}</p>` : ''}
           <div class="wc-act">
             ${gia ? html`<a class="mini-btn primary" href="#/ricette/${gia.id}">${icon('check', 'xs')} Già nel ricettario</a>`
-              : html`<button class="mini-btn primary" data-action="ricetta-importa" data-fonte="${r.fonte}" data-id="${r.id}">${icon('download', 'xs')} Importa</button>`}
+              : html`<button class="mini-btn primary" data-action="ricetta-importa" data-url="${safeUrl(r.link)}">${icon('download', 'xs')} Importa</button>`}
             <a class="mini-btn" href="${safeUrl(r.link)}" target="_blank" rel="noopener">${icon('link', 'xs')} Originale</a>
           </div>
         </div>
@@ -135,7 +143,7 @@ function online(q, all) {
     })}</div>
     ${w.errori && w.errori.length ? html`<p class="muted small web-none">${w.errori.map((x) => FONTI[x] || x).join(', ')} non ha risposto: i risultati potrebbero essere incompleti.</p>` : ''}`;
   }
-  return html`<div class="section-title"><span>${icon('search', 'xs')} Anche online</span>${w.stato === 'carico' ? html`<span class="web-spin" aria-label="Cerco"></span>` : ''}</div>${corpo}${altrove}`;
+  return html`<div class="section-title"><span>${icon('search', 'xs')} Anche online</span>${w.stato === 'carico' ? html`<span class="web-spin" aria-label="Cerco"></span>` : ''}</div>${benedetta}${corpo}${altrove}`;
 }
 
 /** Una foto arrivata come data URL dal server: la riduco come quelle scattate (meno spazio nel database). */
@@ -299,7 +307,7 @@ export const actions = {
     const prima = el.innerHTML;
     el.innerHTML = html`<span class="web-spin sm"></span> Preparo…`.s;
     try {
-      const x = await store.call(`ricette?fonte=${encodeURIComponent(el.dataset.fonte)}&id=${encodeURIComponent(el.dataset.id)}`);
+      const x = await store.call(`ricette?url=${encodeURIComponent(el.dataset.url)}`);
       const photo = x.immagine ? await ridimensiona(x.immagine) : '';
       recipeSheet(null, { title: x.titolo, ingredients: x.ingredienti || [], steps: x.passi || [], time: x.tempo, servings: x.porzioni, photo, fonte: x.fonte, themes: ['sempre'] });
     } catch (e) {

@@ -191,6 +191,7 @@ export async function aggiorna({ dispositivi = false } = {}) {
     } finally {
       inCorso = null;
       if (cambia) rerender();
+      avviaGiro(); // se ora suona (o si è fermato) il giro cambia passo
     }
   })();
   return inCorso;
@@ -205,7 +206,7 @@ export async function caricaPlaylist(k = chi(), forza = false) {
   const io = await mioId(k);
   let path = 'me/playlists?limit=50';
   for (let i = 0; path && i < 6; i++) {
-    const j = await call(path, {}, k);
+    const j = (await call(path, {}, k)) || {};
     (j.items || []).filter(Boolean).forEach((p) => list.push(playlistBreve(p, io)));
     path = j.next ? j.next.replace(API, '') : '';
   }
@@ -225,16 +226,46 @@ export function bestImage(images, min = 300) {
 // ---------------------------------------------------------------------------
 // Comandi: lo schermo cambia subito, i comandi partono uno alla volta (niente sorpassi)
 // ---------------------------------------------------------------------------
-export const dispositivoScelto = () => lsGet('casa.spotify.dev');
-export const scegliDispositivo = (id) => lsSet('casa.spotify.dev', id);
+/** "Questo iPhone/iPad" come dispositivo: il lettore dentro l'app (il suo id cambia a ogni avvio). */
+export const QUI = 'qui';
+// l'ultima scelta fatta in "Dove ascoltare?": { id: 'qui' | id di un altro dispositivo, at }
+function scelta() {
+  const v = lsGet('casa.spotify.dev');
+  if (!v) return null;
+  const o = parse(v);
+  return o && typeof o === 'object' && o.id ? o : { id: String(v), at: 0 }; // prima era solo l'id
+}
+export const dispositivoScelto = () => { const s = scelta(); return s ? s.id : null; };
+export const scegliDispositivo = (id) => lsSet('casa.spotify.dev', JSON.stringify({ id: !id || id === QUI || eQui(id) ? QUI : id, at: Date.now() }));
 export const attivo = () => (sp.player && sp.player.device) || (sp.devices || []).find((d) => d.is_active) || null;
 
-/** Dove far partire la musica: quello che suona già, altrimenti l'ultimo scelto se è acceso. */
+// il lettore dentro l'app non va su questo dispositivo (browser senza il necessario, account senza Premium…)
+let quiGuasto = '';
+/** Si può ascoltare dentro l'app, su questo iPhone/iPad? */
+export function quiPossibile() {
+  const a = sp.info && sp.info.account && sp.info.account[chi()];
+  if (quiGuasto || (a && a.completo === false)) return false;
+  return typeof navigator.requestMediaKeySystemAccess === 'function'; // il lettore di Spotify ne ha bisogno
+}
+
+const SCELTA_VALE = 30 * 60000;
+/**
+ * Dove far partire la musica: di base qui, sul dispositivo che si sta usando. Un altro (un Echo, l'iPad…)
+ * solo se è stato scelto in "Dove ascoltare?" e ci si è ancora collegati: è lui che suona (o è in pausa),
+ * oppure è stato scelto da poco. Restituisce QUI, l'id di un dispositivo o null (= chiedere dove).
+ */
 export function doveSuonare() {
+  const s = scelta();
   const a = attivo();
+  const acceso = (id) => (sp.devices || []).some((d) => d.id === id);
+  if (s && s.id !== QUI) {
+    if (a && a.id === s.id) return s.id;
+    if (Date.now() - (s.at || 0) < SCELTA_VALE && acceso(s.id)) return s.id;
+  }
+  if (quiPossibile()) return QUI;
+  // qui non si può: quello che suona già, altrimenti l'ultimo scelto se è acceso
   if (a && a.id) return a.id;
-  const s = dispositivoScelto();
-  if (s && (sp.devices || []).some((d) => d.id === s)) return s;
+  if (s && s.id !== QUI && acceso(s.id)) return s.id;
   return null;
 }
 
@@ -261,6 +292,7 @@ function comeItem(uri) {
 
 /** Fa partire una playlist/album (context) o dei brani (uris) su un dispositivo. */
 export async function suona({ context, uris, offset }, device = doveSuonare()) {
+  if (device === QUI) device = qui.id;
   if (!device) throw new SpotifyError('Scegli dove ascoltare', 0, 'NO_DEVICE');
   const primo = (offset && offset.uri) || (uris && uris[0]) || '';
   const nuovo = primo ? comeItem(primo) : null;
@@ -365,17 +397,35 @@ export function progresso() {
 }
 
 // ---------------------------------------------------------------------------
-// Giro di aggiornamento mentre la pagina Musica è aperta: ogni 5 secondi se suona, ogni 12 se è fermo
+// Giro di aggiornamento. In Musica: ogni 5 secondi se suona, ogni 12 se è fermo. Nelle altre pagine
+// (per il mini lettore in basso): ogni 10 secondi se suona, 30 se è in pausa, 60 se non c'è niente.
+// Con l'app in secondo piano non chiede niente.
 // ---------------------------------------------------------------------------
 let giro = null;
+let giroAt = 0;
+function ritmo() {
+  const p = sp.player;
+  const suona = Boolean(p && p.is_playing);
+  if (location.hash.startsWith('#/musica')) return suona ? 5000 : 12000;
+  return suona ? 10000 : p ? 30000 : 60000;
+}
 export function avviaGiro() {
-  if (giro) return;
+  if (!chi()) return;
+  const ms = ritmo();
+  if (giro && giroAt <= Date.now() + ms) return; // il prossimo giro arriva già prima
+  clearTimeout(giro);
+  giroAt = Date.now() + ms;
   giro = setTimeout(async () => {
-    if (!location.hash.startsWith('#/musica') || !chi()) { giro = null; return; }
-    if (!document.hidden) await aggiorna();
     giro = null;
+    if (!chi()) return;
+    if (!document.hidden) await aggiorna();
     avviaGiro();
-  }, sp.player && sp.player.is_playing ? 5000 : 12000);
+  }, ms);
+}
+/** All'avvio dell'app, se Spotify è collegato: cosa suona (per il mini lettore) e poi il giro. */
+export function avviaSpotify() {
+  if (!isSynced() || !chi()) return;
+  aggiorna().finally(avviaGiro);
 }
 /** A fine brano chiedo subito il prossimo (senza aspettare il giro). */
 let fineChiesta = '';
@@ -386,7 +436,12 @@ export function fineBrano() {
   setTimeout(() => aggiorna(), 700);
 }
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden || !location.hash.startsWith('#/musica')) return;
+  if (document.hidden || !isSynced()) return;
+  if (!location.hash.startsWith('#/musica')) {
+    // di ritorno nell'app: il mini lettore in basso deve dire il vero (es. la musica è finita nel frattempo)
+    if (chi() && Date.now() - sp.playerAt > 5000) aggiorna().finally(avviaGiro);
+    return;
+  }
   // di ritorno (es. dalla pagina di Spotify): rileggo account e lettore
   caricaInfo().then(() => { if (chi()) { aggiorna({ dispositivi: true }); caricaPlaylist().catch(() => {}); avviaGiro(); } });
 });
@@ -593,15 +648,20 @@ export async function togliDa(id, uris) {
 // Coda e "casuale" all'avvio
 // ---------------------------------------------------------------------------
 export async function inCoda(uri) {
-  const d = doveSuonare();
-  if (!d) throw new SpotifyError('Scegli dove ascoltare', 0, 'NO_DEVICE');
-  await call(`me/player/queue?uri=${encodeURIComponent(uri)}&device_id=${encodeURIComponent(d)}`, { method: 'POST' });
+  // la coda è quella di dove sta suonando
+  const a = attivo();
+  if (!a || !a.id) throw new SpotifyError('Scegli dove ascoltare', 0, 'NO_DEVICE');
+  await call(`me/player/queue?uri=${encodeURIComponent(uri)}&device_id=${encodeURIComponent(a.id)}`, { method: 'POST' });
 }
 export async function suonaCasuale(target, d = doveSuonare()) {
+  if (d === QUI) d = qui.id;
   if (!d) throw new SpotifyError('Scegli dove ascoltare', 0, 'NO_DEVICE');
-  await call(`me/player/shuffle?state=true&device_id=${encodeURIComponent(d)}`, { method: 'PUT' }).catch(() => {});
+  const casuale = () => call(`me/player/shuffle?state=true&device_id=${encodeURIComponent(d)}`, { method: 'PUT' }).then(() => true, () => false);
+  const prima = await casuale();
   await suona(target, d);
-  if (sp.player) sp.player.shuffle_state = true;
+  // un dispositivo appena acceso (es. questo iPhone) accetta "casuale" solo quando sta già suonando
+  if (!prima) casuale();
+  if (sp.player) { sp.player.shuffle_state = true; aspetta('shuffle', true); }
 }
 
 // ---------------------------------------------------------------------------
@@ -639,22 +699,36 @@ export const eQui = (id) => Boolean(id && qui.id && id === qui.id);
 
 let statoT;
 /**
- * Accende il lettore dentro l'app. Va chiamata subito nel tocco: su iPhone e iPad l'audio
- * parte solo se il primo "play" arriva da un gesto (activateElement).
+ * Prepara il lettore dentro l'app (senza farlo suonare): entrando in Musica, così al primo tocco
+ * su un brano è già pronto e la musica parte subito da qui.
  */
-export function attivaQui() {
-  if (!window.Spotify) return caricaSdk().then(() => attivaQui());
+export function preparaQui() {
+  if (!window.Spotify) return caricaSdk().then(() => preparaQui());
   const k = chi();
+  if (!k) return Promise.reject(new SpotifyError('Spotify non è collegato', 0));
+  if (qui.player && qui.chi === k && qui.staccato) {
+    // il lettore c'era ma si è staccato (es. l'app è rimasta in secondo piano): aspetto che torni pronto
+    const player = qui.player;
+    qui.staccato = false;
+    qui.pronto = new Promise((ok, ko) => {
+      const pronto = ({ device_id }) => { clearTimeout(t); player.removeListener && player.removeListener('ready', pronto); ok(device_id); };
+      const t = setTimeout(() => { player.removeListener && player.removeListener('ready', pronto); qui.staccato = true; ko(new SpotifyError('Il lettore non risponde', 0, 'SDK')); }, 10000);
+      player.addListener('ready', pronto);
+    });
+    player.connect();
+    qui.pronto.catch(() => {});
+  }
   if (!qui.player || qui.chi !== k) {
     if (qui.player) qui.player.disconnect();
     const player = new window.Spotify.Player({ name: nomeQui(), getOAuthToken: (cb) => { token(k).then(cb).catch(() => {}); }, volume: 0.8 });
     qui.player = player;
     qui.chi = k;
     qui.id = null;
+    qui.staccato = false;
     qui.pronto = new Promise((ok, ko) => {
       const t = setTimeout(() => ko(new SpotifyError('Il lettore non risponde', 0, 'SDK')), 15000);
-      player.addListener('ready', ({ device_id }) => { clearTimeout(t); qui.id = device_id; ok(device_id); });
-      player.addListener('not_ready', () => { qui.id = null; });
+      player.addListener('ready', ({ device_id }) => { clearTimeout(t); qui.id = device_id; qui.staccato = false; ok(device_id); });
+      player.addListener('not_ready', () => { qui.id = null; qui.staccato = true; });
       for (const ev of ['initialization_error', 'authentication_error', 'account_error']) {
         player.addListener(ev, ({ message }) => { clearTimeout(t); ko(new SpotifyError(message, 0, ev)); });
       }
@@ -674,11 +748,24 @@ export function attivaQui() {
         if (firma(p) !== prima) rerender();
       });
     });
-    qui.pronto.catch(() => { if (qui.player === player) { player.disconnect(); qui.player = null; } });
+    qui.pronto.catch((e) => {
+      // browser che non lo regge, account senza Premium o senza permesso: qui non si riprova
+      if (e && /^(initialization_error|account_error|authentication_error)$/.test(e.reason)) quiGuasto = e.reason;
+      if (qui.player === player) { player.disconnect(); qui.player = null; qui.id = null; }
+    });
     player.connect();
   }
-  if (qui.player.activateElement) qui.player.activateElement();
   return qui.pronto;
+}
+/**
+ * Accende il lettore dentro l'app. Va chiamata subito nel tocco: su iPhone e iPad l'audio
+ * parte solo se il primo "play" arriva da un gesto (activateElement).
+ */
+export function attivaQui() {
+  if (!window.Spotify) return caricaSdk().then(() => attivaQui());
+  const pronto = preparaQui();
+  if (qui.player && qui.player.activateElement) qui.player.activateElement();
+  return pronto;
 }
 
 // ---------------------------------------------------------------------------

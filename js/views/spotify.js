@@ -3,7 +3,7 @@
 // Sottopagine: #/musica/cerca, #/musica/preferiti, #/musica/pl/<id>, #/musica/album/<id>, #/musica/artista/<id>
 import { html, raw, vibrate, lsGet, lsSet, isIPad, cap } from '../utils.js';
 import { icon } from '../icons.js';
-import { openSheet, closeSheet, toast, val, ui, setUi, me, isSynced, nameOf, sheetError, rerender, confirmSheet, state } from '../core.js';
+import { openSheet, closeSheet, toast, val, ui, setUi, me, isSynced, nameOf, sheetError, rerender, confirmSheet, state, cancella } from '../core.js';
 import { periodoMusica } from '../season.js';
 import * as S from '../spotify.js';
 
@@ -18,14 +18,22 @@ const DEV_LABEL = { Speaker: 'Altoparlante', Smartphone: 'Telefono', Tablet: 'Ta
 const questo = () => (isIPad() ? 'questo iPad' : /iPhone/.test(navigator.userAgent) ? 'questo iPhone' : 'questo dispositivo');
 // i lettori dentro l'app (questo dispositivo o quelli dell'altro) si chiamano "Comperotto · iPad di …"
 const comperotto = (d) => Boolean(d && /^Comperotto · /.test(d.name || ''));
+const eQuesto = (d) => Boolean(d && (S.eQui(d.id) || d.id === S.QUI));
 const devIcon = (d) => {
-  if (d && S.eQui(d.id)) return isIPad() ? 'tablet' : /iPhone/.test(navigator.userAgent) ? 'phone' : 'laptop';
+  if (eQuesto(d)) return isIPad() ? 'tablet' : /iPhone/.test(navigator.userAgent) ? 'phone' : 'laptop';
   if (comperotto(d)) return /iPad/.test(d.name) ? 'tablet' : /iPhone/.test(d.name) ? 'phone' : 'laptop';
   return DEV_ICON[d && d.type] || 'speaker';
 };
-const devNome = (d) => (d && S.eQui(d.id) ? cap(questo()) : comperotto(d) ? d.name.replace(/^Comperotto · /, '') : d ? d.name : '');
+const devNome = (d) => (eQuesto(d) ? cap(questo()) : comperotto(d) ? d.name.replace(/^Comperotto · /, '') : d ? d.name : '');
 const nomiArtisti = (t) => (t.artists || []).map((a) => a.name).filter(Boolean).join(', ');
-const sceltoOAttivo = () => S.attivo() || (sp.devices || []).find((d) => d.id === S.dispositivoScelto()) || null;
+/** Dove suona (o suonerebbe toccando un brano): il dispositivo collegato, altrimenti quello di base. */
+function sceltoOAttivo() {
+  const a = S.attivo();
+  if (a) return a;
+  const dove = S.doveSuonare();
+  if (dove === S.QUI) return { id: S.qui.id || S.QUI, name: questo() };
+  return (sp.devices || []).find((d) => d.id === dove) || null;
+}
 const suonaOra = () => (sp.player && sp.player.item && sp.player.item.uri) || '';
 const ctxOra = () => (sp.player && sp.player.context && sp.player.context.uri) || '';
 const plural = (n, a, b) => `${n} ${n === 1 ? a : b}`;
@@ -136,24 +144,37 @@ document.addEventListener('input', (ev) => {
   sp.trascino = Number(el.value);
   mostraPosizione(sp.trascino, true);
 }, true);
-// l'orologio della barra: 4 volte al secondo, solo con la scheda del lettore sullo schermo e la musica che va
+// l'orologio delle barre: 4 volte al secondo, solo con un lettore sullo schermo e la musica che va
+const quanto = (ms, dur) => `${Math.min(100, (ms / dur) * 100).toFixed(2)}%`;
 setInterval(() => {
   const p = sp.player;
-  if (document.hidden || sp.trascino != null || !p || !p.item || !p.is_playing || !document.getElementById('sp-now')) return;
+  if (document.hidden || sp.trascino != null || !p || !p.item || !p.is_playing) return;
+  const grande = document.getElementById('sp-now');
+  const piccolo = document.querySelector('#sp-mini .sp-mini-bar > i');
+  if (!grande && !piccolo) return;
   const ms = S.progresso();
-  mostraPosizione(ms);
+  if (grande) mostraPosizione(ms);
+  if (piccolo && p.item.duration_ms) piccolo.style.width = quanto(ms, p.item.duration_ms);
   if (p.item.duration_ms && ms >= p.item.duration_ms - 250) S.fineBrano(); // finito: chiedo subito il prossimo
 }, 250);
 
-function mini() {
+/**
+ * Il mini lettore in basso, su tutte le pagine tranne Musica (lì c'è quello grande): copertina, titolo,
+ * artista e dove suona; play/pausa e avanti; un tocco apre Musica.
+ */
+export function miniLettore(r = []) {
+  if (!isSynced() || !S.chi() || (r[0] === 'musica' && !SOTTO.includes(r[1]))) return '';
   const p = sp.player;
   const it = p && p.item;
   if (!it) return '';
   const img = S.bestImage((it.album && it.album.images) || it.images || (it.show && it.show.images), 64);
-  return html`<div class="sp-mini-space"></div><div class="sp-mini" id="sp-mini">
-    <a class="sp-mini-main" href="#/musica">${cover(img, 'music', 'sp-tcover')}<span class="row-main"><b>${it.name}</b><span>${nomiArtisti(it)}${p.device ? ` · ${devNome(p.device)}` : ''}</span></span></a>
+  const dur = it.duration_ms || 0;
+  const dove = p.device ? devNome(p.device) : '';
+  return html`<div class="sp-mini ${p.is_playing ? 'playing' : ''}" id="sp-mini">
+    <a class="sp-mini-main" href="#/musica" aria-label="Apri il lettore: ${it.name}">${cover(img, 'music', 'sp-tcover')}<span class="row-main"><b>${it.name}</b><span>${nomiArtisti(it) || (it.show && it.show.name) || ''}${dove ? html` · <em>${icon(devIcon(p.device), 'xs')}${dove}</em>` : ''}</span></span></a>
     <button class="sp-btn" data-action="sp-playpausa" aria-label="${p.is_playing ? 'Pausa' : 'Riproduci'}">${icon(p.is_playing ? 'pause' : 'play', 'filled')}</button>
     <button class="sp-btn" data-action="sp-avanti" aria-label="Successivo">${icon('next', 'filled')}</button>
+    <span class="sp-mini-bar" aria-hidden="true"><i style="width:${dur ? quanto(S.progresso(), dur) : '0%'}"></i></span>
   </div>`;
 }
 
@@ -297,11 +318,10 @@ function cercaPage() {
     <form class="sp-q" data-form="sp-cerca" role="search">
       ${icon('search', 'sm')}
       <input id="sp-q" name="q" type="search" value="${q}" placeholder="Brani, artisti, album, playlist" data-input="sp-q" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Cerca su Spotify">
-      ${q ? html`<button type="button" class="sp-q-x" data-action="sp-q-x" aria-label="Cancella">${icon('x', 'sm')}</button>` : ''}
+      ${cancella('sp-q')}
     </form>
     ${qq.length >= 2 ? html`<div class="chips">${Object.entries(TIPO_LABEL).map(([k, l]) => html`<button class="chip ${tipo === k ? 'on' : ''}" data-action="sp-tipo" data-v="${k}">${l}</button>`)}</div>` : ''}
-    ${corpo}
-    ${mini()}`;
+    ${corpo}`;
 }
 
 function hero(info, { eyebrow, sub, ph = 'music', round = false }) {
@@ -339,14 +359,13 @@ function preferitiPage() {
     ${hero({ name: 'Brani che ti piacciono', big: '' }, { eyebrow: 'Preferiti', sub: first ? plural(first.totale, 'brano', 'brani') : '', ph: 'heart' })}
     ${first && first.list.length ? azioni('preferiti') : ''}
     ${first && !first.list.length ? html`<div class="empty">${icon('heart', 'lg')}<p><b>Ancora nessun preferito</b></p><p class="small">Tocca il cuore accanto a un brano per salvarlo qui.</p></div>` : ''}
-    ${listaPaginata('preferiti', 'preferiti')}
-    ${mini()}`;
+    ${listaPaginata('preferiti', 'preferiti')}`;
 }
 
 function playlistPage(id) {
   const first = S.letto(S.chiave('pl', id, 0));
   const ctxKey = `pl:${id}`;
-  if (!first) return html`${back}${caricamento(S.chiave('pl', id, 0))}${mini()}`;
+  if (!first) return html`${back}${caricamento(S.chiave('pl', id, 0))}`;
   const info = first.info || {};
   contesti.set(ctxKey, { context: info.uri, own: info.own ? id : null });
   const sub = [info.own ? '' : info.owner, info.n != null ? plural(info.n, 'brano', 'brani') : ''].filter(Boolean).join(' · ');
@@ -358,28 +377,26 @@ function playlistPage(id) {
       ? html`<p class="muted small sp-wait">Spotify mostra i brani solo delle vostre playlist: questa si può far partire e salvare.</p>`
       : first.list.length || first.altri ? listaPaginata(`pl:${id}`, ctxKey)
         : html`<div class="empty">${icon('headphones', 'lg')}<p><b>Playlist vuota</b></p><p class="small">Cerca un brano e tocca ⋯ → «Aggiungi a una playlist».</p>
-          <a class="btn" href="#/musica/cerca">${icon('search', 'sm')} Cerca</a></div>`}
-    ${mini()}`;
+          <a class="btn" href="#/musica/cerca">${icon('search', 'sm')} Cerca</a></div>`}`;
 }
 
 function albumPage(id) {
   const key = S.chiave('album', id);
   const r = S.letto(key);
-  if (!r) return html`${back}${caricamento(key)}${mini()}`;
+  if (!r) return html`${back}${caricamento(key)}`;
   const ctxKey = `album:${id}`;
   contesti.set(ctxKey, { context: r.info.uri });
   return html`${back}
     ${hero(r.info, { eyebrow: r.info.tipo === 'single' ? 'Singolo' : 'Album', sub: [nomiArtisti(r.info), r.info.anno, plural(r.list.length, 'brano', 'brani')].filter(Boolean).join(' · '), ph: 'disc' })}
     ${r.info.artists && r.info.artists[0] ? html`<a class="mini-btn sp-artlink" href="#/musica/artista/${r.info.artists[0].id}">${icon('user', 'xs')} ${r.info.artists[0].name}</a>` : ''}
     ${azioni(ctxKey, { salva: r.info.uri })}
-    <div class="list">${r.list.map((t) => trackRow(t, ctxKey, { numero: true }))}</div>
-    ${mini()}`;
+    <div class="list">${r.list.map((t) => trackRow(t, ctxKey, { numero: true }))}</div>`;
 }
 
 function artistaPage(id) {
   const key = S.chiave('artista', id);
   const r = S.letto(key);
-  if (!r) return html`${back}${caricamento(key)}${mini()}`;
+  if (!r) return html`${back}${caricamento(key)}`;
   const ctxKey = `artista:${id}`;
   contesti.set(ctxKey, { context: r.info.uri });
   const album = r.albums.filter((a) => a.tipo !== 'single');
@@ -391,8 +408,7 @@ function artistaPage(id) {
       <button class="btn" data-action="sp-suona" data-ctx="${ctxKey}" data-casuale="1">${icon('shuffle', 'sm')} Casuale</button>
     </div>
     ${album.length ? html`<div class="section-title"><span>Album</span></div><div class="sp-grid">${album.map((x) => tile(x, `#/musica/album/${x.id}`, { sub: x.anno, ph: 'disc', play: x.uri }))}</div>` : ''}
-    ${singoli.length ? html`<div class="section-title"><span>Singoli</span></div><div class="sp-grid">${singoli.map((x) => tile(x, `#/musica/album/${x.id}`, { sub: x.anno, ph: 'disc', play: x.uri }))}</div>` : ''}
-    ${mini()}`;
+    ${singoli.length ? html`<div class="section-title"><span>Singoli</span></div><div class="sp-grid">${singoli.map((x) => tile(x, `#/musica/album/${x.id}`, { sub: x.anno, ph: 'disc', play: x.uri }))}</div>` : ''}`;
 }
 
 /** Le sottopagine di Musica. */
@@ -422,8 +438,12 @@ function avvia() {
     S.caricaPlaylist().catch(errore);
     S.avviaGiro();
   };
+  // di base la musica parte qui: il lettore dentro l'app si prepara subito, così al primo tocco su un
+  // brano parte da questo iPhone/iPad senza altri passaggi
+  const prepara = () => { if (S.chi() && !S.qui.player && S.quiPossibile()) S.preparaQui().catch(muto); };
   parti(); // dall'ultima volta so già chi è collegato: parto subito
-  S.caricaInfo().then(parti);
+  prepara();
+  S.caricaInfo().then(() => { parti(); prepara(); });
 }
 window.addEventListener('hashchange', () => { if (!location.hash.startsWith('#/musica')) dentro = false; });
 
@@ -522,18 +542,36 @@ document.addEventListener('error', (ev) => {
 // ---------------------------------------------------------------------------
 let inAttesa = null; // cosa far partire appena si sceglie il dispositivo
 
-/** Fa partire qualcosa: sul dispositivo che suona o sull'ultimo scelto, altrimenti chiede dove. */
+/**
+ * Fa partire qualcosa. Di base qui, sul dispositivo che si sta usando (dentro l'app); su un altro
+ * (Echo, iPad…) se è stato scelto in "Dove ascoltare?" e ci si è ancora collegati. Se qui non si può
+ * e non c'è altro, chiede dove.
+ */
 export async function suonaQui(target, casuale = false) {
-  if (!S.doveSuonare()) {
+  let dove = S.doveSuonare();
+  if (dove === S.QUI) {
+    // il lettore dentro l'app va acceso dentro il tocco: iPhone e iPad fanno suonare solo così
+    const pronto = S.attivaQui();
+    const lento = setTimeout(() => toast(`Accendo il lettore su ${questo()}…`, { ms: 2500 }), 800);
+    try { dove = await pronto; } catch (e) { console.warn(e); dove = null; } finally { clearTimeout(lento); }
+    if (!dove) { inAttesa = { target, casuale }; devSheet(`Su ${questo()} Spotify adesso non suona dentro l’app: scegli dove ascoltare.`); return; }
+  } else if (!dove) {
     if (!sp.devices) await S.aggiorna({ dispositivi: true });
-    if (!S.doveSuonare()) { inAttesa = { target, casuale }; devSheet(); return; }
+    dove = S.doveSuonare();
+    if (!dove || dove === S.QUI) { inAttesa = { target, casuale }; devSheet(); return; }
   }
+  const parti = () => (casuale ? S.suonaCasuale(target, dove) : S.suona(target, dove));
   try {
-    if (casuale) await S.suonaCasuale(target);
-    else await S.suona(target);
+    await parti();
   } catch (e) {
-    if (e.status === 404 || e.reason === 'NO_DEVICE' || e.reason === 'NO_ACTIVE_DEVICE') { inAttesa = { target, casuale }; devSheet('Quel dispositivo non risponde: scegline un altro.'); return; }
-    throw e;
+    let err = e;
+    // il lettore appena acceso a volte per Spotify "non c'è ancora": riprovo una volta
+    if (S.eQui(dove) && (err.status === 404 || err.reason === 'NO_ACTIVE_DEVICE')) {
+      await new Promise((ok) => setTimeout(ok, 1200));
+      try { await parti(); return; } catch (e2) { err = e2; }
+    }
+    if (err.status === 404 || err.reason === 'NO_DEVICE' || err.reason === 'NO_ACTIVE_DEVICE') { inAttesa = { target, casuale }; devSheet('Quel dispositivo non risponde: scegline un altro.'); return; }
+    throw err;
   }
 }
 
@@ -552,7 +590,7 @@ function devList() {
     </button>`;
   return html`<div class="list">
       ${quiAcceso ? riga(quiAcceso) : html`<button class="set-row sp-devrow" data-action="sp-qui">${icon(isIPad() ? 'tablet' : 'phone')}
-        <div class="row-main"><b>Ascolta su ${questo()}</b><span>${sp.busy === 'qui' ? 'Accendo il lettore…' : 'Dentro l’app'}</span></div>${sp.busy === 'qui' ? icon('refresh', 'sm spin') : ''}</button>`}
+        <div class="row-main"><b>Ascolta su ${questo()}</b><span>${sp.busy === 'qui' ? 'Accendo il lettore…' : 'Dentro l’app'}</span></div>${sp.busy === 'qui' ? icon('refresh', 'sm spin') : cur && cur.id === S.QUI ? html`<span class="sp-check">${icon('check', 'sm')}</span>` : ''}</button>`}
       ${altri.map(riga)}
     </div>
     ${!list ? html`<p class="muted small" style="padding:10px 4px 0">Cerco gli altri dispositivi…</p>` : ''}
@@ -819,7 +857,6 @@ export const actions = {
 
   // ricerca
   'sp-q': ({ el }) => { state.ui['sp.q'] = el.value; rerender(); },
-  'sp-q-x': () => { setUi('sp.q', ''); const el = document.getElementById('sp-q'); if (el) el.focus(); },
   'sp-cerca': ({ form }) => { const q = form.querySelector('input').value; ricorda(q); state.ui['sp.q'] = q; form.querySelector('input').blur(); rerender(); },
   'sp-tipo': ({ el }) => { ricorda(ui('sp.q', '')); setUi('sp.tipo', el.dataset.v); window.scrollTo(0, 0); },
   'sp-recente': ({ el }) => { state.ui['sp.q'] = el.dataset.v; ricorda(el.dataset.v); rerender(); },

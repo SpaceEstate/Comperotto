@@ -3,7 +3,7 @@
 import { html, raw, norm, cap, vibrate, todayIso } from '../utils.js';
 import { icon, catFace } from '../icons.js';
 import { FILM_CATS, filmCats } from '../data.js';
-import { state, store, openSheet, closeSheet, toast, val, emptyState, ui, setUi, themeChoices, pageHead, isSynced, settings, saveSettings } from '../core.js';
+import { state, store, openSheet, closeSheet, toast, val, emptyState, ui, setUi, themeChoices, pageHead, isSynced, settings, saveSettings, cancella } from '../core.js';
 import { currentTheme } from '../season.js';
 
 const mainTheme = (f) => filmCats(f)[0];
@@ -101,7 +101,7 @@ export function render() {
     ${pageHead('Film', { eyebrow: 'Da vedere sul divano' })}
 
     <form class="quick-add" data-form="film-search">
-      <input id="film-q" name="q" placeholder="Cerca un film o una serie…" enterkeyhint="search" autocomplete="off" aria-label="Cerca film" value="${ui('film.q', '')}">
+      <span class="cerca-box"><input id="film-q" name="q" placeholder="Cerca un film o una serie…" enterkeyhint="search" autocomplete="off" aria-label="Cerca film" value="${ui('film.q', '')}">${cancella('film-q', 'film-results-close')}</span>
       <button type="submit" aria-label="Cerca">${icon('search')}</button>
     </form>
 
@@ -167,6 +167,7 @@ async function refresh(f) {
 }
 
 // Una volta sola: gli esempi iniziali passano alle categorie nuove, ma solo se non li avete cambiati
+// (1: le categorie di adesso; 2: i film d'animazione anche in "Cartoni")
 const ESEMPI = {
   'Mamma, ho perso l’aereo': [['natale'], ['natale', 'famiglia']],
   'Il Grinch': [['natale'], ['natale', 'famiglia']],
@@ -178,15 +179,21 @@ const ESEMPI = {
   Ratatouille: [['aprile', 'sempre'], ['famiglia']],
   'Gli Aristogatti': [['sempre'], ['famiglia']],
 };
+const CARTONI = ['Luca', 'Ratatouille', 'Gli Aristogatti'];
+const uguali = (a, b) => JSON.stringify(a || []) === JSON.stringify(b || []);
 function aggiornaEsempi() {
-  if (settings().filmCats || !state.loaded.has('film') || !state.loaded.has('settings')) return;
+  const fatto = Number(settings().filmCats) || 0;
+  if (fatto >= 2 || !state.loaded.has('film') || !state.loaded.has('settings')) return;
   // con il database condiviso aspetto i dati veri del server (all'inizio ci sono solo quelli salvati qui, magari nessuno)
   if (store.mode === 'sync' && !(store.synced && store.synced.has('film') && store.synced.has('settings'))) return;
   state.data.film.forEach((f) => {
+    let th = f.themes || [];
     const e = ESEMPI[f.title];
-    if (e && JSON.stringify(f.themes || []) === JSON.stringify(e[0])) store.update('film', f.id, { themes: e[1] });
+    if (fatto < 1 && e && uguali(th, e[0])) th = e[1];
+    if (CARTONI.includes(f.title) && e && uguali(th, e[1])) th = [...th, 'cartoni'];
+    if (!uguali(th, f.themes)) store.update('film', f.id, { themes: th });
   });
-  saveSettings({ filmCats: 1 });
+  saveSettings({ filmCats: 2 });
 }
 
 export async function after() {
@@ -306,8 +313,10 @@ export const actions = {
     if (!isSynced()) { form.q.value = ''; editSheet(null, { title: cap(q) }); return; }
     state.ui['film.q'] = q;
     setUi('film.results', 'loading');
-    try { setUi('film.results', (await lookup(q)).slice(0, 8)); }
-    catch { setUi('film.results', null); editSheet(null, { title: cap(q) }); }
+    // se intanto la ricerca è stata cancellata (X) o cambiata, questi risultati non servono più
+    const ancora = () => ui('film.q', '') === q && ui('film.results', null) === 'loading';
+    try { const r = await lookup(q); if (ancora()) setUi('film.results', r.slice(0, 8)); }
+    catch { if (ancora()) { setUi('film.results', null); editSheet(null, { title: cap(q) }); } }
   },
   'film-results-close': () => { state.ui['film.q'] = ''; setUi('film.results', null); },
   // i risultati restano aperti finché non si chiudono con la X: se si apre il film sbagliato basta tornare indietro

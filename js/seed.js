@@ -174,10 +174,10 @@ const FILM = [
   { title: 'Nightmare Before Christmas', year: 1993, kind: 'movie', themes: ['halloween', 'natale'], watched: false },
   { title: 'Hocus Pocus', year: 1993, kind: 'movie', themes: ['halloween', 'famiglia'], watched: false },
   { title: 'La famiglia Addams', year: 1991, kind: 'movie', themes: ['halloween'], watched: false },
-  { title: 'Luca', year: 2021, kind: 'movie', themes: ['famiglia'], watched: false },
+  { title: 'Luca', year: 2021, kind: 'movie', themes: ['famiglia', 'cartoni'], watched: false },
   { title: 'Mamma Mia!', year: 2008, kind: 'movie', themes: ['sempre'], watched: false },
   { title: 'Il favoloso mondo di Amélie', year: 2001, kind: 'movie', themes: ['sempre'], watched: false },
   { title: 'Midnight in Paris', year: 2011, kind: 'movie', themes: ['sempre'], watched: false },
-  { title: 'Ratatouille', year: 2007, kind: 'movie', themes: ['famiglia'], watched: false },
-  { title: 'Gli Aristogatti', year: 1970, kind: 'movie', themes: ['famiglia'], watched: false },
+  { title: 'Ratatouille', year: 2007, kind: 'movie', themes: ['famiglia', 'cartoni'], watched: false },
+  { title: 'Gli Aristogatti', year: 1970, kind: 'movie', themes: ['famiglia', 'cartoni'], watched: false },
 ];

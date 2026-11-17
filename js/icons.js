@@ -92,6 +92,7 @@ const P = {
   // categorie dei film
   bolt: '<path d="M13.2 2.8 5 13.6h6.3l-1 7.6 8.7-11h-6.4z"/>',
   ghost: '<path d="M5.5 20.5V10.2a6.5 6.5 0 0 1 13 0v10.3l-2.2-1.6-2.1 1.6-2.2-1.6-2.2 1.6-2.1-1.6z"/><path d="M9.6 10.4h.01M14.4 10.4h.01"/>',
+  balloon: '<path d="M12 15.5c-3.3 0-6-3.1-6-6.6a6 6 0 0 1 12 0c0 3.5-2.7 6.6-6 6.6z"/><path d="M11 15.5h2l-.4 1.4h-1.2z"/><path d="M12 16.9c0 1.6-1.6 2-1.6 3.3 0 .8.5 1.3 1.1 1.3"/><path d="M9.2 7.4a3 3 0 0 1 1.9-1.8"/>',
 };
 
 /** Il disegno "nudo" di un'icona (per ridisegnarla altrove, es. sulla mappa). */

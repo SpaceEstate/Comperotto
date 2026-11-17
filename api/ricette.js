@@ -1,21 +1,17 @@
 // Ricette anche da internet, senza chiavi e senza servizi a pagamento.
-//   GET /api/ricette?q=carbonara              → risultati online: Wikibooks "Libro di cucina" (in italiano)
-//                                               e TheMealDB (internazionale, in inglese)
-//   GET /api/ricette?fonte=wikibooks&id=…      → la ricetta completa, pronta da importare
-//   GET /api/ricette?fonte=themealdb&id=…
-//   GET /api/ricette?url=https://…             → importa da una pagina di ricetta che pubblica i dati
-//                                               standard schema.org (quasi tutti i siti di cucina)
+//   GET /api/ricette?q=carbonara      → le ricette di GialloZafferano che trova la sua ricerca (titolo, foto,
+//                                       voto, difficoltà, tempo): la pagina dei risultati è pubblica
+//   GET /api/ricette?url=https://…     → importa da una pagina di ricetta che pubblica i dati standard
+//                                       schema.org (GialloZafferano e quasi tutti i siti di cucina)
+// Fatto in casa da Benedetta non si lascia leggere dai programmi (verifica anti-robot di Cloudflare):
+// l'app apre la sua ricerca nel browser, dove passa la persona.
 // Protetto dal codice di famiglia: non è un passa-richieste aperto a tutti.
-import crypto from 'node:crypto';
 import dns from 'node:dns/promises';
 import net from 'node:net';
 import { respingi, send } from './_lib.js';
 
-const UA = 'FamComperotto/1.0 (https://comperotto.vercel.app; app di casa per uso familiare)';
 const UA_BROWSER = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
-const WB = 'https://it.wikibooks.org';
-const PREF = 'Libro di cucina/Ricette/';
-const MDB = 'https://www.themealdb.com/api/json/v1/1';
+const GZ = 'https://www.giallozafferano.it';
 
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
 const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', egrave: 'è', eacute: 'é', agrave: 'à', igrave: 'ì', ograve: 'ò', ugrave: 'ù', deg: '°', frac12: '½', frac14: '¼', frac34: '¾' };
@@ -37,16 +33,6 @@ async function ricorda(chiave, ms, fn) {
   memo.set(chiave, { v, at: Date.now() });
   if (memo.size > 300) memo.delete(memo.keys().next().value);
   return v;
-}
-
-async function getJson(url, ms = 5000) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), ms);
-  try {
-    const r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json' }, signal: ctrl.signal });
-    if (!r.ok) throw new Error(`${new URL(url).hostname} ${r.status}`);
-    return await r.json();
-  } finally { clearTimeout(t); }
 }
 
 // ---------------------------------------------------------------------------
@@ -77,7 +63,14 @@ async function scarica(url, { max = 3_000_000, ms = 8000, accept = 'text/html,ap
       const r = await fetch(u.href, { redirect: 'manual', signal: ctrl.signal, headers: { 'User-Agent': UA_BROWSER, Accept: accept, 'Accept-Language': 'it-IT,it;q=0.9,en;q=0.6' } });
       const loc = r.headers.get('location');
       if (r.status >= 300 && r.status < 400 && loc) { if (r.body) await r.body.cancel().catch(() => {}); u = new URL(loc, u); continue; }
-      if (!r.ok) throw Object.assign(new Error(`La pagina risponde ${r.status}`), { status: 502 });
+      if (!r.ok) {
+        if (r.body) await r.body.cancel().catch(() => {});
+        // verifica anti-robot (Cloudflare & co.): la pagina si apre solo in un browser, con una persona davanti
+        if (r.headers.get('cf-mitigated') || ((r.status === 403 || r.status === 503) && /cloudflare/i.test(r.headers.get('server') || ''))) {
+          throw Object.assign(new Error('Questo sito non lascia leggere le sue pagine alle app: aprila e copia ingredienti e preparazione'), { status: 422 });
+        }
+        throw Object.assign(new Error(`La pagina risponde ${r.status}`), { status: 502 });
+      }
       const reader = r.body.getReader();
       const parti = [];
       let n = 0;
@@ -117,111 +110,62 @@ const minuti = (iso) => {
 const porzioni = (y) => { const m = String(Array.isArray(y) ? y[0] : y || '').match(/\d+/); return m ? Math.min(99, Number(m[0])) : null; };
 
 // ---------------------------------------------------------------------------
-// Wikibooks: il "Libro di cucina" in italiano (licenza CC BY-SA: si può importare citando la fonte)
+// GialloZafferano: la pagina pubblica dei risultati di ricerca. L'ordine viene dall'elenco strutturato
+// (schema.org ItemList) che la pagina prepara per i motori di ricerca; foto, voto, difficoltà e tempo
+// dalle schede. Solo le ricette della redazione (ricette.giallozafferano.it), non i blog ospitati.
 // ---------------------------------------------------------------------------
-const pagina = (titolo) => `${WB}/wiki/${titolo.replace(/ /g, '_').split('/').map(encodeURIComponent).join('/')}`;
-// Wikimedia dà le miniature solo in larghezze standard (120, 250, 330, 500, 960…)
-const miniatura = (u, w = 330) => (u ? `https:${String(u).replace(/^https?:/, '')}`.replace(/\/\d+px-/, `/${w}px-`).replace(/\?.*$/, '') : '');
+const RICETTA_GZ = /^https:\/\/ricette\.giallozafferano\.it\/[A-Za-z0-9-]+\.html$/;
+const FOTO_GZ = /^https:\/\/www\.giallozafferano\.it\/images\/[\w./-]+\.(?:jpe?g|png|webp)$/i;
+const daSlug = (u) => { const x = decodeURIComponent(u.split('/').pop().replace(/\.html$/, '')).replace(/-/g, ' ').trim(); return x.charAt(0).toUpperCase() + x.slice(1); };
 
-async function cercaWikibooks(q) {
-  const j = await getJson(`${WB}/w/rest.php/v1/search/page?q=${encodeURIComponent(`${q} prefix:${PREF.replace(/ /g, '_')}`)}&limit=12`);
-  const nq = norm(q);
-  return (j.pages || [])
-    .filter((p) => p && typeof p.title === 'string' && p.title.startsWith(PREF) && p.title.length > PREF.length)
-    .map((p) => {
-      const desc = testo(p.description || '') || testo(p.excerpt || '').replace(/^\W+/, '');
+function schedeGz(html) {
+  const out = new Map();
+  for (const m of html.matchAll(/<article[^>]*class="[^"]*gz-card[^"]*"[^>]*>([\s\S]*?)<\/article>/g)) {
+    const a = m[1];
+    const link = (a.match(/href="(https:\/\/ricette\.giallozafferano\.it\/[A-Za-z0-9-]+\.html)"/) || [])[1];
+    if (!link || !RICETTA_GZ.test(link)) continue;
+    const titolo = testo((a.match(/<h[2-4][^>]*class="[^"]*gz-title[^"]*"[^>]*>([\s\S]*?)<\/h[2-4]>/) || [])[1]) || entita((a.match(/title="([^"]+)"/) || [])[1] || '');
+    const img = ((a.match(/<img[^>]+(?:data-src|src)="([^"]+)"/) || [])[1] || '').replace(/^\/\//, 'https://');
+    const dato = (nome) => testo((a.match(new RegExp(`#${nome}[^"]*"[\\s\\S]*?<\\/span>([^<]*)`)) || [])[1]);
+    const prima = out.get(link) || {};
+    const scheda = {
+      link,
+      titolo: titolo || prima.titolo || daSlug(link),
+      immagine: FOTO_GZ.test(img) ? img : prima.immagine || '',
+      voto: dato('voto') || prima.voto || '',
+      difficolta: dato('difficolta') || prima.difficolta || '',
+      tempo: dato('tempo') || prima.tempo || '',
+      categoria: testo((a.match(/<div class="gz-category">([\s\S]*?)<\/div>/) || [])[1]) || prima.categoria || '',
+    };
+    out.set(link, { ...prima, ...Object.fromEntries(Object.entries(scheda).filter(([, v]) => v)) });
+  }
+  return out;
+}
+
+async function cercaGz(q) {
+  const { buf, url } = await scarica(`${GZ}/ricerca-ricette/${encodeURIComponent(q).replace(/%20/g, '+')}/`, { max: 2_500_000, ms: 8000 });
+  const html = buf.toString('utf8');
+  if (!/giallozafferano/i.test(html) || html.length < 5000) throw Object.assign(new Error('GialloZafferano non risponde come al solito'), { status: 502 });
+  // l'ordine dei risultati: l'elenco strutturato, se c'è; altrimenti quello delle schede
+  let ordine = [];
+  for (const m of html.matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const j = JSON.parse(m[1].trim());
+      if (j && j['@type'] === 'ItemList') ordine = (j.itemListElement || []).map((x) => x && x.url).filter((u) => RICETTA_GZ.test(u || ''));
+    } catch {}
+    if (ordine.length) break;
+  }
+  const schede = schedeGz(html);
+  const links = [...new Set([...ordine, ...schede.keys()])].slice(0, 12);
+  return {
+    vuota: /\/ricerca\//.test(new URL(url).pathname) && !links.length,
+    risultati: links.map((link) => {
+      const s = schede.get(link) || { link, titolo: daSlug(link) };
       return {
-        fonte: 'wikibooks', id: p.title, titolo: p.title.slice(PREF.length), lingua: 'it',
-        immagine: p.thumbnail && p.thumbnail.url ? miniatura(p.thumbnail.url) : '',
-        descrizione: desc ? `${desc.slice(0, 120)}${desc.length > 120 ? '…' : ''}` : 'Dal Libro di cucina di Wikibooks',
-        link: pagina(p.title),
+        fonte: 'giallozafferano', id: link, link, titolo: s.titolo, immagine: s.immagine || '',
+        descrizione: [s.difficolta, s.tempo, s.voto ? `★ ${s.voto}` : ''].filter(Boolean).join(' · ') || s.categoria || '',
       };
-    })
-    .sort((a, b) => Number(norm(b.titolo).includes(nq)) - Number(norm(a.titolo).includes(nq)))
-    .slice(0, 8);
-}
-
-/** Toglie il "codice" di wiki: collegamenti, modelli, note, grassetti. */
-function wiki(s) {
-  let x = String(s || '');
-  x = x.replace(/<ref[^>]*\/>/gi, '').replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, '');
-  for (let i = 0; i < 4; i++) x = x.replace(/\{\{[^{}]*\}\}/g, '');
-  x = x.replace(/\[\[(?:File|Immagine|Image|Categoria|Category):[^\]]*\]\]/gi, '');
-  x = x.replace(/\[\[([^\]|]*)\|([^\]]*)\]\]/g, '$2').replace(/\[\[([^\]]*)\]\]/g, '$1');
-  x = x.replace(/\[https?:\/\/\S+\s+([^\]]*)\]/g, '$1').replace(/\[https?:\/\/[^\]]*\]/g, '');
-  x = x.replace(/'{2,}/g, '');
-  return testo(x);
-}
-
-async function ricettaWikibooks(id) {
-  const titolo = String(id || '').replace(/_/g, ' ');
-  if (!titolo.startsWith(PREF)) throw Object.assign(new Error('Ricetta sconosciuta'), { status: 400 });
-  const j = await getJson(`${WB}/w/rest.php/v1/page/${encodeURIComponent(titolo.replace(/ /g, '_'))}`, 6000);
-  const src = String(j.source || '');
-  const sezioni = {};
-  let nome = '_';
-  src.split(/\r?\n/).forEach((riga) => {
-    const h = riga.match(/^\s*={2,}\s*(.*?)\s*={2,}\s*$/);
-    if (h) { nome = norm(h[1]); sezioni[nome] = []; return; }
-    (sezioni[nome] ||= []).push(riga);
-  });
-  const trova = (re) => Object.keys(sezioni).find((k) => re.test(k));
-  const kIngr = trova(/ingredient/);
-  const kPrep = trova(/preparazion|procediment|esecuzion|istruzion|realizzazion|cottura/);
-  const elenco = (righe) => (righe || []).filter((r) => /^\s*[*#]/.test(r)).map((r) => wiki(r.replace(/^\s*[*#:]+\s*/, ''))).filter(Boolean);
-  const ingredienti = elenco(sezioni[kIngr]);
-  let passi = elenco(sezioni[kPrep]);
-  if (!passi.length && sezioni[kPrep]) passi = sezioni[kPrep].join('\n').split(/\n\s*\n/).map(wiki).filter((p) => p.length > 3);
-  // "per '''2''' persone", "Dosi per 4 persone"
-  const per = (sezioni[kIngr] || []).join(' ').match(/per\s*'*\s*(\d+)\s*'*\s*(?:persone|porzioni|pezzi)/i);
-  const tempo = minuti((src.match(/tempo[^=|\n]*=\s*([^|\n}]+)/i) || [])[1]);
-  const file = (src.match(/\[\[(?:File|Immagine|Image):([^|\]]+\.(?:jpe?g|png|webp))/i) || [])[1];
-  let immagine = '';
-  if (file) {
-    // il percorso standard di Wikimedia Commons: /thumb/a/ab/Nome.jpg/500px-Nome.jpg (o l'originale, se è più piccolo)
-    const nome = file.trim().replace(/ /g, '_');
-    const h = crypto.createHash('md5').update(nome).digest('hex');
-    const base = `https://upload.wikimedia.org/wikipedia/commons`;
-    const enc = encodeURIComponent(nome);
-    immagine = (await fotoDati(`${base}/thumb/${h[0]}/${h.slice(0, 2)}/${enc}/500px-${enc}`)) || (await fotoDati(`${base}/${h[0]}/${h.slice(0, 2)}/${enc}`));
-  }
-  return {
-    titolo: titolo.slice(PREF.length), ingredienti, passi, porzioni: per ? Number(per[1]) : null, tempo, immagine,
-    fonte: { nome: 'Wikibooks · Libro di cucina', url: pagina(titolo), licenza: 'CC BY-SA 4.0' },
-  };
-}
-
-// ---------------------------------------------------------------------------
-// TheMealDB: ricette di tutto il mondo (in inglese)
-// ---------------------------------------------------------------------------
-const AREA = { Italian: 'Italiana', British: 'Inglese', American: 'Americana', French: 'Francese', Mexican: 'Messicana', Chinese: 'Cinese', Japanese: 'Giapponese', Indian: 'Indiana', Spanish: 'Spagnola', Greek: 'Greca', Thai: 'Thailandese', Moroccan: 'Marocchina', Turkish: 'Turca', Irish: 'Irlandese', Canadian: 'Canadese', Jamaican: 'Giamaicana', Vietnamese: 'Vietnamita', Croatian: 'Croata', Dutch: 'Olandese', Egyptian: 'Egiziana', Filipino: 'Filippina', Kenyan: 'Keniota', Malaysian: 'Malese', Polish: 'Polacca', Portuguese: 'Portoghese', Russian: 'Russa', Tunisian: 'Tunisina', Ukrainian: 'Ucraina' };
-const CATEG = { Dessert: 'Dolce', Pasta: 'Pasta', Beef: 'Manzo', Chicken: 'Pollo', Seafood: 'Pesce', Vegetarian: 'Vegetariana', Vegan: 'Vegana', Side: 'Contorno', Starter: 'Antipasto', Breakfast: 'Colazione', Lamb: 'Agnello', Pork: 'Maiale', Goat: 'Capra', Miscellaneous: 'Varie' };
-const thumb = (u, size) => (/^https:\/\/www\.themealdb\.com\/images\//.test(String(u || '')) ? `${u}/${size}` : '');
-
-async function cercaMealDb(q) {
-  const j = await getJson(`${MDB}/search.php?s=${encodeURIComponent(q)}`);
-  return (j.meals || []).slice(0, 8).map((m) => ({
-    fonte: 'themealdb', id: String(m.idMeal), titolo: m.strMeal, lingua: 'en',
-    immagine: thumb(m.strMealThumb, 'medium'),
-    descrizione: ['Ricetta in inglese', AREA[m.strArea] ? `cucina ${AREA[m.strArea].toLowerCase()}` : '', CATEG[m.strCategory] || ''].filter(Boolean).join(' · '),
-    link: /^https?:\/\//.test(m.strSource || '') ? m.strSource : `https://www.themealdb.com/meal/${m.idMeal}`,
-  }));
-}
-
-async function ricettaMealDb(id) {
-  if (!/^\d{1,10}$/.test(String(id))) throw Object.assign(new Error('Ricetta sconosciuta'), { status: 400 });
-  const j = await getJson(`${MDB}/lookup.php?i=${id}`);
-  const m = (j.meals || [])[0];
-  if (!m) throw Object.assign(new Error('Ricetta non trovata'), { status: 404 });
-  const ingredienti = [];
-  for (let i = 1; i <= 20; i++) {
-    const ing = String(m[`strIngredient${i}`] || '').trim(), dose = String(m[`strMeasure${i}`] || '').trim();
-    if (ing) ingredienti.push(`${dose} ${ing}`.trim());
-  }
-  const passi = String(m.strInstructions || '').split(/\r?\n/).map((x) => x.trim()).filter((x) => x && !/^step\s*\d+[.:]?$/i.test(x) && !/^\d+\.?$/.test(x)).map((x) => x.replace(/^step\s*\d+[.:]?\s*/i, ''));
-  return {
-    titolo: m.strMeal, ingredienti, passi, porzioni: null, tempo: null, immagine: await fotoDati(thumb(m.strMealThumb, 'large') || m.strMealThumb),
-    fonte: { nome: 'TheMealDB', url: /^https?:\/\//.test(m.strSource || '') ? m.strSource : `https://www.themealdb.com/meal/${m.idMeal}`, licenza: '' },
+    }),
   };
 }
 
@@ -257,6 +201,12 @@ const immagineDi = (img) => {
   return img.url || img.contentUrl || '';
 };
 
+// i siti più usati con il loro nome (gli altri con l'indirizzo)
+const NOMI = { 'giallozafferano.it': 'GialloZafferano', 'fattoincasadabenedetta.it': 'Fatto in casa da Benedetta', 'misya.info': 'Misya', 'cucchiaio.it': 'Il Cucchiaio d’Argento', 'cookist.it': 'Cookist', 'lacucinaitaliana.it': 'La Cucina Italiana', 'salepepe.it': 'Sale&Pepe', 'ricetteperbimby.it': 'Ricette per Bimby' };
+const nomeSito = (host) => { const h = host.replace(/^www\./, ''); const k = Object.keys(NOMI).find((d) => h === d || h.endsWith(`.${d}`)); return k ? NOMI[k] : h; };
+// GialloZafferano nei passaggi richiama le sue foto con i numeri ("…la crema 5 ; tenetela", "(16)"): qui le foto non ci sono
+const senzaRimandi = (p) => p.replace(/\s*\(\s*\d{1,2}\s*\)(?=\s*[.,;:!?]|\s|$)/g, '').replace(/(?:\s\d{1,2})+\s+(?=[.,;:!?])/g, '').replace(/\s+([.,;:!?])/g, '$1').trim();
+
 async function daPagina(indirizzo) {
   let u;
   try { u = new URL(String(indirizzo || '').trim()); } catch { throw Object.assign(new Error('Link non valido'), { status: 400 }); }
@@ -268,16 +218,17 @@ async function daPagina(indirizzo) {
     if (ricetta) break;
   }
   if (!ricetta) throw Object.assign(new Error('In questa pagina non trovo una ricetta da importare'), { status: 422 });
-  const host = new URL(url).hostname.replace(/^www\./, '');
+  const host = new URL(url).hostname;
+  const gz = /(^|\.)giallozafferano\.it$/.test(host);
   const img = immagineDi(ricetta.image);
   return {
     titolo: testo(ricetta.name) || 'Ricetta',
     ingredienti: (Array.isArray(ricetta.recipeIngredient) ? ricetta.recipeIngredient : ricetta.ingredients || []).map(testo).filter(Boolean).slice(0, 60),
-    passi: istruzioni(ricetta.recipeInstructions).filter((p) => p.length > 1).slice(0, 60),
+    passi: istruzioni(ricetta.recipeInstructions).map((p) => (gz ? senzaRimandi(p) : p)).filter((p) => p.length > 1).slice(0, 60),
     porzioni: porzioni(ricetta.recipeYield),
     tempo: minuti(ricetta.totalTime) || ((minuti(ricetta.prepTime) || 0) + (minuti(ricetta.cookTime) || 0)) || null,
     immagine: img ? await fotoDati(new URL(img, url).href) : '',
-    fonte: { nome: host, url, licenza: '' },
+    fonte: { nome: nomeSito(host), url, licenza: '' },
   };
 }
 
@@ -287,21 +238,15 @@ export default async function handler(req, res) {
   const p = new URL(req.url, 'http://x').searchParams;
   try {
     if (p.get('url')) return send(res, 200, await ricorda(`u:${p.get('url')}`, 30 * 60000, () => daPagina(p.get('url'))));
-    if (p.get('fonte') === 'wikibooks') return send(res, 200, await ricorda(`w:${p.get('id')}`, 60 * 60000, () => ricettaWikibooks(p.get('id'))));
-    if (p.get('fonte') === 'themealdb') return send(res, 200, await ricorda(`m:${p.get('id')}`, 60 * 60000, () => ricettaMealDb(p.get('id'))));
     const q = String(p.get('q') || '').trim().slice(0, 80);
     if (q.length < 3) return send(res, 400, { error: 'Scrivi almeno 3 lettere' });
     const out = await ricorda(`q:${norm(q)}`, 10 * 60000, async () => {
-      const [wb, mdb] = await Promise.allSettled([cercaWikibooks(q), cercaMealDb(q)]);
-      const visti = new Set();
-      const risultati = [...(wb.value || []), ...(mdb.value || [])].filter((r) => { const k = norm(r.titolo); if (visti.has(k)) return false; visti.add(k); return true; });
-      const errori = [wb.status === 'rejected' ? 'wikibooks' : '', mdb.status === 'rejected' ? 'themealdb' : ''].filter(Boolean);
-      if (errori.length === 2) throw Object.assign(new Error('Le fonti online non rispondono adesso'), { status: 502 });
-      return { q, risultati, errori };
+      const gz = await cercaGz(q);
+      return { q, risultati: gz.risultati, errori: [] };
     });
     send(res, 200, out);
   } catch (e) {
     if (!e.status) console.error(e);
-    send(res, e.status || 502, { error: e.status ? e.message : 'Fonte non raggiungibile, riprova tra poco' });
+    send(res, e.status || 502, { error: e.status ? e.message : 'GialloZafferano non risponde, riprova tra poco' });
   }
 }

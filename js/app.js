@@ -6,7 +6,7 @@ import { state, store, setRenderer, rerender, closeSheet, submitSheet, sheetOpen
 import { applySeason } from './season.js';
 import { initGestures } from './gestures.js';
 import { rinfresca as rinfrescaNotifiche, stato as statoNotifiche } from './notifiche.js';
-import { sp as spotifyStato, eQui } from './spotify.js';
+import { sp as spotifyStato, eQui, avviaSpotify } from './spotify.js';
 import * as home from './views/home.js';
 import * as spesa from './views/spesa.js';
 import * as casa from './views/casa.js';
@@ -100,6 +100,7 @@ function render() {
 
   if (state.needCode) {
     tabbar.hidden = true;
+    disegnaMini('');
     if (!view.querySelector('.login')) { view.innerHTML = login.render(state.backend).s; lastRoute = null; }
     return;
   }
@@ -137,6 +138,16 @@ function render() {
     <a class="tab side-only side-end ${cur === 'impostazioni' ? 'on' : ''}" href="#/impostazioni"><span class="tab-ico">${icon('sliders')}</span><span class="tab-label">Impostazioni</span></a>
   </div>`.s;
   if (tabbar.firstElementChild) morphChildren(tabbar, tabsTpl.content); else tabbar.replaceChildren(tabsTpl.content);
+  disegnaMini(musica.mini(r));
+}
+
+// il mini lettore di Spotify, fuori dalla pagina: resta in basso cambiando pagina
+const miniBox = document.getElementById('mini');
+function disegnaMini(h) {
+  const tpl = document.createElement('template');
+  tpl.innerHTML = (h && h.s) || '';
+  morphChildren(miniBox, tpl.content);
+  document.documentElement.classList.toggle('con-mini', Boolean(miniBox.firstElementChild));
 }
 setRenderer(render);
 
@@ -182,12 +193,24 @@ document.addEventListener('input', (ev) => {
 
 document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && sheetOpen()) closeSheet(); });
 
+// la X delle caselle di ricerca: svuota, aggiorna subito i risultati e lascia il cursore lì per scrivere altro
+actions['search-x'] = ({ el }) => {
+  const input = document.getElementById(el.dataset.for);
+  if (!input) return;
+  clearTimeout(inputTimer);
+  input.value = '';
+  input.focus();
+  if (input.dataset.input) run(input.dataset.input, { el: input });
+  if (el.dataset.poi) run(el.dataset.poi, { el });
+};
+
 // gesti dell'iPhone: fogli da trascinare giù, indietro dal bordo, tira giù per aggiornare, righe da scorrere
 initGestures({
   run,
   refresh: async () => {
     if (route()[0] === 'dove') { await dove.actions['dove-aggiorna'](); return; }
     if (route()[0] === 'musica') await musica.refresh();
+    if (route()[0] === 'desideri') await desideri.refresh();
     if (store.mode === 'sync') await store.sync();
     rerender();
   },
@@ -321,6 +344,8 @@ export function startSync(code) {
   s.start();
   render();
   setTimeout(rinfrescaNotifiche, 4000);
+  // Spotify collegato: cosa suona adesso, per il mini lettore in basso
+  setTimeout(avviaSpotify, 1500);
   // la Home propone le notifiche solo dove si possono davvero accendere
   setTimeout(() => statoNotifiche().then((s) => { state.ui['push.stato'] = s; rerender(); }).catch(() => {}), 1200);
 }

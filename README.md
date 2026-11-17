@@ -146,6 +146,7 @@ Una volta sola, da un computer:
 1. Su <https://developer.spotify.com/dashboard> entra con l'account Spotify **Premium** → **Create app**: nome "Comperotto", descrizione a piacere, **Redirect URI** `https://comperotto.vercel.app/api/spotify` (esatto, con **Add**), spunta **Web API** → **Save**.
 2. Nell'app appena creata: **Settings** → copia il **Client ID**. Se anche l'altro vuole collegare il suo account Spotify: **User Management** → aggiungi nome ed email del suo account Spotify (massimo 5 persone).
 3. Sull'iPhone: *Musica* → **Collega** → incolla il Client ID (solo la prima volta) → accedi a Spotify e **Accetta**. Si torna da soli nell'app.
+4. L'account dell'altro si può collegare anche dallo stesso telefono: *Musica → Spotify →* **Collega** accanto al suo nome → nella pagina di Spotify **Non sei tu?** → si entra con i suoi dati → **Accetta**. Ognuno poi vede di base il proprio Spotify (con tutti e due collegati c'è la scelta *Patrick / Serena* sopra le playlist).
 
 Gli Echo compaiono in *Dove ascoltare?* se Spotify è collegato nell'app Alexa (*Altro → Impostazioni → Musica e podcast*): se non si vedono, basta chiedere una volta ad Alexa di mettere qualcosa da Spotify. Il permesso resta sul server (nel database), non sui telefoni; si toglie da *Musica → Spotify → Scollega*.
 

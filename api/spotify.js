@@ -137,6 +137,8 @@ export default async function handler(req, res) {
         state,
         code_challenge_method: 'S256',
         code_challenge: crypto.createHash('sha256').update(verifier).digest('base64url'),
+        // sempre la pagina con l'account e «Non sei tu?»: così si può collegare anche quello dell'altro
+        show_dialog: 'true',
       });
       return send(res, 200, { url: `${ACCOUNTS}/authorize?${q}` });
     }

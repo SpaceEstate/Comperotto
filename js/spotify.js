@@ -44,9 +44,9 @@ export async function caricaInfo() {
 }
 
 /** Porta alla pagina di Spotify per dare il permesso; torna da sola all'app. */
-export async function collega(clientId) {
-  const r = await store.call('spotify', { method: 'POST', body: { azione: 'collega', chi: me(), clientId: clientId || undefined } });
-  lsSet('casa.spotify.chi', me());
+export async function collega(clientId, per = me()) {
+  const r = await store.call('spotify', { method: 'POST', body: { azione: 'collega', chi: per, clientId: clientId || undefined } });
+  if (per === me()) lsSet('casa.spotify.chi', per);
   location.href = r.url;
 }
 

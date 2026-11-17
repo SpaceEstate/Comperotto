@@ -270,7 +270,6 @@ function errore(e) {
 const prova = (fn) => async (ctx) => { try { await fn(ctx); } catch (e) { errore(e); } };
 
 function accountSheet() {
-  const io = me();
   const a = (sp.info && sp.info.account) || {};
   openSheet({
     title: 'Spotify',
@@ -279,20 +278,28 @@ function accountSheet() {
         <div class="row-main"><b>${nameOf(k)}</b><span>${a[k] ? `Collegato${a[k].nome ? ` come ${a[k].nome}` : ''}` : 'Non collegato'}</span></div>
         ${a[k]
           ? html`<button class="mini-btn" type="button" data-action="sp-scollega" data-v="${k}">Scollega</button>`
-          : k === io ? html`<button class="mini-btn primary" type="button" data-action="sp-collega">Collega</button>` : ''}
+          : html`<button class="mini-btn primary" type="button" data-action="sp-collega" data-v="${k}">Collega</button>`}
       </div>`)}</div>
       <div class="btn-row" style="margin-top:12px"><button class="btn" type="button" data-action="sp-ricarica">${icon('refresh', 'sm')} Aggiorna le playlist</button></div>`,
   });
 }
 
-function clientIdSheet() {
+async function vaiASpotify(per) {
+  sp.busy = 'collega';
+  rerender();
+  try { await S.collega('', per); } catch (e) {
+    if (/Client ID/.test(e.message)) clientIdSheet(per); else throw e;
+  } finally { sp.busy = ''; rerender(); }
+}
+
+function clientIdSheet(per) {
   openSheet({
     title: 'Collega Spotify',
     body: html`<label class="field"><span>Client ID dell’app Spotify</span>
       <input name="clientId" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="32 lettere e numeri" ${raw('autofocus')}></label>`,
     submit: 'Continua',
     onSubmit: async (fd) => {
-      try { await S.collega(val(fd, 'clientId')); } catch (e) { sheetError(e.message); }
+      try { await S.collega(val(fd, 'clientId'), per); } catch (e) { sheetError(e.message); }
       return false;
     },
   });
@@ -354,15 +361,19 @@ export const actions = {
     await suonaQui(target);
   }),
 
-  'sp-collega': prova(async () => {
-    if (!me()) { toast('Prima scegli chi sei in Impostazioni'); return; }
-    if (sp.info && !sp.info.pronta) { clientIdSheet(); return; }
-    sp.busy = 'collega';
-    rerender();
-    try { await S.collega(); } catch (e) {
-      if (/Client ID/.test(e.message)) clientIdSheet(); else throw e;
-    } finally { sp.busy = ''; rerender(); }
+  // il proprio account, oppure quello dell'altro (si entra con i suoi dati nella pagina di Spotify)
+  'sp-collega': prova(async ({ el }) => {
+    const per = (el && el.dataset.v) || me();
+    if (!per) { toast('Prima scegli chi sei in Impostazioni'); return; }
+    if (sp.info && !sp.info.pronta) { clientIdSheet(per); return; }
+    if (per === me()) { await vaiASpotify(per); return; }
+    openSheet({
+      title: `Spotify di ${nameOf(per)}`,
+      body: html`<p class="prose" style="margin-top:-4px">Nella pagina di Spotify tocca «Non sei tu?» ed entra con l’account di ${nameOf(per)}.</p>
+        <div class="btn-row"><button class="btn primary" type="button" data-action="sp-collega-altro" data-v="${per}">Continua</button></div>`,
+    });
   }),
+  'sp-collega-altro': prova(async ({ el }) => { await vaiASpotify(el.dataset.v); }),
   'sp-account': () => accountSheet(),
   'sp-scollega': prova(async ({ el }) => {
     closeSheet();

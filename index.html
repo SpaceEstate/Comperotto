@@ -72,6 +72,8 @@
   <script>
     // Applica subito il tema scelto su questo dispositivo (evita il "lampo" chiaro/scuro).
     try { var t = localStorage.getItem('casa.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+    // iPad: barra laterale stretta (solo icone) o aperta, come l'ultima volta su questo dispositivo
+    try { document.documentElement.dataset.side = localStorage.getItem('casa.side') === 'aperta' ? 'aperta' : 'stretta'; } catch (e) { document.documentElement.dataset.side = 'stretta'; }
   </script>
 </head>
 <body>

@@ -29,7 +29,7 @@ Tutto funziona sia in chiaro sia in scuro. In *Impostazioni → Atmosfera* si pu
 ### Su misura per iPhone e iPad
 
 - **iPhone**: barra in basso a portata di pollice, fogli che salgono dal basso e restano sopra la tastiera, rispetto di notch/Dynamic Island e barra Home, vibrazione leggera ai tocchi (iOS 18+), niente zoom involontari sui campi.
-- **iPad**: barra laterale, Home e ricette su due colonne (ingredienti a sinistra, passaggi a destra), spesa su due colonne, finestre al centro invece dei fogli, griglie più larghe per ricette e film; funziona in verticale, in orizzontale e in Split View.
+- **iPad**: barra laterale che si stringe a sole icone (tasto in alto, ogni iPad ricorda la scelta), Home e ricette su due colonne (ingredienti a sinistra, passaggi a destra), spesa su due colonne, finestre al centro invece dei fogli, griglie più larghe per ricette e film; funziona in verticale, in orizzontale e in Split View.
 - Schermate di avvio per i modelli recenti di iPhone e iPad, icona dedicata, funzionamento offline.
 
 ---

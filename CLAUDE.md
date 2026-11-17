@@ -34,6 +34,8 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
 - **Sito pulito:** è un'app interna di famiglia: niente spiegazioni tecniche, crediti o link "obbligatori" nelle pagine (es. sulla mappa); le spiegazioni vanno date in chat.
 - **Stile:** pastello in tinta con la casa; le feste con i loro colori pieni (Natale verde/rosso/bianco,
   Halloween nero/arancione). Pensata per iPhone e iPad.
+- **iPad, barra laterale:** di base stretta (solo icone, `--side-w: 76px`); il tasto in alto la allarga/stringe e ogni dispositivo
+  ricorda la scelta (`localStorage` `casa.side`, applicata subito dallo script in `index.html`).
 - **Gesti iPhone** (`js/gestures.js`): fogli da trascinare giù, indietro dal bordo sinistro (solo app installata),
   tira giù per aggiornare, righe da scorrere (`swipe()` in `core.js`: destra = spunta, sinistra = elimina con Annulla).
 - Niente build: HTML/CSS/JS moderni (`index.html`, `css/`, `js/`), funzioni Vercel in `api/`.

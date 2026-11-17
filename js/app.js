@@ -1,5 +1,5 @@
 // Fam. Comperotto — avvio, navigazione, aggiornamento dello schermo
-import { html, raw, todayIso, lsGet } from './utils.js';
+import { html, raw, todayIso, lsGet, lsSet } from './utils.js';
 import { icon } from './icons.js';
 import { COLLECTIONS, setErrorHandler, detectBackend, savedCode, useSync } from './store.js';
 import { state, store, setRenderer, rerender, closeSheet, submitSheet, sheetOpen, sheetError, openSheet, toast, settings, saveSettings, me, setMe, val } from './core.js';
@@ -43,6 +43,15 @@ function alias(r) {
   if (r[0] === 'casa' && r[1] === 'routine') return ['casa', 'faccende'];
   return r;
 }
+// iPad: barra laterale stretta (solo icone) o aperta; ogni dispositivo ricorda la sua scelta
+const sideOpen = () => document.documentElement.dataset.side === 'aperta';
+actions['side-toggle'] = () => {
+  const v = sideOpen() ? 'stretta' : 'aperta';
+  document.documentElement.dataset.side = v;
+  lsSet('casa.side', v);
+  rerender();
+};
+
 const route = () => alias((location.hash.replace(/^#\/?/, '') || '').split('/').map(decodeURIComponent));
 const wideMq = matchMedia('(min-width: 700px) and (min-height: 560px)');
 const wide = () => wideMq.matches;
@@ -114,7 +123,10 @@ function render() {
   const tabsTpl = document.createElement('template');
   const cur = VIEWS[r[0]] ? r[0] : '';
   tabsTpl.innerHTML = html`<div class="tabbar-inner">
-    <a class="side-brand" href="#/"><span class="mini-logo"></span><span>Fam. Comperotto</span></a>
+    <div class="side-head">
+      <a class="side-brand" href="#/" aria-label="Fam. Comperotto"><span class="mini-logo"></span><span class="side-name">Fam. Comperotto</span></a>
+      <button class="side-toggle" data-action="side-toggle" aria-label="${sideOpen() ? 'Stringi il menu' : 'Allarga il menu'}" aria-expanded="${sideOpen() ? 'true' : 'false'}">${icon('sidebar')}</button>
+    </div>
     ${TABS.map((t) => {
       const n = t.badge ? t.badge() : 0;
       const on = t.key === cur || (t.key === '' && ['impostazioni', 'musica', 'gatti', 'dove'].includes(cur) && !wide());

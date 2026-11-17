@@ -5,13 +5,16 @@ import { icon, catFace } from '../icons.js';
 import { pageHead, isSynced, emptyState } from '../core.js';
 import * as SPV from './spotify.js';
 
+/** #/musica/<sotto>: cerca, preferiti, playlist, album, artista. La pagina principale è la zona Musica di Svago. */
 export function render(r = []) {
   if (SPV.SOTTO.includes(r[1])) return SPV.render(r);
+  return html`${pageHead('Musica', testa())}${corpo()}`;
+}
+/** Il titolo della zona Musica. */
+export const testa = () => ({ eyebrow: 'La colonna sonora di casa' });
+export function corpo() {
   const spot = SPV.blocco();
-  return html`
-    <a class="back-link phone-only" href="#/">${icon('left', 'sm')} Home</a>
-    ${pageHead('Musica', { eyebrow: 'La colonna sonora di casa' })}
-    ${!isSynced() ? emptyState('Musica da Spotify', 'Si collega quando l’app usa il codice di famiglia.', catFace('b')) : spot || html`<p class="muted small sp-wait">Un attimo…</p>`}`;
+  return !isSynced() ? emptyState('Musica da Spotify', 'Si collega quando l’app usa il codice di famiglia.', catFace('b')) : spot || html`<p class="muted small sp-wait">Un attimo…</p>`;
 }
 
 export const after = (r = []) => SPV.after(r);

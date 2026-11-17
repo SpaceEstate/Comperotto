@@ -8,6 +8,8 @@ import { initGestures } from './gestures.js';
 import { rinfresca as rinfrescaNotifiche, stato as statoNotifiche } from './notifiche.js';
 import { sp as spotifyStato, eQui, avviaSpotify } from './spotify.js';
 import * as home from './views/home.js';
+import * as cibo from './views/cibo.js';
+import * as svago from './views/svago.js';
 import * as spesa from './views/spesa.js';
 import * as casa from './views/casa.js';
 import * as ricette from './views/ricette.js';
@@ -19,30 +21,38 @@ import * as dove from './views/dove.js';
 import * as impostazioni from './views/impostazioni.js';
 import * as login from './views/login.js';
 
-const VIEWS = { '': home, casa, ricette, film, desideri, musica, gatti, dove, impostazioni };
+// Cibo = Spesa | Ricette, Svago = Film | Musica (pagine a due zone); #/ricette/<id> e #/musica/<…> sono le loro pagine interne
+const VIEWS = { '': home, cibo, casa, svago, ricette, musica, desideri, gatti, dove, impostazioni };
 const actions = {
   ...home.actions, ...spesa.actions, ...casa.actions, ...ricette.actions, ...film.actions,
   ...musica.actions, ...desideri.actions, ...gatti.actions, ...dove.actions, ...impostazioni.actions, ...login.actions,
 };
 
-// sul telefono: le 5 schede in basso; su iPad la barra laterale mostra anche Musica e Gatti
+// sul telefono: le 5 schede in basso; su iPad la barra laterale mostra anche Dov'è e Gatti
 const TABS = [
-  { key: '', label: 'Home', icon: 'home', href: '#/' },
-  { key: 'casa', label: 'Casa', icon: 'basket', href: '#/casa', badge: () => spesa.badge() + casa.badge() },
-  { key: 'ricette', label: 'Ricette', icon: 'chef', href: '#/ricette' },
-  { key: 'film', label: 'Film', icon: 'film', href: '#/film' },
-  { key: 'desideri', label: 'Desideri', icon: 'gift', href: '#/desideri' },
-  { key: 'musica', label: 'Musica', icon: 'music', href: '#/musica', side: true },
-  { key: 'dove', label: 'Dov’è', icon: 'pin', href: '#/dove', side: true },
-  { key: 'gatti', label: 'Thor e Minù', icon: 'cat', href: '#/gatti', side: true },
+  { key: '', label: 'Home', icon: 'home', href: () => '#/' },
+  { key: 'cibo', label: 'Cibo', icon: 'bowl', href: () => `#/cibo/${cibo.zona()}`, badge: () => spesa.badge() },
+  { key: 'casa', label: 'Casa', icon: 'checks', href: () => '#/casa', badge: () => casa.badge() },
+  { key: 'svago', label: 'Svago', icon: 'tv', href: () => `#/svago/${svago.zona()}` },
+  { key: 'desideri', label: 'Desideri', icon: 'gift', href: () => '#/desideri' },
+  { key: 'dove', label: 'Dov’è', icon: 'pin', href: () => '#/dove', side: true },
+  { key: 'gatti', label: 'Thor e Minù', icon: 'cat', href: () => '#/gatti', side: true },
 ];
+// le pagine interne accendono la scheda della loro pagina
+const TAB_DI = { ricette: 'cibo', musica: 'svago' };
 
-// vecchi indirizzi (link salvati, scorciatoie) → nuovi
-function alias(r) {
-  if (r[0] === 'spesa') return ['casa', 'spesa'];
-  if (r[0] === 'noi') return [r[1] || 'film', ...r.slice(2)];
-  if (r[0] === 'casa' && r[1] === 'routine') return ['casa', 'faccende'];
-  return r;
+// vecchi indirizzi (link salvati, notifiche, scorciatoie) → nuovi; l'indirizzo si corregge da solo
+function canonico(r) {
+  const [a, b] = r;
+  if (a === 'spesa' || (a === 'casa' && b === 'spesa')) return '#/cibo/spesa';
+  if (a === 'casa' && b === 'routine') return '#/casa/faccende';
+  if (a === 'noi') return b === 'musica' ? '#/svago/musica' : '#/svago/film';
+  if (a === 'ricette' && !b) return '#/cibo/ricette';
+  if (a === 'film') return '#/svago/film';
+  if (a === 'musica' && !b) return '#/svago/musica';
+  if (a === 'cibo' && !['spesa', 'ricette'].includes(b)) return `#/cibo/${cibo.zona()}`;
+  if (a === 'svago' && !['film', 'musica'].includes(b)) return `#/svago/${svago.zona()}`;
+  return null;
 }
 // iPad: barra laterale stretta (solo icone) o aperta; ogni dispositivo ricorda la sua scelta
 const sideOpen = () => document.documentElement.dataset.side === 'aperta';
@@ -53,7 +63,12 @@ actions['side-toggle'] = () => {
   rerender();
 };
 
-const route = () => alias((location.hash.replace(/^#\/?/, '') || '').split('/').map(decodeURIComponent));
+function route() {
+  const r = (location.hash.replace(/^#\/?/, '') || '').split('/').map(decodeURIComponent);
+  const c = canonico(r);
+  if (c && c !== location.hash) { history.replaceState(null, '', c); return route(); }
+  return r;
+}
 const wideMq = matchMedia('(min-width: 700px) and (min-height: 560px)');
 const wide = () => wideMq.matches;
 wideMq.addEventListener?.('change', () => rerender());
@@ -68,7 +83,9 @@ function sameNode(a, b) {
 function patch(from, to) {
   if (from.nodeType === 3 || from.nodeType === 8) { if (from.nodeValue !== to.nodeValue) from.nodeValue = to.nodeValue; return; }
   if (from.nodeType === 1 && from.hasAttribute('data-keep')) return; // la mappa gestisce da sola il suo riquadro
-  for (const { name } of [...from.attributes]) if (!to.hasAttribute(name)) from.removeAttribute(name);
+  // lo stile messo da un gesto in corso (es. la copertina che segue il dito) non lo tocca il ridisegno
+  const gesto = from.hasAttribute('data-gesto');
+  for (const { name } of [...from.attributes]) if (!to.hasAttribute(name) && !(gesto && name === 'style')) from.removeAttribute(name);
   for (const { name, value } of [...to.attributes]) if (from.getAttribute(name) !== value) from.setAttribute(name, value);
   if (from.nodeName === 'IFRAME' || from.hasAttribute('data-keep')) return; // lettori e mappe restano come sono
   if (from.nodeName === 'INPUT' || from.nodeName === 'TEXTAREA' || from.nodeName === 'SELECT') {
@@ -123,7 +140,7 @@ function render() {
 
   tabbar.hidden = false;
   const tabsTpl = document.createElement('template');
-  const cur = VIEWS[r[0]] ? r[0] : '';
+  const cur = TAB_DI[r[0]] || (VIEWS[r[0]] ? r[0] : '');
   tabsTpl.innerHTML = html`<div class="tabbar-inner">
     <div class="side-head">
       <a class="side-brand" href="#/" aria-label="Fam. Comperotto"><span class="mini-logo"></span><span class="side-name">Fam. Comperotto</span></a>
@@ -131,8 +148,8 @@ function render() {
     </div>
     ${TABS.map((t) => {
       const n = t.badge ? t.badge() : 0;
-      const on = t.key === cur || (t.key === '' && ['impostazioni', 'musica', 'gatti', 'dove'].includes(cur) && !wide());
-      return html`<a class="tab ${on ? 'on' : ''} ${t.side ? 'side-only side-mid' : ''}" href="${t.href}" ${on ? raw('aria-current="page"') : ''}>
+      const on = t.key === cur || (t.key === '' && ['impostazioni', 'gatti', 'dove'].includes(cur) && !wide());
+      return html`<a class="tab ${on ? 'on' : ''} ${t.side ? 'side-only side-mid' : ''}" href="${t.href()}" ${on ? raw('aria-current="page"') : ''}>
         <span class="tab-ico">${icon(t.icon)}</span><span class="tab-label">${t.label}</span>${n ? html`<span class="badge">${n > 99 ? '99+' : n}</span>` : ''}</a>`;
     })}
     <a class="tab side-only side-end ${cur === 'impostazioni' ? 'on' : ''}" href="#/impostazioni"><span class="tab-ico">${icon('sliders')}</span><span class="tab-label">Impostazioni</span></a>
@@ -221,9 +238,10 @@ actions['search-x'] = ({ el }) => {
 initGestures({
   run,
   refresh: async () => {
-    if (route()[0] === 'dove') { await dove.actions['dove-aggiorna'](); return; }
-    if (route()[0] === 'musica') await musica.refresh();
-    if (route()[0] === 'desideri') await desideri.refresh();
+    const r = route();
+    if (r[0] === 'dove') { await dove.actions['dove-aggiorna'](); return; }
+    if (r[0] === 'musica' || svago.visibile(r, 'musica')) await musica.refresh();
+    if (r[0] === 'desideri') await desideri.refresh();
     if (store.mode === 'sync') await store.sync();
     rerender();
   },

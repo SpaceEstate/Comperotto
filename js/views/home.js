@@ -39,9 +39,9 @@ function seasonCard(s) {
       <div><b>${s.title}</b><span>${s.sub}</span></div>
     </div>
     <div class="sc-links">
-      <a href="#/ricette" data-action="ricette-theme" data-theme="${RICETTE_CATS[th] ? th : 'tutte'}">${icon('chef', 'sm')}<span>${nRicette}</span>Ricette</a>
-      <a href="#/musica">${icon('music', 'sm')}<span>${(MUSICA_TEMA[th] || { brani: [] }).brani.length}</span>Musica</a>
-      <a href="#/film" data-action="film-theme-go" data-v="${FILM_CATS[th] ? th : 'tutti'}">${icon('film', 'sm')}<span>${nFilm}</span>Film</a>
+      <a href="#/cibo/ricette" data-action="ricette-theme" data-theme="${RICETTE_CATS[th] ? th : 'tutte'}">${icon('chef', 'sm')}<span>${nRicette}</span>Ricette</a>
+      <a href="#/svago/musica">${icon('music', 'sm')}<span>${(MUSICA_TEMA[th] || { brani: [] }).brani.length}</span>Musica</a>
+      <a href="#/svago/film" data-action="film-theme-go" data-v="${FILM_CATS[th] ? th : 'tutti'}">${icon('film', 'sm')}<span>${nFilm}</span>Film</a>
     </div>
   </section>`;
 }
@@ -113,7 +113,7 @@ function countdowns(dates) {
     <div class="cd-scroll">${list.map((d) => {
       const kind = d.cats ? 'gatti' : d.anniversary ? 'amore' : d.who ? 'festa' : d.theme;
       const go = !d.personal && RICETTE_CATS[d.theme === 'capodanno' ? 'natale' : d.theme];
-      return html`<a class="cd-tile cd-${kind}" href="${go ? '#/ricette' : '#/'}" ${go ? raw(`data-action="ricette-theme" data-theme="${d.theme === 'capodanno' ? 'natale' : d.theme}"`) : raw('data-action="noop"')}>
+      return html`<a class="cd-tile cd-${kind}" href="${go ? '#/cibo/ricette' : '#/'}" ${go ? raw(`data-action="ricette-theme" data-theme="${d.theme === 'capodanno' ? 'natale' : d.theme}"`) : raw('data-action="noop"')}>
         <span class="cd-ico">${icon(d.cats ? 'paw' : d.icon || 'calendar')}</span>
         <span class="cd-big">${d.days === 0 ? 'Oggi!' : d.days}</span>
         ${d.days ? html`<span class="cd-unit">${d.days === 1 ? 'giorno' : 'giorni'}</span>` : ''}
@@ -196,11 +196,11 @@ export function render() {
 
         <div class="home-col">
           <div class="hero-tiles">
-            <a class="tile t-oak" href="#/casa/spesa"><span class="tile-ico">${icon('basket')}</span><span class="tile-num">${shop}</span><span class="tile-label">${shop === 1 ? 'Cosa da comprare' : 'Da comprare'}</span><span class="tile-mark">${icon('basket')}</span></a>
+            <a class="tile t-oak" href="#/cibo/spesa"><span class="tile-ico">${icon('basket')}</span><span class="tile-num">${shop}</span><span class="tile-label">${shop === 1 ? 'Cosa da comprare' : 'Da comprare'}</span><span class="tile-mark">${icon('basket')}</span></a>
             <a class="tile t-sage" href="#/casa/lavori"><span class="tile-ico">${icon('hammer')}</span><span class="tile-num">${lavori.length}</span><span class="tile-label">Lavori</span><span class="tile-mark">${icon('hammer')}</span></a>
-            <a class="tile t-sky" href="#/film"><span class="tile-ico">${icon('film')}</span><span class="tile-num">${films.length}</span><span class="tile-label">Film da vedere</span><span class="tile-mark">${icon('film')}</span></a>
+            <a class="tile t-sky" href="#/svago/film"><span class="tile-ico">${icon('film')}</span><span class="tile-num">${films.length}</span><span class="tile-label">Film da vedere</span><span class="tile-mark">${icon('film')}</span></a>
             <a class="tile t-rose" href="#/desideri"><span class="tile-ico">${icon('gift')}</span><span class="tile-num">${wishes.length}</span><span class="tile-label">Desideri</span><span class="tile-mark">${icon('gift')}</span></a>
-            <a class="tile t-plum" href="#/musica"><span class="tile-ico">${icon('music')}</span><span class="tile-num">${musica.brani.length}</span><span class="tile-label">${musica.tile}</span><span class="tile-mark">${icon('music')}</span></a>
+            <a class="tile t-plum" href="#/svago/musica"><span class="tile-ico">${icon('music')}</span><span class="tile-num">${musica.brani.length}</span><span class="tile-label">${musica.tile}</span><span class="tile-mark">${icon('music')}</span></a>
             <button class="tile t-gold" data-action="ricetta-random"><span class="tile-ico">${icon('dice')}</span><span class="tile-num tile-q">?</span><span class="tile-label">Cosa cuciniamo?</span><span class="tile-mark">${icon('chef')}</span></button>
           </div>
 
@@ -237,7 +237,7 @@ function noteSheet() {
 
 export const actions = {
   noop: () => {},
-  'film-theme-go': ({ el }) => { state.ui['film.theme'] = FILM_CATS[el.dataset.v] ? el.dataset.v : 'tutti'; state.ui['film.filter'] = FILM_CATS[el.dataset.v] ? 'tutti' : 'davedere'; location.hash = '#/film'; },
+  'film-theme-go': ({ el }) => { state.ui['film.theme'] = FILM_CATS[el.dataset.v] ? el.dataset.v : 'tutti'; state.ui['film.filter'] = FILM_CATS[el.dataset.v] ? 'tutti' : 'davedere'; location.hash = '#/svago/film'; },
   'hint-close': () => { lsSet('casa.hint.install', '1'); rerender(); },
   'hint-push-close': () => { lsSet('casa.hint.push', '1'); rerender(); },
   'note-new': () => noteSheet(),

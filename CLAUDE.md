@@ -23,6 +23,11 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   a OwnTracks si mandano i nostri posti come zone (`setWaypoints`, una volta, o ogni 12 h finché non funzionano). Il codice di famiglia
   non si accetta mai nell'indirizzo (finirebbe nei log). Dall'app la posizione parte solo con l'interruttore acceso (e permesso già dato)
   o con un tocco; "Chiedi a…" manda una notifica all'altro (`#/dove/condividi`).
+- **Pagine e barra:** Home · Cibo · Casa · Svago · Desideri (su iPad la barra laterale aggiunge Dov'è, Thor e Minù, Impostazioni).
+  Cibo = Spesa | Ricette (`#/cibo/spesa`, `#/cibo/ricette`), Svago = Film | Musica (`#/svago/film`, `#/svago/musica`): pagine a due
+  zone (`js/views/zone.js`), schede in cima e una zona per volta anche su iPad; ogni dispositivo ricorda l'ultima (`casa.cibo`,
+  `casa.svago`). Casa = Faccende, Lavori, Rifiuti. Pagine interne: `#/ricette/<id>`, `#/musica/<…>` (accendono la loro scheda).
+  I vecchi indirizzi (`#/casa/spesa`, `#/ricette`, `#/film`, `#/musica`, `#/noi/…`) si correggono da soli (`canonico()` in `app.js`).
 - **Ricette online:** `api/ricette.js` cerca su GialloZafferano (pagina pubblica dei risultati: ordine dall'`ItemList` schema.org,
   foto/voto/difficoltà/tempo dalle schede, solo `ricette.giallozafferano.it`) e importa da link con i dati schema.org (controlli contro
   indirizzi interni; nei passaggi di GZ si tolgono i rimandi alle foto). Fatto in casa da Benedetta è stato tolto: il sito blocca
@@ -61,7 +66,12 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   (è quello attivo o scelto da meno di 30 min; `casa.spotify.dev` = `{ id, at }`). Mini lettore fisso (`miniLettore()`, nel
   `#mini` fuori dalla pagina, su tutte le pagine tranne `#/musica`); un tocco apre la finestra del lettore (`grandeLettore()` nel
   `#np`, fuori dalla pagina: sul telefono sale dal basso e si chiude trascinandola giù, su iPad è al centro; "Dopo" da
-  `me/player/queue`, nome delle playlist altrui da `playlists/{id}?fields=name`): il giro di aggiornamento continua anche fuori da Musica
+  `me/player/queue`, nome delle playlist altrui da `playlists/{id}?fields=name`). Scorrendo di lato sulla copertina della finestra o
+  sul banner si cambia brano; un brano di "Dopo" si tocca e parte (`saltaA()`: tanti "avanti" quanti servono; Spotify non ha comandi
+  per togliere o spostare brani dalla coda). Titolo e copertina cambiano insieme: copertine dei prossimi brani scaricate prima
+  (`precarica()`), brano dopo mostrato subito se noto (`prossimo()`), altrimenti si aspetta la copertina al massimo 1,2 s
+  (`insieme()` in `views/spotify.js`). Gli elementi con `data-gesto` tengono lo stile del gesto durante i ridisegni.
+  Il giro di aggiornamento continua anche fuori da Musica
   (10 s se suona, 30 s in pausa, 60 s senza niente; mai con l'app in secondo piano) e parte all'avvio (`avviaSpotify()`).
   Regole 2026 (modalità sviluppo, max 5 utenti, proprietario Premium): ricerca max 10 per tipo, `tracks`→`items` nelle playlist,
   preferiti con `PUT/DELETE me/library?uris=`, brani solo delle playlist proprie (`/playlists/{id}/items`, altrimenti 403).

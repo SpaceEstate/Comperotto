@@ -5,6 +5,8 @@ import { lsGet, lsSet, isIPad } from './utils.js';
 import { store, isSynced, me, myName, rerender } from './core.js';
 
 const API = 'https://api.spotify.com/v1/';
+/** Si sta guardando la musica: la zona Musica di Svago o una sua pagina interna. */
+export const inMusica = () => /^#\/(svago\/musica|musica\/)/.test(location.hash);
 const parse = (s) => { try { return JSON.parse(s); } catch { return null; } };
 
 export const sp = {
@@ -140,7 +142,7 @@ function conAttese(p) {
       if (!presto && Math.abs((p.progress_ms || 0) - atteso) < 2500) delete attese[campo];
       else p.progress_ms = atteso;
     } else if (campo === 'brano') {
-      if (p.item && p.item.uri !== v.prima && (!v.nuovo || p.item.uri === v.nuovo.uri || ora - a.at > 1500)) { delete attese[campo]; continue; }
+      if (p.item && p.item.uri !== v.prima && (!v.nuovo || p.item.uri === v.nuovo.uri || ora - a.at > (v.piu ? 3500 : 1500))) { delete attese[campo]; continue; }
       if (v.nuovo) p.item = v.nuovo;
       p.progress_ms = Math.max(0, ora - a.at);
       if (v.context !== undefined) p.context = v.context;
@@ -192,6 +194,7 @@ export async function aggiorna({ dispositivi = false } = {}) {
       inCorso = null;
       if (cambia) rerender();
       avviaGiro(); // se ora suona (o si è fermato) il giro cambia passo
+      guardaAvanti();
     }
   })();
   return inCorso;
@@ -287,7 +290,47 @@ const quiSuona = () => Boolean(qui.player && sp.player && eQui(sp.player.device 
 function comeItem(uri) {
   const t = brani.get(uri);
   if (!t) return null;
-  return { uri: t.uri, id: t.id, name: t.name, duration_ms: t.ms, artists: t.artists, type: 'track', album: t.album ? { id: t.album.id, name: t.album.name, images: t.big || t.img ? [{ url: t.big || t.img, width: 300 }] : [] } : null };
+  const images = [[t.xl, 640], [t.big, 300], [t.img, 64]].filter(([u]) => u).map(([url, width]) => ({ url, width }));
+  return { uri: t.uri, id: t.id, name: t.name, duration_ms: t.ms, artists: t.artists, type: 'track', album: t.album ? { id: t.album.id, name: t.album.name, images } : { images } };
+}
+
+// ---------------------------------------------------------------------------
+// Copertine caricate in anticipo: quando si salta, titolo e copertina cambiano insieme
+// ---------------------------------------------------------------------------
+const pronte = new Set();
+const inCarico = new Set();
+/** La copertina è già scaricata e pronta da mostrare? */
+export const pronta = (url) => !url || pronte.has(url);
+/** Scarica (e prepara) una copertina; quando è pronta ridisegna. */
+export function precarica(url) {
+  if (!url || pronte.has(url) || inCarico.has(url)) return;
+  inCarico.add(url);
+  const im = new Image();
+  im.decoding = 'async';
+  im.src = url;
+  const fatto = () => { inCarico.delete(url); pronte.add(url); if (pronte.size > 300) pronte.delete(pronte.values().next().value); rerender(); };
+  (im.decode ? im.decode() : new Promise((ok, ko) => { im.onload = ok; im.onerror = ko; })).then(fatto, fatto);
+}
+/** Le copertine di un brano conosciuto, in tutte le misure che usa l'app. */
+const precaricaBrano = (t) => { if (t) [t.img, t.big, t.xl].forEach(precarica); };
+
+/** Il prossimo brano, se lo so: dal lettore dentro l'app o dalla coda letta da Spotify. */
+export function prossimo() {
+  const it = sp.player && sp.player.item;
+  if (!it) return null;
+  if (quiSuona() && sp.prossimi && sp.prossimi.length) return sp.prossimi[0];
+  const c = letto(chiave('coda', it.uri));
+  return (c && c[0]) || null;
+}
+/** Quando cambia brano: leggo la coda (per sapere il prossimo) e preparo le copertine. */
+let codaPer = '';
+function guardaAvanti() {
+  const it = sp.player && sp.player.item;
+  if (!it || !it.uri || document.hidden) return;
+  if (quiSuona() && sp.prossimi) { sp.prossimi.slice(0, 2).forEach(precaricaBrano); return; }
+  if (codaPer === it.uri) return;
+  codaPer = it.uri;
+  leggi(chiave('coda', it.uri), () => coda(), { maxAge: 60000 }).then((l) => (l || []).slice(0, 2).forEach(precaricaBrano)).catch(() => {});
 }
 
 /** Fa partire una playlist/album (context) o dei brani (uris) su un dispositivo. */
@@ -346,7 +389,11 @@ export async function playPausa() {
 export async function salta(avanti = true) {
   const p = sp.player;
   if (p) {
-    aspetta('brano', { prima: p.item ? p.item.uri : '', nuovo: null });
+    // avanti: il prossimo lo so quasi sempre (coda letta prima), e la sua copertina è già pronta
+    const prox = avanti ? prossimo() : null;
+    const nuovo = prox ? comeItem(prox.uri) : null;
+    aspetta('brano', { prima: p.item ? p.item.uri : '', nuovo });
+    if (nuovo) p.item = nuovo;
     p.progress_ms = 0;
     p.is_playing = true;
     sp.playerAt = Date.now();
@@ -355,6 +402,31 @@ export async function salta(avanti = true) {
   const qui_ = quiSuona();
   await inFila(() => (qui_ ? (avanti ? qui.player.nextTrack() : qui.player.previousTrack()) : call(avanti ? 'me/player/next' : 'me/player/previous', { method: 'POST' })))
     .catch((e) => { delete attese.brano; ripassa(); throw e; });
+  ripassa();
+}
+
+/**
+ * Un brano della coda ("Dopo"): Spotify non ha il comando "vai a quel brano", quindi vado avanti fino a lui,
+ * come toccare "avanti" più volte (i brani prima si saltano, come nell'app di Spotify).
+ */
+export async function saltaA(n, uri) {
+  const p = sp.player;
+  const nuovo = comeItem(uri);
+  if (p) {
+    aspetta('brano', { prima: p.item ? p.item.uri : '', nuovo, piu: n > 0 });
+    if (nuovo) p.item = nuovo;
+    p.progress_ms = 0;
+    p.is_playing = true;
+    sp.playerAt = Date.now();
+    rerender();
+  }
+  const qui_ = quiSuona();
+  await inFila(async () => {
+    for (let k = 0; k <= n; k++) {
+      if (qui_) await qui.player.nextTrack();
+      else await call('me/player/next', { method: 'POST' });
+    }
+  }).catch((e) => { delete attese.brano; ripassa(); throw e; });
   ripassa();
 }
 
@@ -415,7 +487,7 @@ let giroAt = 0;
 function ritmo() {
   const p = sp.player;
   const suona = Boolean(p && p.is_playing);
-  if (location.hash.startsWith('#/musica')) return suona ? 5000 : 12000;
+  if (inMusica()) return suona ? 5000 : 12000;
   return suona ? 10000 : p ? 30000 : 60000;
 }
 export function avviaGiro() {
@@ -446,7 +518,7 @@ export function fineBrano() {
 }
 document.addEventListener('visibilitychange', () => {
   if (document.hidden || !isSynced()) return;
-  if (!location.hash.startsWith('#/musica')) {
+  if (!inMusica()) {
     // di ritorno nell'app: il mini lettore in basso deve dire il vero (es. la musica è finita nel frattempo)
     if (chi() && Date.now() - sp.playerAt > 5000) aggiorna().finally(avviaGiro);
     return;
@@ -522,6 +594,7 @@ export function brano(t, album = null) {
     album: al ? { id: al.id, name: al.name || '' } : null,
     img: bestImage((al && al.images) || (t.show && t.show.images) || t.images, 64),
     big: bestImage((al && al.images) || t.images, 300),
+    xl: bestImage((al && al.images) || t.images, 600),
     ok: t.is_playable !== false && !t.is_local,
   };
 }
@@ -747,6 +820,11 @@ export function preparaQui() {
         if (!st || !p || !eQui(p.device && p.device.id)) { clearTimeout(statoT); statoT = setTimeout(() => aggiorna(), 400); return; }
         const prima = firma(p);
         const tr = st.track_window && st.track_window.current_track;
+        const tw = st.track_window || {};
+        sp.prossimi = registra((tw.next_tracks || []).map((x) => brano(daSdk(x))).filter(Boolean));
+        sp.prossimi.slice(0, 2).forEach(precaricaBrano);
+        const att = attese.brano;
+        if (att && att.valore.piu && att.valore.nuovo && tr && tr.uri !== att.valore.nuovo.uri && Date.now() - att.at < 3500) return; // brani di passaggio
         p.is_playing = !st.paused;
         p.progress_ms = st.position || 0;
         p.shuffle_state = Boolean(st.shuffle);

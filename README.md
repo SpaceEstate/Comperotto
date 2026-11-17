@@ -3,7 +3,8 @@
 La casa della famiglia Comperotto, in tasca: Patrick, Serena, Thor e Minù.
 Un'app fatta su misura per **iPhone e iPad** (si installa dalla schermata Home e si apre a tutto schermo, come un'app vera) con:
 
-- **Casa**
+- **Le pagine** (barra in basso): **Home · Cibo · Casa · Svago · Desideri**. *Cibo* ha due schede, **Spesa** e **Ricette**; *Svago* ha **Film** e **Musica**; *Casa* ha **Faccende**, **Lavori** e **Rifiuti**. Su iPad la barra laterale ha anche *Dov'è*, *Thor e Minù* e *Impostazioni*.
+- **Cibo e Casa**
   - **Spesa**: divisa per reparto in automatico, nell'ordine del giro al supermercato (🥬 Freschi, 🧀 Frigo, 🥖 Forno, 🍝 Dispensa, 🍫 Sfizi, 🧹 Casa, 🧴 Cura personale, 🐈 Animali, 🧊 Surgelati, 🥤 Bevande, 🛒 Altro: si vedono solo i reparti con qualcosa dentro), "spesso comprati" con un tocco, carrello e "svuota", e voci aggiunte con **Alexa**. Niente doppioni: ogni cosa ha la maiuscola, se è già da comprare non si ripete e se era nel carrello torna da comprare;
   - **Faccende** che si ripetono (lettiera, lavatrice, lenzuola, bagno…) con scadenze e chi le ha fatte;
   - **Lavori** da fare (tagliare le tende, sistemare i mobili…) per stanza e priorità;
@@ -149,7 +150,8 @@ La musica arriva da **Spotify** (serve Premium), come nell'app di Spotify:
 - **Brani che ti piacciono** (il ♥ accanto a ogni brano), album e playlist salvati nella libreria;
 - **playlist vostre**: crearle, rinominarle, eliminarle, aggiungere e togliere brani (⋯ accanto al brano → *Aggiungi a una playlist*), e *Aggiungi in coda*;
 - **Dove ascoltare?**: di base la musica parte **sul dispositivo che state usando** (toccando un brano sull'iPhone suona subito lì, dentro l'app); si può scegliere un altro dispositivo con Spotify aperto o un **Echo**, e finché resta collegato i brani partono lì;
-- il **mini lettore** resta in basso su tutte le pagine (copertina, titolo, dove suona, play/pausa e avanti): un tocco apre la **finestra del lettore** senza lasciare la pagina (copertina grande, barra del brano, comandi, ♥, dove suona e i prossimi brani); si chiude con la freccia, la X o trascinandola giù.
+- il **mini lettore** resta in basso su tutte le pagine (copertina, titolo, dove suona, play/pausa e avanti): un tocco apre la **finestra del lettore** senza lasciare la pagina (copertina grande, barra del brano, comandi, ♥, dove suona e i prossimi brani); si chiude con la freccia, la X o trascinandola giù;
+- per cambiare brano si può anche **scorrere di lato** sulla copertina o sul mini lettore (verso sinistra il prossimo, verso destra il precedente), come su Spotify; un brano della coda *Dopo* si tocca e parte (Spotify non permette alle app di togliere o spostare i brani in coda).
 
 Una volta sola, da un computer:
 

@@ -1,5 +1,4 @@
-// Casa: faccende ricorrenti, lavori da fare, calendario rifiuti
-import { render as spesaRender, tidyShopping } from './spesa.js';
+// Casa: faccende ricorrenti, lavori da fare, calendario rifiuti (la spesa è nella pagina Cibo)
 import { html, raw, lsGet, lsSet, todayIso, shortDate, parseIso, WEEKDAYS, WEEKDAYS_SHORT, addDays, vibrate, cap, timeAgo } from '../utils.js';
 import { icon, catFace } from '../icons.js';
 import { ROOMS, CHORE_ICONS, CHORE_TONES, BINS, BIN_IDS, choreStatus, freqLabel } from '../data.js';
@@ -117,7 +116,6 @@ function renderRifiuti() {
 }
 
 const SECTIONS = {
-  spesa: { label: 'Spesa', icon: 'basket', eyebrow: 'La lista della spesa' },
   faccende: { label: 'Faccende', icon: 'repeat', eyebrow: 'Le cose di tutti i giorni' },
   lavori: { label: 'Lavori', icon: 'hammer', eyebrow: 'Da sistemare in casa' },
   rifiuti: { label: 'Rifiuti', icon: 'bin', eyebrow: 'Il calendario della raccolta' },
@@ -126,17 +124,16 @@ const SECTIONS = {
 export function render(route) {
   let tab = route[1];
   if (SECTIONS[tab]) lsSet('casa.tab', tab);
-  else tab = SECTIONS[lsGet('casa.tab')] ? lsGet('casa.tab') : 'spesa';
+  else tab = SECTIONS[lsGet('casa.tab')] ? lsGet('casa.tab') : 'faccende';
   const due = dueChores().filter((c) => c.lastDone !== todayIso()).length;
-  const shop = state.data.spesa.filter((i) => !i.done).length;
-  const counts = { spesa: shop, faccende: due };
+  const counts = { faccende: due };
   return html`
     ${pageHead('Casa', { eyebrow: SECTIONS[tab].eyebrow })}
     <nav class="segmented seg-icons" aria-label="Sezioni casa">
       ${Object.entries(SECTIONS).map(([k, v]) => html`<a href="#/casa/${k}" class="${tab === k ? 'on' : ''}">
-        <span class="seg-ico">${icon(v.icon, 'sm')}${counts[k] ? html`<span class="count ${k === 'spesa' ? 'soft' : ''}">${counts[k]}</span>` : ''}</span><span>${v.label}</span></a>`)}
+        <span class="seg-ico">${icon(v.icon, 'sm')}${counts[k] ? html`<span class="count">${counts[k]}</span>` : ''}</span><span>${v.label}</span></a>`)}
     </nav>
-    ${tab === 'spesa' ? spesaRender() : tab === 'lavori' ? renderLavori() : tab === 'rifiuti' ? renderRifiuti() : renderRoutine()}`;
+    ${tab === 'lavori' ? renderLavori() : tab === 'rifiuti' ? renderRifiuti() : renderRoutine()}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -271,9 +268,3 @@ export const actions = {
 };
 
 export const badge = () => dueChores().filter((c) => c.lastDone !== todayIso()).length;
-
-// in Spesa: unisce eventuali doppioni e sistema le maiuscole
-export function after(route) {
-  const tab = route[1] || lsGet('casa.tab') || 'spesa';
-  if (tab === 'spesa') tidyShopping();
-}

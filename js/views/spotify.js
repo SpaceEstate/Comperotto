@@ -74,12 +74,35 @@ const alSub = (a) => [nomiArtisti(a), a.anno].filter(Boolean).join(' · ');
 // ---------------------------------------------------------------------------
 // In riproduzione: scheda grande in Musica, barretta in basso nelle sottopagine
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Titolo e copertina cambiano insieme: se la copertina del brano nuovo non è ancora scaricata, per un
+// attimo (al massimo 1,2 secondi) resta tutto il brano di prima; i brani in arrivo si scaricano in anticipo.
+// ---------------------------------------------------------------------------
+const copertinaDi = (it, min) => (it ? S.bestImage((it.album && it.album.images) || it.images || (it.show && it.show.images), min) : '');
+const mostrati = {};
+let riprovaT = null;
+function insieme(vista, it, min) {
+  const img = copertinaDi(it, min);
+  const m = mostrati[vista];
+  S.precarica(img);
+  if (!it || !m || !m.it || m.it.uri === it.uri || S.pronta(img)) {
+    mostrati[vista] = { it, img };
+    return { it, img };
+  }
+  if (!m.arriva || m.arriva !== it.uri) { m.arriva = it.uri; m.dal = Date.now(); }
+  if (Date.now() - m.dal > 1200) { mostrati[vista] = { it, img }; return { it, img }; }
+  clearTimeout(riprovaT);
+  riprovaT = setTimeout(rerender, 1250);
+  return { it: m.it, img: m.img };
+}
+
 function nowCard() {
   const p = sp.player;
-  const it = p && p.item;
+  const vis = insieme('grande', p && p.item, 200);
+  const it = vis.it;
   const dev = sceltoOAttivo();
   const playing = Boolean(p && p.is_playing);
-  const img = it ? S.bestImage((it.album && it.album.images) || it.images || (it.show && it.show.images), 200) : '';
+  const img = vis.img;
   const dur = (it && it.duration_ms) || 0;
   // mentre si trascina comanda il dito; altrimenti la posizione vera (poi la muove l'orologio qui sotto)
   const pos = sp.trascino != null ? sp.trascino : S.progresso();
@@ -166,15 +189,15 @@ setInterval(() => {
  * artista e dove suona; play/pausa e avanti; un tocco apre la finestra del lettore (senza cambiare pagina).
  */
 export function miniLettore(r = []) {
-  if (!isSynced() || !S.chi() || (r[0] === 'musica' && !SOTTO.includes(r[1]))) return '';
+  // con la zona Musica sullo schermo c'è già il lettore grande
+  if (!isSynced() || !S.chi() || (r[0] === 'svago' && r[1] === 'musica')) return '';
   const p = sp.player;
-  const it = p && p.item;
-  if (!it) return '';
-  const img = S.bestImage((it.album && it.album.images) || it.images || (it.show && it.show.images), 64);
-  const dur = it.duration_ms || 0;
+  if (!p || !p.item) return '';
+  const { it, img } = insieme('mini', p.item, 64);
+  const dur = p.item.duration_ms || 0;
   const dove = p.device ? devNome(p.device) : '';
   return html`<div class="sp-mini ${p.is_playing ? 'playing' : ''}" id="sp-mini">
-    <button class="sp-mini-main" type="button" data-action="np-apri" aria-label="Apri il lettore: ${it.name}">${cover(img, 'music', 'sp-tcover')}<span class="row-main"><b>${it.name}</b><span>${nomiArtisti(it) || (it.show && it.show.name) || ''}${dove ? html` · <em>${icon(devIcon(p.device), 'xs')}${dove}</em>` : ''}</span></span></button>
+    <button class="sp-mini-main" type="button" data-action="np-apri" data-gesto aria-label="Apri il lettore: ${it.name}">${cover(img, 'music', 'sp-tcover')}<span class="row-main"><b>${it.name}</b><span>${nomiArtisti(it) || (it.show && it.show.name) || ''}${dove ? html` · <em>${icon(devIcon(p.device), 'xs')}${dove}</em>` : ''}</span></span></button>
     <button class="sp-btn" data-action="sp-playpausa" aria-label="${p.is_playing ? 'Pausa' : 'Riproduci'}">${icon(p.is_playing ? 'pause' : 'play', 'filled')}</button>
     <button class="sp-btn" data-action="sp-avanti" aria-label="Successivo">${icon('next', 'filled')}</button>
     <span class="sp-mini-bar" aria-hidden="true"><i style="width:${dur ? quanto(S.progresso(), dur) : '0%'}"></i></span>
@@ -252,7 +275,8 @@ export function grandeLettore() {
     return '';
   }
   const playing = Boolean(p.is_playing);
-  const img = S.bestImage((it.album && it.album.images) || it.images || (it.show && it.show.images), 600);
+  const vis = insieme('finestra', it, 600);
+  const img = vis.img;
   const dur = it.duration_ms || 0;
   const pos = sp.trascino != null ? sp.trascino : S.progresso();
   const pct = dur ? Math.min(100, (pos / dur) * 100) : 0;
@@ -261,8 +285,9 @@ export function grandeLettore() {
   if (npAperto && it.uri && saved === undefined) queueMicrotask(() => S.controllaSalvati([it.uri]));
   const ctx = contesto(p);
   const dev = p.device || sceltoOAttivo();
-  const a0 = (it.artists || [])[0];
-  const al = it.album;
+  const mo = vis.it;
+  const a0 = (mo.artists || [])[0];
+  const al = mo.album;
   // i prossimi brani: letti all'apertura e a ogni cambio di brano
   const kq = S.chiave('coda', it.uri);
   const dopo = S.letto(kq);
@@ -275,11 +300,11 @@ export function grandeLettore() {
       <button class="np-icon" type="button" data-action="np-chiudi" aria-label="Chiudi">${icon('x')}</button>
     </header>
     <div class="np-scroll">
-      <div class="np-art np-drag ${playing ? '' : 'ferma'}">${icon('music', 'lg')}${img ? html`<img src="${img}" alt="" decoding="async">` : ''}</div>
+      <div class="np-art np-drag ${playing ? '' : 'ferma'}" data-gesto>${icon('music', 'lg')}${img ? html`<img src="${img}" alt="" decoding="async">` : ''}</div>
       <div class="np-info">
         <div class="np-info-t">
-          <h2>${al && al.id ? html`<a href="#/musica/album/${al.id}">${it.name}</a>` : it.name}</h2>
-          <p>${a0 && a0.id ? html`<a href="#/musica/artista/${a0.id}">${nomiArtisti(it)}</a>` : nomiArtisti(it) || (it.show && it.show.name) || ''}</p>
+          <h2>${al && al.id ? html`<a href="#/musica/album/${al.id}">${mo.name}</a>` : mo.name}</h2>
+          <p>${a0 && a0.id ? html`<a href="#/musica/artista/${a0.id}">${nomiArtisti(mo)}</a>` : nomiArtisti(mo) || (mo.show && mo.show.name) || ''}</p>
         </div>
         ${it.type !== 'episode' ? html`<button class="np-icon ${saved ? 'on' : ''}" type="button" data-action="sp-cuore" data-uri="${it.uri}" aria-label="${saved ? 'Togli dai preferiti' : 'Aggiungi ai preferiti'}">${icon('heart', saved ? 'filled' : '')}</button>` : ''}
         ${it.id ? html`<a class="np-icon" href="https://open.spotify.com/${it.type === 'episode' ? 'episode' : 'track'}/${it.id}" target="_blank" rel="noopener" aria-label="Apri nell’app Spotify">${icon('link')}</a>` : ''}
@@ -297,38 +322,116 @@ export function grandeLettore() {
       </div>
       <button class="np-dev" type="button" data-action="sp-dispositivi">${icon(dev ? devIcon(dev) : 'speaker', 'xs')}<span>${dev ? `Su ${devNome(dev)}` : 'Scegli dove ascoltare'}</span>${icon('down', 'xs')}</button>
       ${dopo && dopo.length ? html`<div class="np-queue"><div class="np-qt">${icon('queue', 'xs')} Dopo</div>
-        ${dopo.map((t) => html`<div class="np-q">${cover(t.img, 'music', 'sp-tcover')}<span class="row-main"><b>${t.name}</b><span>${nomiArtisti(t)}</span></span></div>`)}</div>` : ''}
+        ${dopo.map((t, i) => html`<button class="np-q" type="button" data-action="np-salta" data-i="${i}" data-uri="${t.uri}" aria-label="Fai partire ${t.name}">${cover(t.img, 'music', 'sp-tcover')}<span class="row-main"><b>${t.name}</b><span>${nomiArtisti(t)}</span></span>${icon('play', 'xs filled')}</button>`)}</div>` : ''}
     </div>`;
 }
-// sul telefono la finestra si chiude anche trascinandola giù, come gli altri fogli
+/**
+ * Un dito che scorre di lato su `el` (la copertina, il mini lettore): segue il dito e, lasciato andare
+ * abbastanza lontano, cambia brano (verso sinistra = avanti, verso destra = indietro), come su Spotify.
+ */
+let scorso = 0; // un tocco appena dopo uno scorrimento non apre niente
+function cambiaBrano(el, dx, v) {
+  const avanti = dx < 0;
+  if (Math.abs(dx) < 60 && !(Math.abs(v) > 0.45 && Math.abs(dx) > 24)) {
+    el.style.transition = 'transform .22s ease, opacity .22s ease';
+    el.style.transform = '';
+    el.style.opacity = '';
+    return;
+  }
+  scorso = Date.now();
+  vibrate();
+  el.style.transition = 'transform .16s ease-in, opacity .16s ease-in';
+  el.style.transform = `translateX(${avanti ? -48 : 48}px)`;
+  el.style.opacity = '0';
+  setTimeout(() => {
+    S.salta(avanti).catch(errore);
+    el.style.transition = 'none';
+    el.style.transform = `translateX(${avanti ? 36 : -36}px)`;
+    requestAnimationFrame(() => {
+      el.style.transition = 'transform .24s cubic-bezier(.2,.8,.2,1), opacity .2s ease';
+      el.style.transform = '';
+      el.style.opacity = '';
+    });
+  }, 160);
+}
+
+// la finestra: giù (dalla testa o dalla copertina) si chiude; di lato sulla copertina si cambia brano
 let trascinaPronto = false;
 function trascinaGiu() {
   const f = document.querySelector('#np .np-full');
   if (!f || trascinaPronto) return;
   trascinaPronto = true;
-  let y0 = null, dy = 0, t0 = 0;
+  let g = null;
   f.addEventListener('touchstart', (e) => {
+    g = null;
     if (e.touches.length !== 1 || !e.target.closest('.np-drag') || e.target.closest('button, a, input')) return;
-    if (matchMedia('(min-width: 700px) and (min-height: 560px)').matches) return;
-    if (f.querySelector('.np-scroll').scrollTop > 0) return; // prima si torna in cima scorrendo
-    y0 = e.touches[0].clientY; dy = 0; t0 = e.timeStamp;
-    f.style.transition = 'none';
+    const t = e.touches[0];
+    g = { x0: t.clientX, y0: t.clientY, dx: 0, dy: 0, t0: e.timeStamp, asse: '', art: e.target.closest('.np-art') };
   }, { passive: true });
   f.addEventListener('touchmove', (e) => {
-    if (y0 == null) return;
-    dy = Math.max(0, e.touches[0].clientY - y0);
-    f.style.transform = `translateY(${dy}px)`;
+    if (!g) return;
+    const t = e.touches[0];
+    g.dx = t.clientX - g.x0;
+    g.dy = t.clientY - g.y0;
+    if (!g.asse) {
+      if (Math.abs(g.dx) < 8 && Math.abs(g.dy) < 8) return;
+      const telefono = !matchMedia('(min-width: 700px) and (min-height: 560px)').matches;
+      if (Math.abs(g.dx) > Math.abs(g.dy) && g.art) g.asse = 'x';
+      else if (g.dy > 0 && telefono && f.querySelector('.np-scroll').scrollTop <= 0) { g.asse = 'y'; f.style.transition = 'none'; }
+      else { g = null; return; }
+    }
+    if (g.asse === 'x') g.art.style.transition = 'none', g.art.style.transform = `translateX(${g.dx}px) rotate(${g.dx / 40}deg)`;
+    else f.style.transform = `translateY(${Math.max(0, g.dy)}px)`;
     if (e.cancelable) e.preventDefault();
   }, { passive: false });
   const fine = (e) => {
-    if (y0 == null) return;
-    const v = dy / Math.max(1, e.timeStamp - t0);
-    y0 = null;
-    f.style.transition = '';
-    if (dy > 120 || (v > 0.5 && dy > 30)) chiudiLettore(); else f.style.transform = '';
+    if (!g || !g.asse) { g = null; return; }
+    const dt = Math.max(1, e.timeStamp - g.t0);
+    if (g.asse === 'x') cambiaBrano(g.art, g.dx, g.dx / dt);
+    else {
+      f.style.transition = '';
+      if (g.dy > 120 || (g.dy / dt > 0.5 && g.dy > 30)) chiudiLettore(); else f.style.transform = '';
+    }
+    g = null;
   };
   f.addEventListener('touchend', fine);
   f.addEventListener('touchcancel', fine);
+}
+
+// il mini lettore: di lato si cambia brano (un tocco apre la finestra)
+{
+  const box = document.getElementById('mini');
+  let g = null;
+  if (box) {
+    box.addEventListener('touchstart', (e) => {
+      g = null;
+      const main = e.target.closest('.sp-mini-main');
+      if (e.touches.length !== 1 || !main) return;
+      const t = e.touches[0];
+      g = { x0: t.clientX, y0: t.clientY, dx: 0, t0: e.timeStamp, asse: '', el: main };
+    }, { passive: true });
+    box.addEventListener('touchmove', (e) => {
+      if (!g) return;
+      const t = e.touches[0];
+      g.dx = t.clientX - g.x0;
+      const dy = t.clientY - g.y0;
+      if (!g.asse) {
+        if (Math.abs(g.dx) < 8 && Math.abs(dy) < 8) return;
+        if (Math.abs(g.dx) <= Math.abs(dy)) { g = null; return; }
+        g.asse = 'x';
+      }
+      g.el.style.transition = 'none';
+      g.el.style.transform = `translateX(${g.dx}px)`;
+      g.el.style.opacity = String(Math.max(0.35, 1 - Math.abs(g.dx) / 220));
+      if (e.cancelable) e.preventDefault();
+    }, { passive: false });
+    const fine = (e) => {
+      if (g && g.asse) cambiaBrano(g.el, g.dx, g.dx / Math.max(1, e.timeStamp - g.t0));
+      g = null;
+    };
+    box.addEventListener('touchend', fine);
+    box.addEventListener('touchcancel', fine);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -408,7 +511,7 @@ function perTeSezione() {
 // ---------------------------------------------------------------------------
 // Sottopagine
 // ---------------------------------------------------------------------------
-const back = html`<a class="back-link" href="#/musica">${icon('left', 'sm')} Musica</a>`;
+const back = html`<a class="back-link" href="#/svago/musica">${icon('left', 'sm')} Musica</a>`;
 const caricamento = (key) => (S.fallito(key)
   ? html`<div class="sp-wait-box"><p class="muted">Spotify non ha risposto.</p><button class="btn" data-action="sp-riprova">${icon('refresh', 'sm')} Riprova</button></div>`
   : html`<p class="muted small sp-wait">Un attimo…</p>`);
@@ -598,7 +701,7 @@ function avvia() {
   prepara();
   S.caricaInfo().then(() => { parti(); prepara(); });
 }
-window.addEventListener('hashchange', () => { if (!location.hash.startsWith('#/musica')) dentro = false; });
+window.addEventListener('hashchange', () => { if (!S.inMusica()) dentro = false; });
 
 const muto = () => {};
 function caricaPagine(base, fn) {
@@ -611,7 +714,7 @@ function caricaPagine(base, fn) {
 const uriDi = (list) => (list || []).map((t) => t.uri);
 
 let suggerimenti = false;
-window.addEventListener('hashchange', () => { if (!location.hash.startsWith('#/musica')) suggerimenti = false; });
+window.addEventListener('hashchange', () => { if (!S.inMusica()) suggerimenti = false; });
 /** La lista a tema vale per tutti (una settimana), "per te" è del proprio account (qualche ora). */
 async function caricaSuggerimenti() {
   if (!S.chi()) return;
@@ -947,7 +1050,8 @@ export const actions = {
   'sp-riprova': () => { S.dimentica(S.chiave('')); rerender(); },
 
   // la finestra del lettore
-  'np-apri': () => { vibrate(8); apriLettore(); },
+  'np-apri': () => { if (Date.now() - scorso < 450) return; vibrate(8); apriLettore(); },
+  'np-salta': prova(async ({ el }) => { vibrate(); await S.saltaA(Number(el.dataset.i) || 0, el.dataset.uri); }),
   'np-chiudi': () => chiudiLettore(),
   // lettore
   'sp-playpausa': prova(async () => { vibrate(); await S.playPausa(); }),
@@ -1062,7 +1166,7 @@ export const actions = {
     confirmSheet({
       title: 'Eliminare la playlist?',
       text: `«${(first && first.info && first.info.name) || 'Playlist'}» sparisce anche da Spotify.`,
-      onYes: () => prova(async () => { await S.eliminaPlaylist(id); location.hash = '#/musica'; toast('Playlist eliminata'); })(),
+      onYes: () => prova(async () => { await S.eliminaPlaylist(id); location.hash = '#/svago/musica'; toast('Playlist eliminata'); })(),
     });
   },
 };

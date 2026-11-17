@@ -195,6 +195,12 @@ export function pageHead(title, { eyebrow = '', actions = '' } = {}) {
   </header>`;
 }
 
+/** Le schede in cima a una pagina con più zone (es. Cibo: Spesa | Ricette), con i conti accanto alle icone. */
+export function schede(base, zone, cur, { conti = {}, etichetta = '' } = {}) {
+  return html`<nav class="segmented seg-icons" aria-label="${etichetta}">${Object.entries(zone).map(([k, v]) => html`<a href="#/${base}/${k}" class="${cur === k ? 'on' : ''}" ${cur === k ? raw('aria-current="page"') : ''}>
+    <span class="seg-ico">${icon(v.icon, 'sm')}${conti[k] ? html`<span class="count soft">${conti[k]}</span>` : ''}</span><span>${v.label}</span></a>`)}</nav>`;
+}
+
 /**
  * La X in fondo a una casella di ricerca: cancella tutto con un tocco e rimette il cursore lì.
  * Si vede solo quando c'è scritto qualcosa (CSS); "poi" = azione da fare dopo (es. chiudere i risultati).

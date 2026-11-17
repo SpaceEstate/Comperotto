@@ -24,8 +24,19 @@ function card(r) {
   </a>`;
 }
 
+/** Il titolo della zona Ricette: quante ricette e il dado "cosa cuciniamo?". */
+export function testa() {
+  const n = state.data.ricette.length;
+  return { eyebrow: `${n} nel ricettario`, actions: n ? html`<button class="icon-btn" data-action="ricetta-random" aria-label="Cosa cuciniamo?">${icon('dice')}</button>` : '' };
+}
+
+/** #/ricette/<id>: la ricetta; l'elenco sta nella pagina Cibo (corpo()). */
 export function render(route) {
   if (route[1]) return detail(route[1]);
+  return html`${pageHead('Ricette', testa())}${corpo()}`;
+}
+
+export function corpo() {
   const t0 = ui('ricette.theme', 'tutte');
   const theme = t0 === 'preferite' || RICETTE_CATS[t0] ? t0 : 'tutte';
   const q = norm(ui('ricette.q', ''));
@@ -39,9 +50,7 @@ export function render(route) {
   const seasonCount = sTheme ? all.filter((r) => ricetteCats(r).includes(sTheme.id)).length : 0;
 
   return html`
-    ${pageHead('Ricette', { eyebrow: `${all.length} nel ricettario`, actions: all.length ? html`<button class="icon-btn" data-action="ricetta-random" aria-label="Cosa cuciniamo?">${icon('dice')}</button>` : '' })}
-
-    ${sTheme && theme === 'tutte' && !q ? html`<a class="season-banner" href="#/ricette" data-action="ricette-theme" data-theme="${sTheme.id}">
+    ${sTheme && theme === 'tutte' && !q ? html`<a class="season-banner" href="#/cibo/ricette" data-action="ricette-theme" data-theme="${sTheme.id}">
       <span class="s-ico tone-oak dot-ico">${icon(RICETTE_CATS[sTheme.id].icon, 'lg')}</span>
       <div><b>${season ? season.title : sTheme.label}</b><span>${seasonCount ? `${seasonCount} ${seasonCount === 1 ? 'ricetta' : 'ricette'} di ${catLabel(sTheme.id)}` : `Aggiungi le vostre ricette di ${catLabel(sTheme.id)}`}${sTheme.days != null ? ` · mancano ${sTheme.days} giorni` : ''}</span></div>
     </a>` : ''}
@@ -151,7 +160,7 @@ async function ridimensiona(dataUrl) {
 
 function detail(id) {
   const r = state.data.ricette.find((x) => x.id === id);
-  if (!r) return emptyState('Ricetta non trovata', html`<a href="#/ricette">Torna alle ricette</a>`);
+  if (!r) return emptyState('Ricetta non trovata', html`<a href="#/cibo/ricette">Torna alle ricette</a>`);
   const img = safeImg(r.photo);
   const picked = ui(`ingr.${id}`, null);
   const ingr = r.ingredients || [];
@@ -161,7 +170,7 @@ function detail(id) {
     <div class="recipe-hero">
       ${img ? html`<img src="${img}" alt="">` : placeholder(mainTheme(r))}
       <div class="hero-bar">
-        <a class="icon-btn" href="#/ricette" aria-label="Indietro">${icon('left')}</a>
+        <a class="icon-btn" href="#/cibo/ricette" aria-label="Indietro">${icon('left')}</a>
         <div style="display:flex;gap:8px">
           <button class="icon-btn" data-action="ricetta-fav" data-id="${r.id}" aria-label="Preferita" style="${r.fav ? 'color:var(--rose)' : ''}">${icon('heart', r.fav ? 'filled' : '')}</button>
           <button class="icon-btn" data-action="ricetta-edit" data-id="${r.id}" aria-label="Modifica">${icon('pencil')}</button>
@@ -314,8 +323,8 @@ export const actions = {
     ev.preventDefault();
     const t = el.dataset.theme;
     // Home e conto alla rovescia: solo i periodi che sono anche categorie aprono il filtro
-    setUi('ricette.theme', t === 'preferite' || RICETTE_CATS[t] ? (ui('ricette.theme') === t && location.hash === '#/ricette' ? 'tutte' : t) : 'tutte');
-    if (location.hash !== '#/ricette') navigate('#/ricette');
+    setUi('ricette.theme', t === 'preferite' || RICETTE_CATS[t] ? (ui('ricette.theme') === t && location.hash === '#/cibo/ricette' ? 'tutte' : t) : 'tutte');
+    if (location.hash !== '#/cibo/ricette') navigate('#/cibo/ricette');
   },
   'ricette-q': ({ el }) => { programmaWeb(el.value); setUi('ricette.q', el.value); },
   'ricette-web-riprova': () => { const t = ui('ricette.q', ''); webCache.delete(norm(t)); programmaWeb(t); rerender(); },
@@ -339,7 +348,7 @@ export const actions = {
     const r = state.data.ricette.find((x) => x.id === id);
     closeSheet();
     if (!r) return;
-    confirmSheet({ title: `Eliminare “${r.title}”?`, text: 'La ricetta verrà tolta dal ricettario di casa.', onYes: () => { store.remove('ricette', id); navigate('#/ricette'); } });
+    confirmSheet({ title: `Eliminare “${r.title}”?`, text: 'La ricetta verrà tolta dal ricettario di casa.', onYes: () => { store.remove('ricette', id); navigate('#/cibo/ricette'); } });
   },
   'ricetta-random': () => {
     const theme = currentTheme();

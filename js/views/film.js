@@ -84,7 +84,11 @@ function featured(all) {
   </section>`;
 }
 
-export function render() {
+/** Il titolo della zona Film. */
+export const testa = () => ({ eyebrow: 'Da vedere sul divano' });
+export const render = () => html`${pageHead('Film', testa())}${corpo()}`;
+
+export function corpo() {
   const filter = FILTRI.some(([v]) => v === ui('film.filter', 'davedere')) ? ui('film.filter', 'davedere') : 'davedere';
   const theme = FILM_CATS[ui('film.theme', 'tutti')] ? ui('film.theme', 'tutti') : 'tutti';
   const results = ui('film.results', null);
@@ -98,8 +102,6 @@ export function render() {
   const rest = seasonal.length ? list.filter((f) => !seasonal.includes(f)) : list;
 
   return html`
-    ${pageHead('Film', { eyebrow: 'Da vedere sul divano' })}
-
     <form class="quick-add" data-form="film-search">
       <span class="cerca-box"><input id="film-q" name="q" placeholder="Cerca un film o una serie…" enterkeyhint="search" autocomplete="off" aria-label="Cerca film" value="${ui('film.q', '')}">${cancella('film-q', 'film-results-close')}</span>
       <button type="submit" aria-label="Cerca">${icon('search')}</button>

@@ -8,7 +8,7 @@ import { seedData } from '../seed.js';
 import * as notifiche from '../notifiche.js';
 import { ui, setUi } from '../core.js';
 
-export const VERSION = '1.7.0';
+export const VERSION = '1.8.0';
 
 const themeMode = () => lsGet('casa.theme', 'auto');
 export function applyTheme() {

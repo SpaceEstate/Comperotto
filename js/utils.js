@@ -141,6 +141,33 @@ export function resizeImage(file, max = 720, quality = 0.78) {
   });
 }
 
+const scaldate = new Set();
+/**
+ * Scarica in anticipo delle immagini (poche alla volta, senza toccare la pagina): quando la pagina le mostra
+ * arrivano dalla memoria del browser. "ogni" è chiamata per ognuna appena è pronta (anche se non è arrivata).
+ */
+export function scaldaImmagini(urls, { insieme = 4, ogni = null, referrer = true } = {}) {
+  const lista = [...new Set(urls)].filter((u) => typeof u === 'string' && /^https:\/\//.test(u) && !scaldate.has(u));
+  lista.forEach((u) => scaldate.add(u));
+  return new Promise((fine) => {
+    let i = 0, attive = 0;
+    const prossima = () => {
+      if (i >= lista.length) { if (!attive) fine(lista.length); return; }
+      const u = lista[i++];
+      attive++;
+      const im = new Image();
+      im.decoding = 'async';
+      if (!referrer) im.referrerPolicy = 'no-referrer'; // come nella pagina (es. le foto di Amazon)
+      const fatto = () => { attive--; if (ogni) ogni(u); prossima(); };
+      im.onload = fatto;
+      im.onerror = fatto;
+      im.src = u;
+    };
+    if (!lista.length) fine(0);
+    else for (let k = 0; k < insieme; k++) prossima();
+  });
+}
+
 // Solo foto vere in base64 (finiscono anche dentro style="background-image:url(…)"). Il controllo scorre
 // tutta la stringa: lo ricordo, così ridisegnare la pagina non lo ripete per ogni foto.
 const fotoOk = new Map();

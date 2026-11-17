@@ -7,6 +7,7 @@ import { applySeason } from './season.js';
 import { initGestures } from './gestures.js';
 import { rinfresca as rinfrescaNotifiche, stato as statoNotifiche } from './notifiche.js';
 import { sp as spotifyStato, eQui, avviaSpotify } from './spotify.js';
+import { precaricaTutto } from './precarica.js';
 import * as home from './views/home.js';
 import * as cibo from './views/cibo.js';
 import * as svago from './views/svago.js';
@@ -361,8 +362,10 @@ function maybeWelcome() {
 actions['welcome-me'] = ({ el }) => { setMe(el.dataset.v); closeSheet(); rerender(); toast(`Ciao ${settings().names[el.dataset.v]}!`); };
 
 /** Avvia la sincronizzazione con il codice di famiglia (chiamata anche dalla schermata del codice). */
-export function startSync(code) {
+export async function startSync(code) {
   const s = useSync(code);
+  await s.carica(); // la copia dei dati salvata qui (pochi millisecondi): si parte da quella
+  if (store !== s) return; // nel frattempo è cambiato qualcosa (es. un altro codice)
   state.needCode = false;
   s.onAuthLost = () => {
     s.forget(true);
@@ -375,12 +378,17 @@ export function startSync(code) {
     toast('Il codice di famiglia è cambiato: inseriscilo di nuovo');
   };
   s.onChange = () => rerender();
+  s.onScarto = (op, status) => toast(status === 413
+    ? 'Una modifica era troppo pesante (forse una foto) e non è arrivata all’altro telefono'
+    : 'Una modifica non è stata accettata dalla casa: l’ho tolta');
   subscribeAll();
   s.start();
   render();
   setTimeout(rinfrescaNotifiche, 4000);
   // Spotify collegato: cosa suona adesso, per il mini lettore in basso
   setTimeout(avviaSpotify, 1500);
+  // poi, con calma: musica, copertine, locandine, foto e mappa pronte prima di entrare nelle pagine
+  setTimeout(precaricaTutto, 2500);
   // la Home propone le notifiche solo dove si possono davvero accendere
   setTimeout(() => statoNotifiche().then((s) => { state.ui['push.stato'] = s; rerender(); }).catch(() => {}), 1200);
 }

@@ -176,7 +176,7 @@ const pgBackend = {
       await c.query('BEGIN');
       for (const o of ops) {
         if (o.op === 'wipe') { await c.query('DELETE FROM fam_docs'); COLLECTIONS.forEach((x) => touched.add(x)); continue; }
-        const data = JSON.stringify(stripId(o.data));
+        const data = JSON.stringify(stripId(o.data), (k, v) => (typeof v === 'string' ? v.replace(/\u0000/g, '') : v));
         if (o.op === 'set') {
           await c.query('INSERT INTO fam_docs (col, id, data) VALUES ($1, $2, $3::jsonb) ON CONFLICT (col, id) DO UPDATE SET data = EXCLUDED.data', [o.col, o.id, data]);
         } else if (o.op === 'update') {

@@ -15,6 +15,18 @@ const catOf = (it) => (it.catManual && it.category ? normCat(it.category) : lear
 const ART = /^(?:(?:il|lo|la|i|gli|le|un|uno|una|del|dello|della|dei|degli|delle)\s+|(?:l|un|dell|d)['’]\s*)/i;
 export const cleanName = (s) => cap(String(s || '').trim().replace(ART, '').trim());
 const keyOf = (s) => norm(cleanName(s));
+
+/**
+ * Stesso prodotto? Solo se il nome è uguale, oppure cambia per parole che non fanno un prodotto diverso
+ * (misure, "freschissime", "q.b."…): "uova medie" = "uova", ma "zucchero a velo", "zucchero di canna" e
+ * "zucchero" sono tre cose diverse (come "farina 00" e "farina", "latte di soia" e "latte").
+ */
+const RIEMPITIVI = /\b(?:a temperatura ambiente|q\.?\s?b\.?|circa|abbondant[ei]|freschissim[oaie]|medi[oaie]?|grand[ei]|piccol[oaie]|di media grandezza)(?=\s|$)/g;
+const nucleo = (n) => String(n || '').replace(RIEMPITIVI, ' ').replace(/\s+/g, ' ').trim();
+export const stessoProdotto = (a, b) => a === b || (nucleo(a) !== '' && nucleo(a) === nucleo(b));
+// dalle ricette: "burro a temperatura ambiente" in lista diventa "Burro"
+const RIEMPITIVI_TESTO = new RegExp(RIEMPITIVI.source, 'gi');
+const senzaRiempitivi = (s) => String(s).replace(RIEMPITIVI_TESTO, ' ').replace(/\s+/g, ' ').trim() || s;
 const freqId = (name) => norm(name).replace(/[^a-z0-9]+/g, '-').slice(0, 60) || 'x';
 
 /**
@@ -30,15 +42,14 @@ export function addShopping(text, extra = {}) {
   const seen = new Set();
   String(text).split(/\s*[,;\n]\s*/).filter(Boolean).forEach((part) => {
     const { qty, name } = parseQty(part);
-    const clean = cleanName(name);
+    const clean = cleanName(extra.recipe ? senzaRiempitivi(name) : name);
     if (!clean) return;
     const n = norm(clean);
     if (seen.has(n)) return;
     seen.add(n);
     const q = extra.qty || qty;
-    // dalle ricette: "uova freschissime" vale come "uova" se è già in lista
-    const loose = (x) => extra.recipe && (n.startsWith(x + ' ') || x.startsWith(n + ' '));
-    const same = items.filter((i) => keyOf(i.name) === n || loose(keyOf(i.name)));
+    // dalle ricette: "uova freschissime" vale come "uova" se è già in lista (ma "zucchero a velo" non è "zucchero")
+    const same = items.filter((i) => keyOf(i.name) === n || (extra.recipe && stessoProdotto(keyOf(i.name), n)));
     const open = same.filter((i) => !i.done);
     if (open.length) {
       if (q && open[0].qty !== q) store.update('spesa', open[0].id, { qty: q });

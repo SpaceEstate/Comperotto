@@ -117,6 +117,9 @@ const mapsUrl = (p, name) => `https://maps.apple.com/?ll=${p.lat},${p.lon}&q=${e
 const possoMandare = () => isSynced() && Boolean(me()) && !isIPad() && 'geolocation' in navigator;
 
 /** Da dove arrivano le posizioni di questa persona (per capire subito se qualcosa non va). */
+/** La batteria (la manda OwnTracks): solo se è di poco fa, mai un numero vecchio accanto a una posizione nuova. */
+export const batteria = (p) => (p && p.batt != null && (!p.battAt || Date.now() - p.battAt < 3 * 60 * MIN) ? p.batt : null);
+
 function diagnosi(k, st) {
   const p = st.p;
   if (!p) return '';
@@ -171,7 +174,7 @@ export function render(route) {
             ${st.p ? html`<span class="pill ${pillOf(st)}">${icon(iconOf(st), 'xs')} ${st.label}${st.since ? ` ${st.since}` : ''}</span>` : html`<span class="muted small">${st.label}</span>`}
           </span>
           ${st.place ? html`<span class="dove-place">${st.place}</span>` : ''}
-          ${st.p ? html`<span class="dove-sub ${st.old ? 'old' : ''}">${st.old ? icon('clock', 'xs') : ''} Aggiornata ${st.agg}${st.p.batt != null ? html` · ${icon('battery', 'xs')} ${st.p.batt}%` : ''}</span>` : ''}
+          ${st.p ? html`<span class="dove-sub ${st.old ? 'old' : ''}">${st.old ? icon('clock', 'xs') : ''} Aggiornata ${st.agg}${batteria(st.p) != null ? html` · ${icon('battery', 'xs')} ${batteria(st.p)}%` : ''}</span>` : ''}
           ${dg ? html`<span class="dove-diag">${dg}</span>` : ''}
         </span>`;
       return html`<section class="card dove-card ${st.old ? 'stale' : ''}">
@@ -280,6 +283,67 @@ document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && locati
 
 // La mappa resta viva quando si cambia pagina: tornando su Dov'è è già lì, senza ricaricare nulla.
 let viva = null;
+// la mappa che si sta preparando fuori dallo schermo (all'apertura dell'app)
+let inPreparazione = null;
+
+/** Crea la mappa nel suo riquadro (una volta sola: poi resta viva). */
+async function creaMappa(el) {
+  const chiave = chiaveStile();
+  const [ml, st, imgs] = await Promise.all([loadMapLibre(), stile(tipoMappa(), postiGeo(), scuro()), icone()]);
+  if (!el.isConnected || (viva && viva !== el)) return null;
+  const map = new ml.Map({
+    container: el,
+    style: st,
+    center: [12.5, 42.5],
+    zoom: 5,
+    attributionControl: false,
+    dragRotate: false,
+    pitchWithRotate: false,
+    touchPitch: false,
+    maxZoom: 19.5,
+  });
+  map.touchZoomRotate.disableRotation();
+  // a ogni cambio di stile (Mappa/Satellite, chiaro/scuro) le nostre icone vanno rimesse
+  map.on('style.load', () => mettiIcone(map, imgs));
+  map.on('styleimagemissing', (e) => { const im = imgs.get(e.id); if (im && !map.hasImage(e.id)) map.addImage(e.id, im.data, { pixelRatio: im.pixelRatio }); });
+  map.on('click', () => { if (!ui('dove.grande', false)) apriGrande(); });
+  el._ml = ml;
+  el._map = map;
+  el._markers = [];
+  el._stile = chiave;
+  el._posti = JSON.stringify(postiGeo());
+  viva = el;
+  inquadra(map, false);
+  return map;
+}
+
+/**
+ * All'apertura dell'app: la mappa si prepara fuori dallo schermo, grande come quella di Dov'è, e scarica
+ * la zona dove siete. Poi resta da parte (come dopo una visita a Dov'è): entrando è già pronta.
+ */
+export function preparaMappa() {
+  if (viva || inPreparazione || !isSynced() || document.getElementById('mappa')) return Promise.resolve();
+  if (!persone().length && !luoghi().some(hasXY)) return Promise.resolve(); // niente da mostrare
+  const view = document.getElementById('view');
+  const cs = view && getComputedStyle(view);
+  const largo = view ? view.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) : innerWidth - 32;
+  const box = document.createElement('div');
+  box.className = 'map-card mappa-pronta';
+  box.setAttribute('aria-hidden', 'true');
+  box.style.width = `${Math.max(280, Math.round(largo))}px`;
+  const el = document.createElement('div');
+  el.className = 'mappa';
+  el.setAttribute('data-keep', '');
+  box.appendChild(el);
+  document.body.appendChild(box);
+  inPreparazione = creaMappa(el).catch(() => null).finally(() => { inPreparazione = null; });
+  return inPreparazione.then((map) => {
+    if (!map) { box.remove(); return; }
+    // quando la zona è scaricata (o dopo un po') la tolgo dalla pagina: resta pronta in memoria
+    return new Promise((ok) => { const t = setTimeout(ok, 20000); map.once('idle', () => { clearTimeout(t); ok(); }); })
+      .then(() => box.remove());
+  });
+}
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (document.getElementById('mappa')) after(); });
 
 export async function after() {
@@ -287,39 +351,16 @@ export async function after() {
   // mentre si guarda Dov'è il controllo del server resta veloce (ogni 6 secondi)
   if (isSynced() && !document.hidden) store.attivo = Date.now();
   automatica();
+  // la mappa si sta preparando fuori dallo schermo: uso quella
+  if (inPreparazione) await inPreparazione;
   let el = document.getElementById('mappa');
   if (!el) return;
-  if (viva && viva !== el) { el.replaceWith(viva); el = viva; el._map.resize(); inquadra(el._map, false); }
+  if (viva && viva !== el) { viva.id = el.id; el.replaceWith(viva); el = viva; el._map.resize(); inquadra(el._map, false); }
   if (!el._map) {
     if (el._inCorso) return; // la sto già preparando
     el._inCorso = true;
     try {
-      const chiave = chiaveStile();
-      const [ml, st, imgs] = await Promise.all([loadMapLibre(), stile(tipoMappa(), postiGeo(), scuro()), icone()]);
-      if (!el.isConnected) return;
-      const map = new ml.Map({
-        container: el,
-        style: st,
-        center: [12.5, 42.5],
-        zoom: 5,
-        attributionControl: false,
-        dragRotate: false,
-        pitchWithRotate: false,
-        touchPitch: false,
-        maxZoom: 19.5,
-      });
-      map.touchZoomRotate.disableRotation();
-      // a ogni cambio di stile (Mappa/Satellite, chiaro/scuro) le nostre icone vanno rimesse
-      map.on('style.load', () => mettiIcone(map, imgs));
-      map.on('styleimagemissing', (e) => { const im = imgs.get(e.id); if (im && !map.hasImage(e.id)) map.addImage(e.id, im.data, { pixelRatio: im.pixelRatio }); });
-      map.on('click', () => { if (!ui('dove.grande', false)) apriGrande(); });
-      el._ml = ml;
-      el._map = map;
-      el._markers = [];
-      el._stile = chiave;
-      el._posti = JSON.stringify(postiGeo());
-      viva = el;
-      inquadra(map, false);
+      if (!(await creaMappa(el))) return;
     } catch { el.classList.add('no-map'); return; } finally { el._inCorso = false; }
   }
   const map = el._map;

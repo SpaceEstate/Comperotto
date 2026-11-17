@@ -448,8 +448,9 @@ input:placeholder-shown + .search-x { display: none; }
 .r-ph.th-halloween { background: radial-gradient(circle at 30% 20%, #F6DFC5, #EBC096); color: #9A5420; }
 .r-ph.th-compleanni { background: radial-gradient(circle at 30% 20%, #F5E5EA, #E7CBD4); color: #95506A; }
 .r-ph.th-colazione { background: radial-gradient(circle at 30% 20%, #F8EDD8, #EED7AE); color: #8E6420; }
-:root[data-theme="dark"] .r-ph { filter: brightness(.62) saturate(.9); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .r-ph { filter: brightness(.62) saturate(.9); } }
+.r-ph.th-dolci { background: radial-gradient(circle at 30% 20%, #FBE6EC, #F1C9D6); color: #A24A68; }
+:root[data-theme="dark"] .r-ph:not(.r-ph-cover) { filter: brightness(.62) saturate(.9); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .r-ph:not(.r-ph-cover) { filter: brightness(.62) saturate(.9); } }
 .r-ph-cover { background-size: cover; background-position: center; }
 
 .recipe-hero { margin: calc(-1 * var(--top-pad) - var(--safe-top)) calc(-1 * var(--pad-r)) 0 calc(-1 * var(--pad-l)); height: calc(250px + var(--safe-top)); position: relative; overflow: hidden; }
@@ -577,6 +578,16 @@ input:placeholder-shown + .search-x { display: none; }
 .set-row:first-child { border-top: 0; }
 .set-row .row-main b { display: block; font-weight: 600; }
 .set-row .row-main span { font-size: 13px; color: var(--text-3); }
+/* Collegamento (Impostazioni): una riga per dispositivo, poi posizione e notifiche */
+.coll-row { align-items: flex-start; }
+.coll .coll-line { display: flex; align-items: center; gap: 7px; margin-top: 5px; font-size: 13px; color: var(--text-3); line-height: 1.35; }
+.coll .coll-line > span:not(.coll-dot) { flex: 1; min-width: 0; }
+.coll .coll-line b { display: inline; color: var(--text-2); font-weight: 600; }
+.coll .coll-line svg.i { width: 13px; height: 13px; flex: none; margin: 0 -1px; opacity: .8; }
+.coll-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--line-2); margin: 0 2px; }
+.coll-dot.on { background: var(--sage); }
+.coll-dot.mezzo { background: var(--oak); }
+.coll-warn { color: var(--rose); font-style: normal; }
 .status-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; background: var(--text-3); }
 .status-dot.on { background: var(--sage); box-shadow: 0 0 0 3px var(--sage-soft); }
 .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 2px 6px; }
@@ -875,6 +886,10 @@ html.np-open body { overflow: hidden; }
 .sp-devrow.off { opacity: .55; }
 .sp-check { color: var(--sage); display: grid; place-items: center; }
 .sp-nodev-txt { margin: 12px 4px 0; }
+.sp-echo-aiuto { margin: 12px 4px 0; }
+.sp-echo-aiuto summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--text-2); list-style: none; }
+.sp-echo-aiuto summary::-webkit-details-marker { display: none; }
+.sp-echo-aiuto p { margin: 6px 0 0; line-height: 1.45; }
 .sp-apri { display: flex; margin: 14px auto 0; }
 .sp-sheet-head { display: flex; align-items: center; gap: 14px; margin: -2px 0 14px; }
 .sp-sheet-head .row-main { display: flex; flex-direction: column; gap: 2px; color: var(--text-2); }
@@ -1739,6 +1754,8 @@ label.set-row { cursor: pointer; }
 /* ---------- Dov'è: la mappa a tutto schermo ---------- */
 html.mappa-grande body { overflow: hidden; }
 .map-card.grande { position: fixed; inset: 0; z-index: 46; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+/* la mappa che si prepara all'apertura dell'app: fuori dallo schermo, grande come quella di Dov'è */
+.map-card.mappa-pronta { position: fixed; top: 0; left: 0; margin: 0; transform: translateX(-300vw); visibility: hidden; pointer-events: none; z-index: -1; }
 .map-card.grande .mappa { height: 100dvh; }
 .map-card.grande .map-tools { top: calc(var(--safe-top) + 12px); right: max(12px, env(safe-area-inset-right, 0px)); }
 .map-chiudi { position: absolute; z-index: 3; top: calc(var(--safe-top) + 12px); left: max(12px, env(safe-area-inset-left, 0px)); width: 40px; height: 40px; }

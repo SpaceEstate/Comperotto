@@ -11,8 +11,8 @@ Un'app fatta su misura per **iPhone e iPad** (si installa dalla schermata Home e
   - **Faccende** che si ripetono (lettiera, lavatrice, lenzuola, bagno…) con scadenze e chi le ha fatte;
   - **Lavori** da fare (tagliare le tende, sistemare i mobili…) per stanza e priorità;
   - **Rifiuti**: il calendario della raccolta si imposta in *Impostazioni → Calendario rifiuti*. Ogni sera la Home dice cosa portare fuori.
-- **Ricette** per categoria (**Natale, Halloween, Sempre, Estate, Colazione**): si aggiungono e si modificano dall'app (tasto **+ Ricetta**, e **Modifica ricetta** in fondo a ognuna), con foto. Si spuntano gli ingredienti e finiscono nella spesa; c'è il dado "cosa cuciniamo?" e il tasto **Tieni lo schermo acceso** mentre si cucina. La ricerca guarda prima nel vostro ricettario e poi **anche online** (vedi sezione 8), e una ricetta si può **importare da un link**.
-- **Film e serie** per categoria (**Famiglia, Natale, Halloween, Sempre, Thriller, Azione, Horror, Cartoni**): copertina e **dove vederli in Italia** (abbonamento, noleggio, acquisto) arrivano da soli e si aggiornano ogni giorno, e cercando un titolo la categoria si propone dal genere; in cima un "Stasera guardiamo…".
+- **Ricette** per categoria (**Natale, Halloween, Sempre, Estate, Colazione, Dolci**): si aggiungono e si modificano dall'app (tasto **+ Ricetta**, e **Modifica ricetta** in fondo a ognuna), con foto. Si spuntano gli ingredienti e finiscono nella spesa; c'è il dado "cosa cuciniamo?" e il tasto **Tieni lo schermo acceso** mentre si cucina. La ricerca guarda prima nel vostro ricettario e poi **anche online** (vedi sezione 8), e una ricetta si può **importare da un link**.
+- **Film e serie** per categoria (**Famiglia, Natale, Halloween, Sempre, Thriller, Azione, Horror, Cartoni**): copertina e **dove vederli in Italia** (abbonamento, noleggio, acquisto) arrivano da soli e si aggiornano ogni giorno, e cercando un titolo la categoria si propone dal genere; in cima, sempre, un "Stasera guardiamo…" (con una categoria scelta, un film di quella).
 - **Desideri**: più **liste** (quella di casa e quelle che create voi) con prezzo, link e totale, e le **liste dei desideri di Amazon** con foto, nome e prezzo di ogni prodotto: un tocco apre il prodotto su Amazon (sezione 9).
 - **Musica** con **Spotify**: di base suona sul dispositivo che state usando, oppure su iPad, **Echo**…; mini lettore sempre in basso, ricerca, preferiti, playlist, musica a tema del periodo e suggerimenti "Scelti per te". Dalla Home o, su iPad, dalla barra laterale.
 - **Thor e Minù**: foto, età, peso, antiparassitari, vaccini e veterinario, con promemoria (dalla Home).
@@ -140,7 +140,11 @@ Su ogni iPhone/iPad con l'app **installata sulla schermata Home**: **Impostazion
 - **Stasera si butta**: una volta al giorno verso le 18–19, se quella sera c'è qualcosa da portare fuori e non è già stato segnato.
 - **Compleanni e gatti**: il giorno prima di compleanni, anniversario, ricorrenze e richiami di Thor e Minù.
 
-Ogni tipo si può spegnere dal singolo dispositivo; "Prova" manda una notifica di prova.
+Ogni tipo si può spegnere dal singolo dispositivo; "Prova" manda una notifica di prova. In *Impostazioni → Collegamento* si vede per ognuno se le notifiche sono accese e se l'ultima è arrivata davvero.
+
+## 6b. Collegamento
+
+*Impostazioni → Collegamento* dice, per Patrick e per Serena: quando ogni loro iPhone/iPad ha usato l'app l'ultima volta (e se è aperta da Safari invece che dalla schermata Home, o se ha una versione vecchia), da dove arriva la posizione (OwnTracks, con la batteria, oppure solo dall'app) e com'è andata l'ultima notifica. Su questo telefono segnala anche le modifiche che non sono ancora partite (l'app riprova da sola; intanto quelle dell'altro arrivano lo stesso).
 
 ## 7. Musica e Spotify
 
@@ -161,7 +165,7 @@ Una volta sola, da un computer:
 3. Sull'iPhone: *Musica* → **Collega** → incolla il Client ID (solo la prima volta) → accedi a Spotify e **Accetta**. Si torna da soli nell'app.
 4. L'account dell'altro si può collegare anche dallo stesso telefono: *Musica → Spotify →* **Collega** accanto al suo nome → nella pagina di Spotify **Non sei tu?** → si entra con i suoi dati → **Accetta**. Ognuno poi vede di base il proprio Spotify (con tutti e due collegati c'è la scelta *Patrick / Serena* sopra le playlist).
 
-Gli Echo compaiono in *Dove ascoltare?* se Spotify è collegato nell'app Alexa (*Altro → Impostazioni → Musica e podcast*): se non si vedono, basta chiedere una volta ad Alexa di mettere qualcosa da Spotify. Un dispositivo che non volete vedere (es. l'Echo di qualcun altro collegato allo stesso account) si nasconde col tasto accanto al suo nome, per tutti e due; in fondo alla lista *Mostrali* lo riporta. Il permesso resta sul server (nel database), non sui telefoni; si toglie da *Musica → Spotify → Scollega*.
+Gli Echo compaiono in *Dove ascoltare?* solo per l'account Spotify collegato nell'app Alexa che li gestisce (*Altro → Impostazioni → Musica e podcast → Spotify*): se mancano quelli di casa, nell'app Alexa di casa va collegato lo Spotify di chi ascolta; per un attimo basta anche dire all'Echo «Alexa, Spotify Connect» e sceglierlo dall'app Spotify (in fondo alla lista c'è *Manca un Echo di casa?*). Un dispositivo che non volete vedere (es. l'Echo di qualcun altro collegato allo stesso account) si nasconde col tasto accanto al suo nome, per tutti e due; in fondo alla lista *Mostrali* lo riporta. Il permesso resta sul server (nel database), non sui telefoni; si toglie da *Musica → Spotify → Scollega*.
 
 ## 8. Ricette anche da internet
 
@@ -185,8 +189,9 @@ index.html              guscio dell'app
 manifest.webmanifest    installazione come app (icona, colori)
 sw.js                   funzionamento offline
 css/style.css           stile: palette di casa e atmosfere stagionali
-js/config.js            frase della skill Alexa
-js/store.js             dati: condivisi via Vercel (con coda offline) o solo sul dispositivo
+js/config.js            versione dell'app e frase della skill Alexa
+js/store.js             dati: condivisi via Vercel (con coda offline; copia sul dispositivo in IndexedDB) o solo sul dispositivo
+js/precarica.js         all'apertura prepara musica, copertine, locandine, foto e mappa
 js/core.js              stato, fogli dal basso, avvisi
 js/data.js              reparti, temi, stagioni, rifiuti, faccende
 js/season.js            atmosfere stagionali e decorazioni
@@ -203,7 +208,7 @@ api/                    funzioni Vercel: stato, setup del codice, dati (Neon/Pos
 alexa-skill/            skill Alexa (modello italiano + codice)
 ```
 
-Niente framework e niente build: HTML, CSS e JavaScript moderni, più alcune piccole funzioni in `api/`. Per modificarla basta cambiare i file e fare push su `main`: Vercel la ripubblica da solo e l'app, alla prima apertura, si ricarica da sola con la versione nuova (a ogni pubblicazione va cambiato il numero di `CACHE` in `sw.js`).
+Niente framework e niente build: HTML, CSS e JavaScript moderni, più alcune piccole funzioni in `api/`. Per modificarla basta cambiare i file e fare push su `main`: Vercel la ripubblica da solo e l'app, alla prima apertura, si ricarica da sola con la versione nuova (a ogni pubblicazione va cambiato il numero di `CACHE` in `sw.js` e `VERSIONE` in `js/config.js`).
 
 Per provarla sul computer con le funzioni e il database:
 

@@ -243,6 +243,16 @@ export function render() {
     ${l && l.tipo === 'amazon' ? listaAmazon(l) : nostraLista(cur)}`;
 }
 
+/** All'apertura dell'app: le foto che si vedono entrando in Desideri (copertine delle liste e la lista aperta). */
+export function foto() {
+  const out = diAmazon().flatMap((l) => (l.articoli || []).map((a) => fotoAmz(a.foto)).filter(Boolean).slice(0, 4));
+  const cur = aperta();
+  const l = cur === CASA ? null : trova(cur);
+  if (l && l.tipo === 'amazon') out.push(...(l.articoli || []).slice(0, 30).map((a) => fotoAmz(a.foto)));
+  else out.push(...state.data.desideri.filter((w) => !w.bought && listaDi(w) === cur).slice(0, 30).map((w) => fotoAmz(w.foto)));
+  return out.filter(Boolean);
+}
+
 export function after() {
   migra();
   // la lista Amazon aperta: se non è mai stata letta o è vecchia di qualche ora, la rileggo

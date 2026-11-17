@@ -33,7 +33,7 @@ export const actions = {
       if (form.dataset.first) await api('setup', { method: 'POST', body: { codice: code } });
       else await api('dati', { code });
       const { startSync } = await import('../app.js');
-      startSync(code);
+      await startSync(code);
     } catch (e) {
       err.textContent = e instanceof AuthError ? 'Codice sbagliato' : (e.message || 'Non riesco a collegarmi');
       err.hidden = false;

@@ -56,16 +56,24 @@ function grid(list) {
     </button>`)}</div>`;
 }
 
-/** "Stasera guardiamo…": un film scelto per voi (cambia ogni giorno, o con il dado). */
-function featured(all) {
-  const pool = all.filter((f) => !f.watched);
-  if (!pool.length) return '';
+/** Il film di «Stasera guardiamo…»: uno da vedere (della categoria scelta, se c'è), cambia ogni giorno o con il dado. */
+function stasera(all, theme = 'tutti') {
+  const daVedere = all.filter((f) => !f.watched);
+  const nellaCategoria = FILM_CATS[theme] ? daVedere.filter((f) => filmCats(f).includes(theme)) : [];
+  const pool = nellaCategoria.length ? nellaCategoria : daVedere;
+  if (!pool.length) return null;
   const cur = catDelPeriodo();
   const score = (f) => (cur && filmCats(f).includes(cur) ? 2 : 0) + (streaming(f).length ? 1 : 0) + (safePoster(f.poster) && !rotte.has(f.poster) ? 1 : 0);
   const best = Math.max(...pool.map(score));
   const top = pool.filter((f) => score(f) === best);
   const seed = [...todayIso()].reduce((a, c) => a + c.charCodeAt(0), 0) + Number(ui('film.spin', 0));
-  const f = top[seed % top.length];
+  return top[seed % top.length];
+}
+
+/** «Stasera guardiamo…»: sempre in cima; con una categoria scelta propone un film di quella categoria. */
+function featured(all, theme = 'tutti') {
+  const f = stasera(all, theme);
+  if (!f) return '';
   const src = safePoster(f.poster);
   const on = streaming(f);
   return html`<section class="film-hero" style="${src ? `--poster:url('${src}')` : ''}">
@@ -82,6 +90,19 @@ function featured(all) {
       </div>
     </div>
   </section>`;
+}
+
+/** All'apertura dell'app: le locandine e i loghi che si vedono per primi entrando in Film. */
+export function locandine() {
+  const all = [...state.data.film].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const theme = FILM_CATS[ui('film.theme', 'tutti')] ? ui('film.theme', 'tutti') : 'tutti';
+  const primo = stasera(all, theme);
+  const daVedere = all.filter((f) => !f.watched).slice(0, 24);
+  const film = primo ? [primo, ...daVedere] : daVedere;
+  return [
+    ...film.map((f) => safePoster(f.poster)),
+    ...film.flatMap((f) => streaming(f).slice(0, 3).map((o) => safeIcon(o.icon))),
+  ].filter((u) => u && !rotte.has(u));
 }
 
 /** Il titolo della zona Film. */
@@ -118,7 +139,7 @@ export function corpo() {
         </button>`)}</div>` : html`<p class="muted small">Nessun risultato. <button class="card-link" data-action="film-manual">Aggiungilo lo stesso</button></p>`}
     </div>` : ''}
 
-    ${!results && filter === 'davedere' && theme === 'tutti' ? featured(all) : ''}
+    ${featured(all, theme)}
 
     <div class="chips" role="group" aria-label="Quali film">
       ${FILTRI.map(([v, l]) => html`<button class="chip ${filter === v ? 'on' : ''}" data-action="film-filter" data-v="${v}" aria-pressed="${filter === v}">${l}</button>`)}

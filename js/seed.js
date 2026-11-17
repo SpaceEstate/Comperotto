@@ -77,7 +77,7 @@ const RICETTE = [
     note: 'Servilo dentro una zucca svuotata per l’effetto Halloween.',
   },
   {
-    title: 'Biscotti speziati di Natale', themes: ['natale'], time: 60, servings: 30, fav: true,
+    title: 'Biscotti speziati di Natale', themes: ['natale', 'dolci'], time: 60, servings: 30, fav: true,
     ingredients: ['350 g farina 00', '120 g burro morbido', '100 g zucchero di canna', '1 uovo', '80 g miele', '2 cucchiaini zenzero in polvere', '1 cucchiaino cannella', '1 pizzico noce moscata', '1/2 cucchiaino bicarbonato', '1 pizzico sale'],
     steps: [
       'Lavora burro, zucchero e miele fino ad avere una crema, poi aggiungi l’uovo.',
@@ -100,7 +100,7 @@ const RICETTE = [
     ],
   },
   {
-    title: 'Tiramisù', themes: ['sempre'], time: 30, servings: 6, fav: true,
+    title: 'Tiramisù', themes: ['dolci'], time: 30, servings: 6, fav: true,
     ingredients: ['500 g mascarpone', '4 uova freschissime', '100 g zucchero', '300 g savoiardi', '300 ml caffè', 'Cacao amaro q.b.'],
     steps: [
       'Prepara il caffè e lascialo raffreddare.',
@@ -143,7 +143,7 @@ const RICETTE = [
     ],
   },
   {
-    title: 'Crêpes come a Parigi', themes: ['colazione', 'sempre'], time: 45, servings: 8, fav: true,
+    title: 'Crêpes come a Parigi', themes: ['colazione', 'dolci', 'sempre'], time: 45, servings: 8, fav: true,
     ingredients: ['125 g farina 00', '250 ml latte', '2 uova', '20 g burro fuso', '1 cucchiaio zucchero', '1 pizzico sale', 'Nutella q.b.', 'Fragole q.b.'],
     steps: [
       'Sbatti le uova con lo zucchero e il sale, poi aggiungi il latte.',

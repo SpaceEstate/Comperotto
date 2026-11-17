@@ -41,10 +41,12 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   foto/voto/difficoltà/tempo dalle schede, solo `ricette.giallozafferano.it`) e importa da link con i dati schema.org (controlli contro
   indirizzi interni; nei passaggi di GZ si tolgono i rimandi alle foto). Fatto in casa da Benedetta è stato tolto: il sito blocca
   i programmi (verifica Cloudflare) e non va aggirato; un link di un sito così all'importazione dà un messaggio chiaro.
-- **Ricette, categorie:** `RICETTE_CATS` (`js/data.js`): Natale, Halloween, Sempre, Estate, Colazione (i filtri della pagina e il
+- **Ricette, categorie:** `RICETTE_CATS` (`js/data.js`): Natale, Halloween, Sempre, Estate, Colazione, Dolci (i filtri della pagina e il
   campo "Categoria"). `ricetteCats(r)`: Capodanno conta come Natale; i temi di prima che non sono categorie (Pasqua, San Valentino,
   "Parigi e Canarie"…) restano salvati ma non si mostrano (`temiVecchi()` si conservano salvando) e la ricetta va in Sempre.
-  Esempi aggiornati una volta (`settings.ricetteCats`). "Parigi e Canarie" resta solo come atmosfera e musica di aprile.
+  Esempi aggiornati una volta (`settings.ricetteCats`: 1 crêpes in Colazione, 2 crêpes/tiramisù/biscotti anche in Dolci).
+  "Parigi e Canarie" resta solo come atmosfera e musica di aprile. Nel tema scuro si attenuano solo i segnaposto colorati,
+  mai le foto vere (`.r-ph:not(.r-ph-cover)`).
 - **Desideri e liste:** raccolta `liste` (`tipo: 'nostra' | 'amazon'`); "Desideri di casa" è la lista di sempre (desideri senza
   `lista`). Eliminare una lista riporta i suoi desideri a casa. Le liste Amazon: `GET /api/link?lista=` legge la pagina pubblica della
   lista (Amazon non ha un'API; pagine successive da `showMoreUrl` fino a `endOfListMarker`, una al secondo, niente insistenze se
@@ -64,7 +66,8 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   e parlano direttamente con api.spotify.com. Pagine in `js/views/spotify.js`: `#/musica` (lettore, cerca, libreria), `#/musica/cerca`,
   `/preferiti`, `/pl/<id>`, `/album/<id>`, `/artista/<id>`, foglio "⋯" del brano (coda, preferiti, playlist). Barra del brano trascinabile
   (seek), niente volume. In "Dove ascoltare?" ogni dispositivo si può nascondere (nomi in `settings.spotifyNascosti`, per tutta la casa;
-  quello che suona si vede sempre). Suggerimenti: musica a tema del periodo (`MUSICA_TEMA` in `js/data.js`, periodo da `periodoMusica()` in
+  quello che suona si vede sempre). In fondo "Manca un Echo di casa?" (chiuso): gli Echo compaiono solo per l'account Spotify collegato
+  nell'app Alexa di quella casa (Altro → Impostazioni → Musica e podcast); per un attimo anche «Alexa, Spotify Connect». Suggerimenti: musica a tema del periodo (`MUSICA_TEMA` in `js/data.js`, periodo da `periodoMusica()` in
   `season.js`, trovata con la ricerca e tenuta una settimana) e "Scelti per te" (artisti dei brani salvati → loro brani non salvati e
   uscite dell'ultimo anno: le raccomandazioni di Spotify non ci sono più per le app nuove). "La nostra musica" non c'è più (i dati restano).
   Lettore (`js/spotify.js`): dopo un comando lo schermo cambia subito e le "attese" tengono lo stato chiesto finché Spotify non lo
@@ -88,10 +91,32 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   Collegamenti senza i permessi nuovi → `completo: false` e la pagina chiede "Ricollega".
 - **Film:** categorie in `FILM_CATS` (`js/data.js`): Famiglia, Natale, Halloween, Sempre, Thriller, Azione, Horror, Cartoni; dai generi
   di JustWatch (`ani` → cartoni) e di Apple si propongono da sole. Gli esempi si aggiornano una volta (`settings.filmCats`, ora 2).
+  «Stasera guardiamo…» (`stasera()`) è sempre in cima: con una categoria scelta propone un film di quella, altrimenti uno da vedere.
 - **Caselle di ricerca:** la X per cancellare è `cancella(id, poi)` di `core.js` (si vede solo con del testo, via `:placeholder-shown`).
 - **Spesa:** reparti in `SHOP_CATS` (`js/data.js`) nell'ordine del giro; gli id vecchi passano da `LEGACY_CATS` (il vecchio `freschi` ora è `frigo`).
+  Stesso prodotto solo se il nome è uguale o cambia per parole "di riempimento" (`stessoProdotto()`/`nucleo()` in `spesa.js`: medie,
+  grandi, freschissime, q.b., a temperatura ambiente…): zucchero, zucchero a velo e zucchero di canna sono tre cose diverse (come farina
+  e farina 00). Dalle ricette le parole di riempimento si tolgono anche dal nome ("Burro"). La stessa regola è nella lambda di Alexa
+  ("togli…"): va reincollata nella console per averla.
 - **Avvio e aggiornamenti:** un dispositivo già collegato parte subito dai dati salvati (non aspetta `/api/stato`). A ogni pubblicazione
-  cambiare `CACHE` in `sw.js`: l'app aperta si ricarica da sola (non mentre si scrive). I caratteri sono in `assets/fonts/`.
+  cambiare `CACHE` in `sw.js` e `VERSIONE` in `js/config.js`: l'app aperta si ricarica da sola (non mentre si scrive). I caratteri sono in `assets/fonts/`.
+- **Copia dei dati sul dispositivo:** IndexedDB (database `comperotto`, archivio `raccolte`, una voce per raccolta), caricata prima del
+  primo disegno (`SyncStore.carica()`, `await` in `startSync`); la prima volta vi passa da sola la copia di localStorage (poi tolta).
+  Coda (`casa.sync.q`) e versioni (`casa.sync.v`) restano in localStorage; la versione di una raccolta si salva solo quando la sua copia
+  è salvata (altrimenti al prossimo avvio si riscarica). Se IndexedDB non si apre si usa localStorage (`casa.sync.ls`).
+- **Sincronizzazione mai bloccata:** se le mie modifiche non partono, quelle dell'altro arrivano lo stesso (pull anche se il flush fallisce).
+  Una modifica rifiutata per sempre si toglie solo lei: 400 con `indice` dal server, 413 (troppo grande per Vercel, 4,5 MB) → pacchetti
+  più piccoli fino a quella sola; avviso con `onScarto`. Raccolte grandi a pagine: `GET /api/dati?col=…&pagine=1[&da=<id>]`
+  (al massimo 2,5 milioni di caratteri per risposta, `prossimo`). Postgres non accetta il carattere nullo: si toglie dai testi.
+- **Collegamento** (Impostazioni): per Patrick e Serena, quando ogni dispositivo ha usato l'app, versione, se è installata sulla schermata
+  Home, posizione (OwnTracks o app, batteria) e notifiche (accese, ultima arrivata o no). L'app manda `x-chi` e
+  `x-app: versione;home|web;iPhone|iPad|…` (l'iPad si presenta come Mac: il tipo lo dice l'app); il server salva in `fam_meta` `visti`
+  (al massimo una volta al minuto per dispositivo) e gli esiti delle notifiche in `push:esiti` (impronta dell'iscrizione, mai l'indirizzo).
+  `GET /api/dati?visti=1`. La batteria ha `battAt`: si mostra solo se è di meno di 3 ore (la posizione dall'app non la porta).
+- **Precaricamento** (`js/precarica.js`, 2,5 s dopo l'avvio, un passo alla volta, non in secondo piano né con "Risparmio dati"):
+  Spotify (stato, dispositivi, libreria, suggerimenti, copertine con `scaldaCopertine()`, lettore dentro l'app), locandine e loghi dei
+  film, foto di Amazon (senza referrer), e la mappa di Dov'è preparata fuori dallo schermo (`.mappa-pronta`) e poi tenuta in memoria
+  come dopo una visita (`preparaMappa()`; se si entra in Dov'è a metà si aspetta quella, mai due mappe).
 - **Controllo delle pagine:** prima di pubblicare modifiche di aspetto, provarle su iPhone piccolo (320 px), iPhone, iPad verticale
   (colonna unica tra 700 e 999 px) e orizzontale, in chiaro e scuro e con le atmosfere delle feste.
 - **Sito pulito:** è un'app interna di famiglia: niente spiegazioni tecniche, crediti o link "obbligatori" nelle pagine (es. sulla mappa); le spiegazioni vanno date in chat.

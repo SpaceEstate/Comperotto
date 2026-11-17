@@ -198,6 +198,7 @@ export default async function handler(req, res) {
           src: daApp ? 'app' : 'owntracks',
           acc: conPunto ? acc : prev.acc ?? null,
           batt: Number.isFinite(num(b.batt)) ? num(b.batt) : prev.batt ?? null,
+          battAt: Number.isFinite(num(b.batt)) ? at : prev.battAt ?? (prev.batt != null ? prev.at ?? null : null),
           t: typeof b.t === 'string' ? b.t.slice(0, 2) : type === 'transition' ? 'c' : null,
           home,
           homeSince: home !== prev.home ? at : prev.homeSince || at,

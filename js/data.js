@@ -24,6 +24,7 @@ export const RICETTE_CATS = {
   sempre: { label: 'Sempre', icon: 'bowl' },
   estate: { label: 'Estate', icon: 'wave' },
   colazione: { label: 'Colazione', icon: 'cup' },
+  dolci: { label: 'Dolci', icon: 'cake' },
 };
 // temi di prima che finiscono in una categoria (Capodanno è nelle feste di Natale)
 const RICETTE_ALIAS = { capodanno: 'natale' };

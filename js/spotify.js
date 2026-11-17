@@ -1,7 +1,7 @@
 // Spotify dall'app: il server tiene i permessi (api/spotify.js), qui si parla direttamente con Spotify
 // con un token che dura un'ora. Cosa suona e dove (iPhone, iPad, Echo…), comandi, ricerca, preferiti,
 // playlist (anche crearle e modificarle), coda e il lettore dentro l'app (Web Playback SDK).
-import { lsGet, lsSet, isIPad } from './utils.js';
+import { lsGet, lsSet, isIPad, scaldaImmagini } from './utils.js';
 import { store, isSynced, me, myName, rerender } from './core.js';
 
 const API = 'https://api.spotify.com/v1/';
@@ -311,6 +311,12 @@ export function precarica(url) {
   const fatto = () => { inCarico.delete(url); pronte.add(url); if (pronte.size > 300) pronte.delete(pronte.values().next().value); rerender(); };
   (im.decode ? im.decode() : new Promise((ok, ko) => { im.onload = ok; im.onerror = ko; })).then(fatto, fatto);
 }
+/** Tante copertine insieme, in silenzio (all'apertura dell'app): pronte per quando si entra in Musica. */
+export function scaldaCopertine(urls) {
+  return scaldaImmagini(urls.filter((u) => u && !pronte.has(u) && !inCarico.has(u)), {
+    ogni: (u) => { pronte.add(u); if (pronte.size > 300) pronte.delete(pronte.values().next().value); },
+  });
+}
 /** Le copertine di un brano conosciuto, in tutte le misure che usa l'app. */
 const precaricaBrano = (t) => { if (t) [t.img, t.big, t.xl].forEach(precarica); };
 
@@ -552,7 +558,8 @@ export function leggi(key, fn, { maxAge = 5 * 60000, forza = false, conserva = f
   let c = cache.get(key);
   if (!c && conserva) {
     const salvato = parse(lsGet(`casa.spotify.c.${key}`));
-    if (salvato && salvato.data) { c = salvato; cache.set(key, c); if (conserva.dopo) conserva.dopo(c.data); }
+    // ripreso da questo dispositivo: si vede subito (anche se poi lo rileggo perché è vecchio)
+    if (salvato && salvato.data) { c = salvato; cache.set(key, c); if (conserva.dopo) conserva.dopo(c.data); rerender(); }
   }
   if (!forza && c && Date.now() - c.at < maxAge) return Promise.resolve(c.data);
   if (conserva && conserva.dopo) fn = ((f) => () => f().then((d) => { conserva.dopo(d); return d; }))(fn);

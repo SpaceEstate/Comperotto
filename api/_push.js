@@ -39,6 +39,20 @@ export async function chiavi() {
 }
 
 export const iscritti = async () => parse(await backend().metaGet('push:iscritti')) || [];
+/** Impronta corta di un'iscrizione (per ricordare com'è andata l'ultima notifica senza ripetere l'indirizzo). */
+export const cortoPush = (endpoint) => crypto.createHash('sha256').update(String(endpoint)).digest('hex').slice(0, 16);
+export const esitiPush = async () => parse(await backend().metaGet('push:esiti')) || {};
+/** Ricorda l'esito dell'ultima notifica di ogni dispositivo (201 = consegnata al servizio push). */
+export async function registraEsiti(list, esiti) {
+  try {
+    const tutti = await esitiPush();
+    list.forEach((s, i) => { tutti[cortoPush(s.endpoint)] = { at: Date.now(), stato: esiti[i] || 0 }; });
+    // tengo solo i dispositivi ancora iscritti
+    const vivi = new Set((await iscritti()).map((s) => cortoPush(s.endpoint)));
+    Object.keys(tutti).forEach((k) => { if (!vivi.has(k)) delete tutti[k]; });
+    await backend().metaSet('push:esiti', JSON.stringify(tutti));
+  } catch {}
+}
 const salva = (list) => backend().metaSet('push:iscritti', JSON.stringify(list));
 
 export async function iscrivi({ endpoint, keys }, chi, prefs = {}) {
@@ -116,5 +130,6 @@ export async function avvisa(msg, origine) {
   const esiti = await Promise.all(dest.map((s) => spedisci(s, msg, origine)));
   const scadute = dest.filter((s, i) => esiti[i] === 404 || esiti[i] === 410).map((s) => s.endpoint);
   if (scadute.length) await salva((await iscritti()).filter((s) => !scadute.includes(s.endpoint))).catch(() => {});
+  await registraEsiti(dest, esiti);
   return { inviati: esiti.filter((x) => x >= 200 && x < 300).length, esiti };
 }

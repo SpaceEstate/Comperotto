@@ -1,5 +1,5 @@
 // Impostazioni: chi sei, aspetto, famiglia (nomi, compleanni, ricorrenze), copia dei dati
-import { html, raw, cap, lsGet, lsSet, uid, parseDMY, fmtDMY, timeAgo } from '../utils.js';
+import { html, raw, cap, lsGet, lsSet, uid, parseDMY, fmtDMY, timeAgo, isIPad } from '../utils.js';
 import { icon } from '../icons.js';
 import { SEASONS } from '../data.js';
 import { state, store, isSynced, settings, saveSettings, me, setMe, nameOf, openSheet, closeSheet, sheetError, toast, val, pageHead, rerender, confirmSheet } from '../core.js';
@@ -8,8 +8,11 @@ import { seedData } from '../seed.js';
 import * as notifiche from '../notifiche.js';
 import { renderRifiuti } from './casa.js';
 import { ui, setUi } from '../core.js';
+import { VERSIONE } from '../config.js';
+import { tipoDispositivo } from '../store.js';
+import { batteria } from './dove.js';
 
-export const VERSION = '1.9.0';
+export const VERSION = VERSIONE;
 
 const themeMode = () => lsGet('casa.theme', 'auto');
 export function applyTheme() {
@@ -55,6 +58,8 @@ export function render(route = []) {
 
     ${notificheCard()}
 
+    ${collegamentoCard()}
+
     <div class="section-title"><span>Famiglia</span></div>
     <div class="list">
       <button class="set-row" data-action="set-names">${icon('users')}<div class="row-main"><b>${n.p1} e ${n.p2}</b><span>${[s.compleanni && s.compleanni.p1 ? `${n.p1} ${fmtDMY(s.compleanni.p1)}` : '', s.compleanni && s.compleanni.p2 ? `${n.p2} ${fmtDMY(s.compleanni.p2)}` : '', s.anniversario ? `insieme dal ${fmtDMY(s.anniversario)}` : ''].filter(Boolean).join(' · ') || 'Nomi e compleanni'}</span></div>${icon('right', 'sm')}</button>
@@ -89,16 +94,70 @@ function notificheCard() {
         <p class="prose" style="margin:0 0 ${st === 'spente' ? '12px' : '0'}">${st === 'installa'
           ? html`Per riceverle apri l’app dalla schermata Home: in Safari tocca ${icon('share', 'xs')} Condividi e poi «Aggiungi alla schermata Home».`
           : st === 'bloccate'
-            ? 'Su questo dispositivo sono bloccate. Per riaccenderle: Impostazioni dell’iPhone → Notifiche → Comperotto.'
+            ? `Su questo dispositivo sono bloccate. Per riaccenderle: Impostazioni dell’${isIPad() ? 'iPad' : 'iPhone'} → Notifiche → Comperotto.`
             : 'Un avviso quando l’altro arriva a casa o esce dal lavoro, la sera per la spazzatura e per compleanni e richiami dei gatti.'}</p>
         ${st === 'spente' ? html`<button class="btn primary block" data-action="push-on" ${ui('push.busy', false) ? raw('disabled') : ''}>${icon('bell', 'sm')} Attiva le notifiche</button>` : ''}
       </div>`;
   return html`<div class="section-title"><span>Notifiche</span></div>${corpo}`;
 }
 
+// ---------------------------------------------------------------------------
+// Collegamento: per ognuno di voi, quando i suoi dispositivi hanno usato l'app, da dove arriva la posizione
+// e se le notifiche arrivano davvero. Serve a capire al volo se un telefono "non sente" la casa.
+// ---------------------------------------------------------------------------
+const NOI = ['p1', 'p2'];
+const recente = (at, ms) => Boolean(at) && Date.now() - at < ms;
+const pallino = (at) => html`<span class="coll-dot ${recente(at, 15 * 60000) ? 'on' : recente(at, 2 * 86400000) ? 'mezzo' : ''}" aria-hidden="true"></span>`;
+
+function collegamentoCard() {
+  if (!isSynced()) return '';
+  const c = ui('collegamento', null);
+  return html`<div class="section-title"><span>Collegamento</span><button class="card-link" data-action="coll-aggiorna">${icon('refresh', 'xs')} Aggiorna</button></div>
+    <div class="list coll">${NOI.map((k) => persona(k, c))}</div>`;
+}
+
+function persona(k, c) {
+  const io = me() === k;
+  const tipo = tipoDispositivo();
+  const q = (store.queue || []).length;
+  const righe = [];
+  if (io) {
+    righe.push(html`<div class="coll-line">${pallino(store.lastSync)}<span><b>Questo ${tipo}</b> · ${store.lastSync ? `aggiornato ${timeAgo(store.lastSync)}` : 'non ancora collegato'}${q ? html` · <em class="coll-warn">${q === 1 ? '1 modifica' : `${q} modifiche`} ancora da mandare${store.erroreInvio ? ' (riprovo da solo)' : ''}</em>` : ''}</span></div>`);
+  }
+  const altri = (c && c.visti ? c.visti : []).filter((v) => v.chi === k && !(io && v.disp === tipo)).sort((a, b) => b.at - a.at);
+  altri.forEach((v) => righe.push(html`<div class="coll-line">${pallino(v.at)}<span><b>${v.disp}</b> · app aperta ${timeAgo(v.at)}${v.v && v.v !== VERSIONE ? ' · versione vecchia' : ''}${(v.disp === 'iPhone' || v.disp === 'iPad') && !v.home ? ' · da Safari, non dalla schermata Home' : ''}</span></div>`));
+  if (!righe.length) righe.push(html`<div class="coll-line">${pallino(0)}<span>${c ? 'Ancora nessuna notizia: si vede appena apre l’app' : 'Guardo…'}</span></div>`);
+  // posizione: chi la manda (OwnTracks o l'app) e la batteria
+  const p = state.data.posizioni.find((x) => x.id === k);
+  const ot = p && (p.ot || (p.src === 'owntracks' ? p.at : 0));
+  const batt = batteria(p);
+  const posizione = ot
+    ? `Posizione da OwnTracks ${timeAgo(ot)}${batt != null ? ` · batteria ${batt}%` : ''}`
+    : p && p.at ? `Posizione solo dall’app (${timeAgo(p.at)}): OwnTracks non la manda` : 'OwnTracks non ha mai mandato la posizione';
+  // notifiche: su quanti dispositivi sono accese e com'è andata l'ultima
+  const subs = c && c.notifiche ? c.notifiche.filter((n) => n.chi === k) : null;
+  const ultima = subs ? subs.map((n) => n.esito).filter(Boolean).sort((a, b) => b.at - a.at)[0] : null;
+  const notifiche = !subs ? '' : subs.length
+    ? `Notifiche accese${subs.length > 1 ? ` su ${subs.length} dispositivi` : ''}${ultima ? ` · l’ultima ${ultima.stato >= 200 && ultima.stato < 300 ? 'è arrivata' : 'non è arrivata'} ${timeAgo(ultima.at)}` : ''}`
+    : 'Notifiche spente su tutti i suoi dispositivi';
+  return html`<div class="set-row coll-row"><div class="row-main"><b>${nameOf(k)}</b>
+    ${righe}
+    <div class="coll-line">${icon('pin', 'xs')}<span>${posizione}</span></div>
+    ${notifiche ? html`<div class="coll-line">${icon('bell', 'xs')}<span>${notifiche}</span></div>` : ''}
+  </div></div>`;
+}
+
+let collAt = 0;
+async function caricaCollegamento(forza = false) {
+  if (!isSynced() || (!forza && Date.now() - collAt < 30000)) return;
+  collAt = Date.now();
+  try { setUi('collegamento', await store.call('dati?visti=1')); } catch { /* resta quello di prima */ }
+}
+
 let chiesto = false;
-/** Dopo il disegno della pagina: guardo com'è messo questo dispositivo con le notifiche (una volta). */
+/** Dopo il disegno della pagina: com'è il collegamento e com'è messo questo dispositivo con le notifiche (una volta). */
 export function after() {
+  caricaCollegamento();
   if (chiesto || !isSynced()) return;
   chiesto = true;
   notifiche.stato().then((s) => setUi('push.stato', s));
@@ -170,6 +229,7 @@ export function seedAll() {
 }
 
 export const actions = {
+  'coll-aggiorna': async () => { await store.sync(); await caricaCollegamento(true); rerender(); },
   'set-me': ({ el }) => { setMe(el.value); rerender(); toast(`Ciao ${nameOf(el.value)}!`); notifiche.rinfresca(true); },
   'push-on': async () => {
     if (ui('push.busy', false)) return;

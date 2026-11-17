@@ -726,6 +726,30 @@ async function caricaSuggerimenti() {
   try { await S.leggi(chiaveTema(), () => S.trovaBrani(periodoMusica().brani), { maxAge: 7 * 86400000, conserva: { dopo: S.registra } }); } catch { /* idem */ }
 }
 
+/**
+ * All'apertura dell'app, in sottofondo: cosa suona e dove, la libreria, i suggerimenti con le loro copertine
+ * e il lettore dentro l'app già pronto. Entrando in Musica è tutto lì, e il primo brano parte subito.
+ */
+export async function precarica() {
+  if (!isSynced()) return;
+  await S.caricaInfo();
+  const k = S.chi();
+  if (!k) return;
+  await S.aggiorna({ dispositivi: true });
+  await S.caricaPlaylist(k).catch(muto);
+  await caricaSuggerimenti();
+  const ora = sp.player && sp.player.item ? S.brano(sp.player.item) : null;
+  const tema = S.letto(chiaveTema()) || [];
+  const pt = S.letto(S.chiave('perte'));
+  await S.scaldaCopertine([
+    ora && ora.big, ora && ora.xl,
+    ...((sp.playlists[k] || {}).list || []).slice(0, 10).map((p) => p.img),
+    ...tema.map((t) => t.big || t.img),
+    ...(pt ? [...pt.scelti.slice(0, 5).map((t) => t.img), ...pt.novita.map((x) => x.img)] : []),
+  ]);
+  if (S.chi() && !S.qui.player && S.quiPossibile()) S.preparaQui().catch(muto);
+}
+
 let cercaT;
 let messoFuoco = false;
 export function after(r) {
@@ -859,7 +883,8 @@ function devList() {
       ${visibili.map((d) => riga(d, true))}
     </div>
     ${!list ? html`<p class="muted small" style="padding:10px 4px 0">Cerco gli altri dispositivi…</p>` : ''}
-    ${list && !visibili.length && !celati.length ? html`<p class="small muted sp-nodev-txt">Gli Echo compaiono qui quando Spotify è collegato ad Alexa: se non li vedi, chiedi una volta ad Alexa di mettere musica da Spotify.</p>` : ''}
+    ${list ? html`<details class="sp-echo-aiuto" ${!visibili.length && !celati.length ? raw('open') : ''}><summary>${icon('speaker', 'xs')} Manca un Echo di casa?</summary>
+      <p class="small muted">Qui compaiono gli Echo collegati allo Spotify di ${nameOf(S.chi())}. Nell’app Alexa: Altro → Impostazioni → Musica e podcast → Spotify, e collega il suo account. Per un attimo basta anche dire all’Echo «Alexa, Spotify Connect» e sceglierlo dall’app Spotify.</p></details>` : ''}
     ${celati.length ? html`<p class="small muted sp-celati">${icon('eyeoff', 'xs')} Nascosti: ${celati.join(', ')} <button class="card-link" type="button" data-action="sp-mostra">Mostrali</button></p>` : ''}
     ${tocco ? html`<button class="card-link sp-apri" type="button" data-action="sp-apri-app">${icon('link', 'xs')} Apri l’app Spotify</button>` : ''}`;
 }

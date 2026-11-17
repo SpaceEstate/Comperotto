@@ -293,17 +293,29 @@ document.addEventListener('visibilitychange', async () => {
   }
 });
 
-// Una volta sola: gli esempi iniziali entrano nelle categorie nuove (solo se non li avete cambiati)
+// Una volta sola: gli esempi iniziali entrano nelle categorie nuove (solo se non li avete cambiati).
+// 1: le crêpes in Colazione; 2: i dolci anche in Dolci (i temi di prima restano salvati)
 const ESEMPI = { 'Crêpes come a Parigi': [['aprile', 'sempre'], ['colazione', 'sempre', 'aprile']] };
+const DOLCI = {
+  'Crêpes come a Parigi': [['colazione', 'sempre', 'aprile'], ['colazione', 'dolci', 'sempre', 'aprile']],
+  Tiramisù: [['sanvalentino', 'compleanni'], ['dolci', 'sanvalentino', 'compleanni']],
+  'Biscotti speziati di Natale': [['natale'], ['natale', 'dolci']],
+};
+const uguali = (a, b) => JSON.stringify(a || []) === JSON.stringify(b || []);
 function aggiornaEsempi() {
-  if (settings().ricetteCats || !state.loaded.has('ricette') || !state.loaded.has('settings')) return;
+  const fatto = Number(settings().ricetteCats) || 0;
+  if (fatto >= 2 || !state.loaded.has('ricette') || !state.loaded.has('settings')) return;
   // con il database condiviso aspetto i dati veri del server
   if (store.mode === 'sync' && !(store.synced && store.synced.has('ricette') && store.synced.has('settings'))) return;
   state.data.ricette.forEach((r) => {
+    let th = r.themes || [];
     const e = ESEMPI[r.title];
-    if (e && JSON.stringify(r.themes || []) === JSON.stringify(e[0])) store.update('ricette', r.id, { themes: e[1] });
+    if (fatto < 1 && e && uguali(th, e[0])) th = e[1];
+    const d = DOLCI[r.title];
+    if (d && uguali(th, d[0])) th = d[1];
+    if (!uguali(th, r.themes)) store.update('ricette', r.id, { themes: th });
   });
-  saveSettings({ ricetteCats: 1 });
+  saveSettings({ ricetteCats: 2 });
 }
 export function after() { aggiornaEsempi(); }
 

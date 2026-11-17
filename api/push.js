@@ -4,7 +4,7 @@
 //   POST   /api/push { prova: true, endpoint } → manda una notifica di prova a questo dispositivo
 //   DELETE /api/push { endpoint }              → toglie l'iscrizione
 import { backend, body, respingi, send } from './_lib.js';
-import { chiavi, iscritti, iscrivi, disiscrivi, spedisci, endpointOk, origineDi } from './_push.js';
+import { chiavi, iscritti, iscrivi, disiscrivi, spedisci, endpointOk, origineDi, registraEsiti } from './_push.js';
 
 export default async function handler(req, res) {
   try {
@@ -21,6 +21,7 @@ export default async function handler(req, res) {
       const s = (await iscritti()).find((x) => x.endpoint === b.endpoint);
       if (!s) return send(res, 404, { error: 'Dispositivo non iscritto' });
       const stato = await spedisci(s, { title: 'Fam. Comperotto', body: 'Le notifiche funzionano ✓', tag: 'prova', url: '#/impostazioni' }, origineDi(req));
+      await registraEsiti([s], [stato]);
       return send(res, 200, { ok: stato >= 200 && stato < 300, stato });
     }
     const sub = b.sub || {};

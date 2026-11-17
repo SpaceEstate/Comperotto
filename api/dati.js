@@ -2,14 +2,14 @@
 //   GET  /api/dati            → versioni delle raccolte { v: { spesa: 12, … } }
 //   GET  /api/dati?col=spesa  → { v, items: { id: {…} } }
 //   POST /api/dati { ops: [{ op: set|update|remove|bump|wipe, col, id, data }] }
-import { COLLECTIONS, backend, checkAuth, body, send, sleep } from './_lib.js';
+import { COLLECTIONS, backend, body, respingi, send } from './_lib.js';
 import { avvisa, origineDi } from './_push.js';
 
 const ID = /^[\w.-]{1,80}$/;
 
 export default async function handler(req, res) {
   try {
-    if (!(await checkAuth(req))) { await sleep(400); return send(res, 401, { error: 'Codice di famiglia sbagliato' }); }
+    if (await respingi(req, res)) return;
     const db = backend();
 
     if (req.method === 'GET') {

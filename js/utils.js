@@ -141,7 +141,19 @@ export function resizeImage(file, max = 720, quality = 0.78) {
   });
 }
 
-export const safeImg = (s) => (typeof s === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(s) ? s : '');
+// Solo foto vere in base64 (finiscono anche dentro style="background-image:url(…)"). Il controllo scorre
+// tutta la stringa: lo ricordo, così ridisegnare la pagina non lo ripete per ogni foto.
+const fotoOk = new Map();
+export const safeImg = (s) => {
+  if (typeof s !== 'string' || !s.startsWith('data:image/')) return '';
+  let ok = fotoOk.get(s);
+  if (ok === undefined) {
+    ok = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(s);
+    if (fotoOk.size > 400) fotoOk.clear();
+    fotoOk.set(s, ok);
+  }
+  return ok ? s : '';
+};
 
 export const money = (n) => (Number(n) || 0).toLocaleString('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: (Number(n) % 1) ? 2 : 0 });
 

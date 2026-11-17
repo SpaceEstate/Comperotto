@@ -2,7 +2,7 @@
 // Cerca un film o una serie e restituisce copertina e dove vederlo in Italia,
 // senza chiavi da configurare: dati pubblici di JustWatch (con le copertine di
 // Apple TV come riserva). Protetto dal codice di famiglia.
-import { checkAuth, send, sleep } from './_lib.js';
+import { respingi, send } from './_lib.js';
 
 const JW = 'https://apis.justwatch.com/graphql';
 const IMG = 'https://images.justwatch.com';
@@ -98,7 +98,7 @@ async function itunes(q, kind) {
 }
 
 export default async function handler(req, res) {
-  if (!(await checkAuth(req))) { await sleep(400); return send(res, 401, { error: 'Codice di famiglia sbagliato' }); }
+  if (await respingi(req, res)) return;
   const p = new URL(req.url, 'http://x').searchParams;
   const q = String(p.get('q') || '').trim().slice(0, 120);
   if (!q) return send(res, 400, { error: 'Manca il titolo' });

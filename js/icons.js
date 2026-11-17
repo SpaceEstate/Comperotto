@@ -77,6 +77,15 @@ const P = {
   bell: '<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
   briefcase: '<rect x="3.5" y="7.5" width="17" height="12" rx="2.2"/><path d="M9 7.5V5.8A1.3 1.3 0 0 1 10.3 4.5h3.4A1.3 1.3 0 0 1 15 5.8v1.7"/><path d="M3.5 12.5h17"/>',
   headphones: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3.5" y="14" width="4.5" height="6.5" rx="1.5"/><rect x="16" y="14" width="4.5" height="6.5" rx="1.5"/>',
+  // lettore musicale
+  pause: '<rect x="6.5" y="5" width="3.8" height="14" rx="1.2"/><rect x="13.7" y="5" width="3.8" height="14" rx="1.2"/>',
+  next: '<path d="M5.5 5.8v12.4a.8.8 0 0 0 1.2.7l9.3-6.2a.8.8 0 0 0 0-1.4L6.7 5.1a.8.8 0 0 0-1.2.7z"/><path d="M18.5 5v14"/>',
+  prev: '<path d="M18.5 5.8v12.4a.8.8 0 0 1-1.2.7L8 12.7a.8.8 0 0 1 0-1.4l9.3-6.2a.8.8 0 0 1 1.2.7z"/><path d="M5.5 5v14"/>',
+  volume: '<path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z"/><path d="M15.5 9.2a4 4 0 0 1 0 5.6M18.2 6.6a7.6 7.6 0 0 1 0 10.8"/>',
+  speaker: '<rect x="6" y="3" width="12" height="18" rx="2.5"/><circle cx="12" cy="14.5" r="3"/><path d="M12 7.2h.01"/>',
+  airplay: '<path d="M7 17H5a1.5 1.5 0 0 1-1.5-1.5v-10A1.5 1.5 0 0 1 5 4h14a1.5 1.5 0 0 1 1.5 1.5v10A1.5 1.5 0 0 1 19 17h-2"/><path d="M12 14.5l4.5 6h-9z"/>',
+  radio: '<rect x="3.5" y="8" width="17" height="12" rx="2.2"/><path d="M7 8l9.5-4.5"/><circle cx="15.5" cy="14" r="2.6"/><path d="M6.8 12.5h4.4M6.8 15.5h4.4"/>',
+  queue: '<path d="M4 6.5h11M4 11.5h11M4 16.5h7"/><path d="M17 14v6.5l4-3.2z"/>',
 };
 
 /** Il disegno "nudo" di un'icona (per ridisegnarla altrove, es. sulla mappa). */

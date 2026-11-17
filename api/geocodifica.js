@@ -1,7 +1,7 @@
 // GET /api/geocodifica?q=Via Roma 12[&lat=..&lon=..] → { lat, lon, nome }
 // Trova le coordinate di un indirizzo (OpenStreetMap). Se si passa una posizione vicina,
 // cerca prima nei dintorni (in Italia ci sono mille "Via Roma").
-import { checkAuth, send, sleep } from './_lib.js';
+import { respingi, send } from './_lib.js';
 
 const UA = { 'User-Agent': 'FamComperotto/1.0 (app di casa per uso familiare)', Accept: 'application/json' };
 
@@ -24,7 +24,7 @@ async function cerca(q, extra = '') {
 }
 
 export default async function handler(req, res) {
-  if (!(await checkAuth(req))) { await sleep(400); return send(res, 401, { error: 'Codice di famiglia sbagliato' }); }
+  if (await respingi(req, res)) return;
   const p = new URL(req.url, 'http://x').searchParams;
   const q = String(p.get('q') || '').trim().slice(0, 160);
   if (!q) return send(res, 400, { error: 'Manca l’indirizzo' });

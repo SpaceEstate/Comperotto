@@ -8,10 +8,10 @@ Un'app fatta su misura per **iPhone e iPad** (si installa dalla schermata Home e
   - **Faccende** che si ripetono (lettiera, lavatrice, lenzuola, bagno…) con scadenze e chi le ha fatte;
   - **Lavori** da fare (tagliare le tende, sistemare i mobili…) per stanza e priorità;
   - **Rifiuti**: il calendario della raccolta. Ogni sera la Home dice cosa portare fuori.
-- **Ricette** per tema (Tutti i giorni, Natale, Capodanno, San Valentino, Pasqua, Estate, Halloween, Compleanni, Parigi e Canarie): si aggiungono e si modificano dall'app (tasto **+ Ricetta**, e **Modifica ricetta** in fondo a ognuna), con foto. Si spuntano gli ingredienti e finiscono nella spesa; c'è il dado "cosa cuciniamo?" e il tasto **Tieni lo schermo acceso** mentre si cucina.
+- **Ricette** per tema (Tutti i giorni, Natale, Capodanno, San Valentino, Pasqua, Estate, Halloween, Compleanni, Parigi e Canarie): si aggiungono e si modificano dall'app (tasto **+ Ricetta**, e **Modifica ricetta** in fondo a ognuna), con foto. Si spuntano gli ingredienti e finiscono nella spesa; c'è il dado "cosa cuciniamo?" e il tasto **Tieni lo schermo acceso** mentre si cucina. La ricerca guarda prima nel vostro ricettario e poi **anche online** (vedi sezione 8), e una ricetta si può **importare da un link**.
 - **Film e serie**, a tema e non: copertina e **dove vederli in Italia** (abbonamento, noleggio, acquisto) arrivano da soli e si aggiornano ogni giorno; in cima un "Stasera guardiamo…".
-- **Desideri**: cose da comprare con prezzo, link e totale.
-- **Musica** a tema del periodo, con il lettore Spotify integrato (dalla Home o, su iPad, dalla barra laterale).
+- **Desideri**: cose da comprare con prezzo, link e totale; le **liste Amazon** si collegano per aprirle con un tocco e i link dei prodotti Amazon si ripuliscono da soli (sezione 9).
+- **Musica** a tema del periodo, con un **lettore come Spotify**: mini lettore in basso che resta acceso cambiando pagina e lettore grande con copertina, barra del tempo, avanti e indietro (sezione 7).
 - **Thor e Minù**: foto, età, peso, antiparassitari, vaccini e veterinario, con promemoria (dalla Home).
 - **Lavagnetta** in Home per lasciarsi biglietti, **conto alla rovescia** per le feste e i compleanni (Serena il 29/04, Patrick il 20/12, Thor e Minù il 04/10, il vostro anniversario il 18/07): il giorno giusto la Home fa festa.
 - **Atmosfere stagionali**: cambiano colori e decorazioni da sole.
@@ -117,9 +117,14 @@ Su ogni iPhone, una volta:
 1. Installa **OwnTracks** e consenti la posizione **"Sempre"** (e "Movimento e fitness").
 2. In OwnTracks → **ⓘ / Impostazioni**: *Mode* **HTTP**, *URL* `https://comperotto.vercel.app/api/posizione`, *Authentication* attiva, *UserID* il tuo nome (`patrick` o `serena`), *Password* il codice di famiglia.
 3. Sulla mappa di OwnTracks scegli il modo **Significant** (consuma pochissimo) e tocca la freccia ↑ per mandare subito la posizione.
-4. Nell'app, in **Dov'è → I nostri posti**, tocca Casa e i due Lavoro e scrivi gli indirizzi: l'app trova da sola le coordinate e mostra "A casa", "Al lavoro" o "Fuori". In alternativa, quando sei sul posto, tocca "Sono qui adesso". Si possono aggiungere altri posti. Gli indirizzi restano nel database, non nel codice (che è pubblico).
+4. Sempre nelle impostazioni di OwnTracks attiva **Remote Commands** (in alcune versioni si chiama `cmd`, tra le impostazioni avanzate): così l'app gli manda da sola **Casa e i vostri posti come zone**, e l'iPhone avvisa appena si entra o si esce, anche in modalità Significant. Ve ne accorgete in Dov'è dalla scritta "zone di casa attive".
+5. Nell'app, in **Dov'è → I nostri posti**, tocca Casa e i due Lavoro e scrivi gli indirizzi: l'app trova da sola le coordinate e mostra "A casa", "Al lavoro" o "Fuori". In alternativa, quando sei sul posto, tocca "Sono qui adesso". Si possono aggiungere altri posti. Gli indirizzi restano nel database, non nel codice (che è pubblico).
 
 Si salva solo l'ultima posizione di ciascuno, protetta dal codice di famiglia.
+
+**Quanto è fresca una posizione.** Ogni persona mostra sempre quando è arrivata l'ultima posizione ("aggiornata 3 min fa", "alle 14:32"). Fino a 2 ore si dice "A casa", "Al lavoro", "Fuori"; dopo, la scheda diventa grigia e dice **"Era a casa · 5 h fa"**: una posizione vecchia non viene mai presentata come attuale. In quel caso compare **"Chiedi a …"**, che manda all'altro una notifica: toccandola sceglie se condividere la posizione in quel momento.
+
+**Perché a volte non si aggiorna.** Una pagina web non può seguire la posizione ad app chiusa (iOS lo impedisce): in sottofondo ci pensa solo OwnTracks. Se OwnTracks viene chiuso dal multitasking, perde il permesso "Sempre" o resta in pausa/manuale, smette di mandare: Dov'è lo segnala con l'avviso arancione e la riga "OwnTracks sentito 6 h fa". Come rinforzo, in **Dov'è → Questo iPhone** c'è l'interruttore **"Manda la mia posizione quando apro l'app"** (spento finché non lo accendete voi): mentre l'app è aperta manda la posizione ogni pochi minuti, senza chiedere permessi a sorpresa.
 
 La mappa mostra sempre Patrick e Serena; **Casa, Lavoro e le attività** (bar, negozi, farmacie…) compaiono ingrandendo, come in Dov'è di Apple. C'è l'interruttore **Mappa / Satellite** e, con l'app in modalità scura, la mappa diventa scura.
 
@@ -136,7 +141,29 @@ Ogni tipo si può spegnere dal singolo dispositivo; "Prova" manda una notifica d
 
 ## 7. Musica
 
-Aggiungete brani, album o playlist con un tema (Natale, Halloween, Estate, Parigi e Canarie…). Se incollate un **link Spotify** (Condividi → Copia link) si ascolta direttamente nell'app. Nel periodo giusto la sezione mette in cima la musica a tema.
+Aggiungete brani, album o playlist con un tema (Natale, Halloween, Estate, Parigi e Canarie…). Se incollate un **link Spotify** (Condividi → Copia link, vanno bene anche i link brevi `spotify.link`) tipo, titolo e copertina si compilano da soli e si ascolta nell'app. Funzionano anche i link a **file audio** e alle **radio in diretta** (tipo "Radio"). Nel periodo giusto la sezione mette in cima la musica a tema, con il tasto **Ascolta** per sentirla tutta di fila.
+
+Il lettore è uno solo per tutta l'app: un **mini lettore** in basso (copertina, titolo, play/pausa, avanti) che resta acceso cambiando pagina e, toccandolo, il **lettore grande** (copertina, barra del tempo con trascorso e rimanente, indietro/play/avanti, "Dopo"). Si riduce trascinandolo giù o con la freccia, senza fermare la musica; la ✕ lo ferma.
+
+Da sapere:
+- **Spotify fa sentire 30 secondi** a chi non ha fatto l'accesso a Spotify in quel browser: il lettore lo dice ("Anteprima di 30 secondi") e il tasto in alto apre il brano intero nell'app Spotify.
+- **Su iPhone e iPad la prima volta** Safari può chiedere un tocco direttamente sul riquadro di Spotify (sotto i comandi): il lettore lo indica; dopo, si comanda dai suoi tasti.
+- **Volume e uscita audio** (AirPlay, Bluetooth, altri altoparlanti) compaiono solo con file audio e radio e solo dove il dispositivo li permette; su iPhone il volume si regola con i tasti laterali. Con Spotify l'uscita si sceglie dal Centro di Controllo.
+
+
+## 8. Ricette anche da internet
+
+Scrivendo nella ricerca delle Ricette (almeno 3 lettere), dopo un attimo compaiono a parte anche le ricette trovate online:
+- **Wikibooks – Libro di cucina**, in italiano (licenza libera CC BY-SA: si possono importare citando la fonte);
+- **TheMealDB**, ricette di tutto il mondo, in inglese.
+
+**Importa** apre la ricetta già compilata (ingredienti, passaggi, foto) da controllare e salvare; in fondo alla ricetta resta la fonte. In più, in **+ Ricetta** c'è **"Da un sito di ricette"**: si incolla il link di una ricetta (GialloZafferano, Misya, Cucchiaio d'argento e quasi tutti gli altri) e l'app legge i dati che quei siti pubblicano apposta in formato standard. Sotto i risultati ci sono anche i collegamenti per cercare su GialloZafferano e Google. Niente chiavi né abbonamenti.
+
+## 9. Desideri e Amazon
+
+Amazon **non permette alle app di leggere le liste dei desideri** (non c'è un'API pubblica per farlo). Quindi:
+- **Collega una lista Amazon** (Amazon → la lista → Condividi → Copia link): in Desideri compare la scheda che la apre con un tocco nell'app Amazon;
+- per aggiungere un prodotto si **incolla il suo link** nel nuovo desiderio (va bene anche il link breve `amzn.eu/…`): il link viene ripulito dal tracciamento e, se c'è, il nome del prodotto si compila da solo. Il prezzo lo scrivete voi.
 
 ---
 
@@ -156,10 +183,11 @@ js/seed.js              esempi iniziali (ricette, film, musica, faccende)
 js/gestures.js          gesti dell'iPhone (fogli da trascinare, indietro dal bordo, righe da scorrere)
 js/mappa.js             stile della mappa di Dov'è (attività, i nostri posti, satellite, scuro)
 js/notifiche.js         notifiche di questo dispositivo
+js/player.js            il lettore musicale (uno solo, fuori dalle pagine: mini lettore e lettore grande)
 js/views/*.js           le schermate
 assets/fonts/           i caratteri (dentro l'app: niente richieste esterne)
 api/                    funzioni Vercel: stato, setup del codice, dati (Neon/Postgres o Upstash Redis), film,
-                        posizione, notifiche (push, promemoria della sera)
+                        posizione, notifiche (push, promemoria della sera), ricette online, link brevi
 alexa-skill/            skill Alexa (modello italiano + codice)
 ```
 

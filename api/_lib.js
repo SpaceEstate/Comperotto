@@ -238,6 +238,46 @@ export async function verifyCode(code) {
 
 export const checkAuth = (req) => verifyCode(req.headers['x-famiglia']);
 
+// ---- troppi tentativi: chi prova tanti codici DIVERSI sbagliati viene fermato per un quarto d'ora ----
+// (si contano i codici diversi: un telefono rimasto con il codice vecchio, che riprova sempre lo stesso,
+//  non blocca la casa; chi tira a indovinare sì)
+const FINESTRA = 15 * 60000;
+const MAX_CODICI = 10;
+const bloccati = new Map(); // in memoria di questa istanza: ip → fino a quando
+const corto = (x) => crypto.createHash('sha256').update(`comperotto:${x}`).digest('hex').slice(0, 12);
+export const ipDi = (req) => String((req.headers && (req.headers['x-forwarded-for'] || req.headers['x-real-ip'])) || '').split(',')[0].trim() || (req.socket && req.socket.remoteAddress) || '?';
+
+/** 'ok' | 'no' (codice sbagliato) | 'bloccato' (troppi tentativi da questo indirizzo) */
+export async function autorizza(req, code) {
+  const ip = ipDi(req);
+  const fino = bloccati.get(ip);
+  if (fino && fino > Date.now()) return 'bloccato';
+  if (fino) bloccati.delete(ip);
+  if (await verifyCode(code)) return 'ok';
+  const db = backend();
+  if (!db || !code) return 'no';
+  const k = `auth:ko:${corto(ip)}`;
+  const adesso = Date.now();
+  let rec = null;
+  try { rec = JSON.parse((await db.metaGet(k)) || 'null'); } catch {}
+  if (!rec || adesso - rec.at > FINESTRA) rec = { at: adesso, c: [] };
+  const h = corto(normCode(code));
+  if (!rec.c.includes(h)) rec.c = [...rec.c, h].slice(-MAX_CODICI * 2);
+  try { await db.metaSet(k, JSON.stringify(rec)); } catch {}
+  if (rec.c.length >= MAX_CODICI) { bloccati.set(ip, rec.at + FINESTRA); return 'bloccato'; }
+  return 'no';
+}
+
+/** Da usare all'inizio di ogni funzione protetta: true se ha già risposto lei (401 o 429). */
+export async function respingi(req, res, code = req.headers['x-famiglia']) {
+  const esito = await autorizza(req, code);
+  if (esito === 'ok') return false;
+  await sleep(400);
+  if (esito === 'bloccato') send(res, 429, { error: 'Troppi tentativi con un codice sbagliato: riprova tra un quarto d’ora' });
+  else send(res, 401, { error: 'Codice di famiglia sbagliato' });
+  return true;
+}
+
 export function body(req) {
   if (req.body && typeof req.body === 'object') return req.body;
   try { return JSON.parse(req.body || '{}'); } catch { return {}; }

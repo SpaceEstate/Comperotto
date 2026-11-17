@@ -242,7 +242,7 @@ export const CAT_EVENTS = {
   altro: { label: 'Altro', icon: 'note', every: 0 },
 };
 
-export const MUSIC_TYPES = { brano: 'Brano', album: 'Album', playlist: 'Playlist' };
+export const MUSIC_TYPES = { brano: 'Brano', album: 'Album', playlist: 'Playlist', radio: 'Radio' };
 
 export const DEFAULT_SETTINGS = {
   names: { p1: 'Patrick', p2: 'Serena' },

@@ -6,6 +6,7 @@ import { state, store, setRenderer, rerender, closeSheet, submitSheet, sheetOpen
 import { applySeason } from './season.js';
 import { initGestures } from './gestures.js';
 import { rinfresca as rinfrescaNotifiche, stato as statoNotifiche } from './notifiche.js';
+import * as player from './player.js';
 import * as home from './views/home.js';
 import * as spesa from './views/spesa.js';
 import * as casa from './views/casa.js';
@@ -167,7 +168,11 @@ document.addEventListener('input', (ev) => {
   inputTimer = setTimeout(() => run(el.dataset.input, { el, ev }), 150);
 });
 
-document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && sheetOpen()) closeSheet(); });
+document.addEventListener('keydown', (ev) => {
+  if (ev.key !== 'Escape') return;
+  if (sheetOpen()) closeSheet();
+  else if (player.isExpanded()) player.riduci();
+});
 
 // gesti dell'iPhone: fogli da trascinare giù, indietro dal bordo, tira giù per aggiornare, righe da scorrere
 initGestures({
@@ -182,6 +187,7 @@ initGestures({
 // cambio pagina con una dissolvenza leggera (View Transitions, Safari 18+)
 window.addEventListener('hashchange', () => {
   closeSheet();
+  player.riduci(); // la musica continua: si chiude solo la finestra grande
   ricette.releaseWake();
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const gesto = document.documentElement.dataset.gesto;
@@ -239,6 +245,7 @@ function subscribeAll() {
   unsubs = COLLECTIONS.map((c) => store.subscribe(c, (items, meta) => {
     state.data[c] = items;
     state.loaded.add(c);
+    if (c === 'musica') musica.aggiornaLettore();
     if (c === 'settings' && !meta.fromCache) maybeSeed(items);
     if (c === 'settings') maybeWelcome();
     rerender();
@@ -293,7 +300,7 @@ export function startSync(code) {
   const s = useSync(code);
   state.needCode = false;
   s.onAuthLost = () => {
-    s.forget();
+    s.forget(true);
     unsubs.forEach((u) => u && u());
     unsubs = [];
     state.backend = { ...(state.backend || {}), claimed: true };
@@ -340,7 +347,8 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || (location
   // Quando arriva una versione nuova dell'app la pagina si ricarica da sola (se non stai scrivendo qualcosa).
   const aveva = Boolean(sw.controller);
   let inAttesa = false;
-  const occupato = () => sheetOpen() || /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '');
+  // non si ricarica mentre si scrive, con un foglio aperto o mentre suona la musica
+  const occupato = () => sheetOpen() || player.isPlaying() || /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '');
   const ricarica = () => { if (occupato()) inAttesa = true; else location.reload(); };
   sw.addEventListener('controllerchange', () => { if (aveva) ricarica(); });
   // tocco su una notifica con l'app già aperta: vado alla pagina giusta
@@ -354,5 +362,9 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || (location
   });
   window.addEventListener('load', () => sw.register('sw.js').catch(() => {}));
 }
+
+// il lettore musicale vive fuori dalle pagine: si monta una volta sola
+player.mount();
+player.onChange(() => rerender());
 
 boot();

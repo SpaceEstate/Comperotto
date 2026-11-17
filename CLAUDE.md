@@ -17,6 +17,24 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   riscaldata), nomi in italiano, attività con pallino colorato per categoria che compaiono per gradi con lo zoom, i nostri posti
   (Casa, Lavoro…) come le attività (da zoom 14), Satellite = foto Esri (tileSize 128) con scritte vettoriali sopra. Patrick e Serena sono
   segnaposti sempre visibili. Niente crediti sulla mappa; coordinate dagli indirizzi con `/api/geocodifica`.
+- **Dov'è, freschezza:** fino a 2 ore si dice "A casa"; oltre, "Era a casa · 5 h fa" in grigio (mai una posizione vecchia al presente).
+  Il server (`api/posizione.js`) decide il posto con precisione del punto, zone ed entrate/uscite di OwnTracks e salva la chiave dei
+  posti usati (`posti`): l'app si fida di quella decisione finché i posti non cambiano. Con "Remote Commands" attivo, nella risposta
+  a OwnTracks si mandano i nostri posti come zone (`setWaypoints`, una volta, o ogni 12 h finché non funzionano). Il codice di famiglia
+  non si accetta mai nell'indirizzo (finirebbe nei log). Dall'app la posizione parte solo con l'interruttore acceso (e permesso già dato)
+  o con un tocco; "Chiedi a…" manda una notifica all'altro (`#/dove/condividi`).
+- **Musica:** un solo lettore, `js/player.js`, montato una volta fuori da `#view` (mai iframe dentro le pagine: i ridisegni li
+  ricreerebbero). Stato unico in `S`; i motori (Spotify con la iFrame API ufficiale, `<audio>` per file e radio) mandano solo eventi,
+  filtrati per "giro". Regole provate sul riquadro Spotify: `play()` prima del pronto va in coda; `seek()` prima dell'avvio è ignorato;
+  `pause()` prima dell'avvio dà errore; subito dopo un seek arriva ancora la posizione vecchia (va scartata). Senza accesso a Spotify
+  sono anteprime di 30 s. Volume e uscita audio solo per `<audio>` e solo se il dispositivo li permette. Mentre suona l'app non si
+  ricarica da sola per gli aggiornamenti.
+- **Ricette online:** `api/ricette.js` (Wikibooks "Libro di cucina" via REST, TheMealDB, importazione da link con i dati schema.org;
+  controlli contro indirizzi interni). Le miniature Wikimedia esistono solo in larghezze standard (120, 250, 330, 500…).
+- **Desideri e Amazon:** Amazon non ha un'API per leggere le liste dei desideri: si collegano (`settings.listeAmazon`) e i link dei
+  prodotti si ripuliscono; `api/link.js` segue i link brevi (spotify.link, amzn.eu) solo verso Spotify/Amazon.
+- **Sicurezza:** ogni funzione protetta inizia con `respingi(req, res)` (`api/_lib.js`): 10 codici diversi sbagliati in 15 minuti
+  dallo stesso indirizzo → bloccato per 15 minuti (lo stesso codice vecchio ripetuto da un telefono non blocca).
 - **Notifiche** (Web Push, senza servizi esterni): `api/_push.js` (chiavi VAPID create da sole e tenute nel database, cifratura
   aes128gcm fatta a mano e verificata contro la libreria `web-push`), `api/push.js` (iscrizioni), `api/promemoria.js` (cron serale in
   `vercel.json`: rifiuti, compleanni, gatti), avvisi di arrivo/partenza in `api/posizione.js`, biglietti in `api/dati.js`.

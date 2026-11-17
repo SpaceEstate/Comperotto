@@ -3,13 +3,13 @@
 //   POST   /api/push { sub, chi, prefs }       → iscrive (o aggiorna) questo dispositivo
 //   POST   /api/push { prova: true, endpoint } → manda una notifica di prova a questo dispositivo
 //   DELETE /api/push { endpoint }              → toglie l'iscrizione
-import { backend, checkAuth, body, send, sleep } from './_lib.js';
+import { backend, body, respingi, send } from './_lib.js';
 import { chiavi, iscritti, iscrivi, disiscrivi, spedisci, endpointOk, origineDi } from './_push.js';
 
 export default async function handler(req, res) {
   try {
     if (!backend()) return send(res, 503, { error: 'Database non collegato' });
-    if (!(await checkAuth(req))) { await sleep(400); return send(res, 401, { error: 'Codice di famiglia sbagliato' }); }
+    if (await respingi(req, res)) return;
     if (req.method === 'GET') return send(res, 200, { key: (await chiavi()).pub });
     const b = body(req);
     if (req.method === 'DELETE') {

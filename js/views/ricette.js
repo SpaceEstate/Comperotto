@@ -1,8 +1,8 @@
 // Ricette, divise per tema (Natale, Halloween, Pasqua, …)
-import { html, raw, norm, cap, parseQty, resizeImage, safeImg, vibrate } from '../utils.js';
+import { html, raw, norm, cap, parseQty, resizeImage, safeImg, safeUrl, hostOf, vibrate } from '../utils.js';
 import { icon, catFace } from '../icons.js';
 import { THEMES, themeLabel } from '../data.js';
-import { state, store, openSheet, closeSheet, toast, val, lines, pageHead, emptyState, ui, setUi, navigate, themeChoices, confirmSheet, rerender } from '../core.js';
+import { state, store, openSheet, closeSheet, toast, val, lines, pageHead, emptyState, ui, setUi, navigate, themeChoices, confirmSheet, rerender, isSynced, sheetError } from '../core.js';
 import { addShopping } from './spesa.js';
 import { currentTheme, seasonInfo } from '../season.js';
 
@@ -52,10 +52,96 @@ export function render(route) {
       ${Object.entries(THEMES).filter(([id]) => used.includes(id) || id === theme).map(([id, t]) => html`<button class="chip ${theme === id ? 'on' : ''}" data-action="ricette-theme" data-theme="${id}">${icon(t.icon, 'xs')} ${t.short || t.label}</button>`)}
     </div>
 
+    ${q && filtered.length ? html`<div class="section-title"><span>Nel nostro ricettario · ${filtered.length}</span></div>` : ''}
     ${filtered.length ? html`<div class="recipes" style="margin-top:8px">${filtered.map(card)}</div>`
-      : emptyState(q ? 'Nessuna ricetta trovata' : 'Ricettario vuoto', q ? 'Prova con un altro ingrediente.' : 'Aggiungi la prima ricetta di casa.', catFace('b'))}
+      : q ? html`<p class="muted small web-none">Nel nostro ricettario non c’è niente con «${ui('ricette.q', '')}».</p>`
+      : emptyState('Ricettario vuoto', 'Aggiungi la prima ricetta di casa.', catFace('b'))}
+
+    ${q ? online(q, all) : ''}
 
     <button class="fab" data-action="ricetta-new">${icon('plus')} Ricetta</button>`;
+}
+
+// ---------------------------------------------------------------------------
+// Ricerca anche online (Wikibooks in italiano + TheMealDB): parte solo quando si smette di scrivere,
+// con almeno 3 lettere; le richieste vecchie si annullano e i risultati restano in memoria.
+// ---------------------------------------------------------------------------
+const FONTI = { wikibooks: 'Wikibooks · Libro di cucina', themealdb: 'TheMealDB · in inglese' };
+const webCache = new Map();
+let webT = 0;
+let webCtrl = null;
+
+function programmaWeb(testo) {
+  clearTimeout(webT);
+  const k = norm(testo);
+  if (k.length < 3 || !isSynced()) { if (webCtrl) webCtrl.abort(); webCtrl = null; state.ui['ricette.web'] = null; return; }
+  const c = webCache.get(k);
+  if (c && Date.now() - c.at < 10 * 60000) { state.ui['ricette.web'] = { k, stato: 'ok', ...c }; return; }
+  state.ui['ricette.web'] = { k, stato: 'attesa' };
+  webT = setTimeout(() => cercaWeb(k, testo), 600);
+}
+
+async function cercaWeb(k, testo) {
+  if (webCtrl) webCtrl.abort();
+  const ctrl = new AbortController();
+  webCtrl = ctrl;
+  setUi('ricette.web', { k, stato: 'carico' });
+  try {
+    const r = await store.call(`ricette?q=${encodeURIComponent(testo.trim())}`, { signal: ctrl.signal });
+    if (webCtrl !== ctrl) return; // nel frattempo si è scritto altro
+    const res = { risultati: r.risultati || [], errori: r.errori || [], at: Date.now() };
+    if (!res.errori.length) webCache.set(k, res);
+    setUi('ricette.web', { k, stato: 'ok', ...res });
+  } catch (e) {
+    if ((e && e.name === 'AbortError') || webCtrl !== ctrl) return;
+    setUi('ricette.web', { k, stato: 'errore', msg: e && e.message });
+  } finally { if (webCtrl === ctrl) webCtrl = null; }
+}
+
+function online(q, all) {
+  const testo = ui('ricette.q', '').trim();
+  const altrove = html`<p class="web-more">${icon('search', 'xs')} Cerca anche su
+    <a href="https://www.giallozafferano.it/ricerca-ricette/${encodeURIComponent(testo)}/" target="_blank" rel="noopener">GialloZafferano</a> ·
+    <a href="https://www.google.com/search?q=${encodeURIComponent(`ricetta ${testo}`)}" target="_blank" rel="noopener">Google</a></p>`;
+  if (!isSynced()) return altrove;
+  const w = ui('ricette.web', null);
+  if (q.length < 3) return html`<p class="muted small web-none">Con almeno 3 lettere cerco anche online.</p>`;
+  if (!w || w.k !== q) return '';
+  const nostre = new Map(all.map((r) => [norm(r.title), r]));
+  let corpo;
+  if (w.stato === 'attesa' || w.stato === 'carico') {
+    corpo = html`<div class="web-results" aria-busy="true">${[1, 2].map(() => html`<div class="web-card sk"><div class="wc-img"></div><div class="wc-body"><i></i><i></i><i></i></div></div>`)}</div>`;
+  } else if (w.stato === 'errore') {
+    corpo = html`<div class="card web-msg">${icon('info', 'sm')}<div><b>Le ricette online non rispondono adesso.</b><span>${w.msg && !/^Errore \d/.test(w.msg) ? w.msg : 'Controlla la connessione e riprova.'}</span>
+      <button class="mini-btn" data-action="ricette-web-riprova" style="margin-top:8px">${icon('refresh', 'xs')} Riprova</button></div></div>`;
+  } else if (!w.risultati.length) {
+    corpo = html`<p class="muted small web-none">Online non ho trovato ricette per «${testo}». Prova con un nome più semplice (es. «lasagne»).</p>`;
+  } else {
+    corpo = html`<div class="web-results">${w.risultati.map((r) => {
+      const gia = nostre.get(norm(r.titolo));
+      return html`<article class="web-card">
+        <div class="wc-img">${/^https:\/\//.test(r.immagine || '') ? html`<img src="${r.immagine}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : placeholder('sempre')}</div>
+        <div class="wc-body">
+          <b>${r.titolo}</b>
+          <span class="wc-src">${FONTI[r.fonte] || r.fonte}</span>
+          ${r.descrizione ? html`<p>${r.descrizione}</p>` : ''}
+          <div class="wc-act">
+            ${gia ? html`<a class="mini-btn primary" href="#/ricette/${gia.id}">${icon('check', 'xs')} Già nel ricettario</a>`
+              : html`<button class="mini-btn primary" data-action="ricetta-importa" data-fonte="${r.fonte}" data-id="${r.id}">${icon('download', 'xs')} Importa</button>`}
+            <a class="mini-btn" href="${safeUrl(r.link)}" target="_blank" rel="noopener">${icon('link', 'xs')} Originale</a>
+          </div>
+        </div>
+      </article>`;
+    })}</div>
+    ${w.errori && w.errori.length ? html`<p class="muted small web-none">${w.errori.map((x) => FONTI[x] || x).join(', ')} non ha risposto: i risultati potrebbero essere incompleti.</p>` : ''}`;
+  }
+  return html`<div class="section-title"><span>${icon('search', 'xs')} Anche online</span>${w.stato === 'carico' ? html`<span class="web-spin" aria-label="Cerco"></span>` : ''}</div>${corpo}${altrove}`;
+}
+
+/** Una foto arrivata come data URL dal server: la riduco come quelle scattate (meno spazio nel database). */
+async function ridimensiona(dataUrl) {
+  if (!safeImg(dataUrl)) return '';
+  try { return await resizeImage(await (await fetch(dataUrl)).blob(), 800, 0.72); } catch { return ''; }
 }
 
 function detail(id) {
@@ -99,33 +185,64 @@ function detail(id) {
 
       ${(r.steps || []).length ? html`<div class="section-title"><span>Preparazione</span></div><ol class="steps">${r.steps.map((s) => html`<li>${s}</li>`)}</ol>` : ''}
       ${r.note ? html`<div class="section-title"><span>Il nostro segreto</span></div><p class="recipe-note">${r.note}</p>` : ''}
+      ${r.fonte && safeUrl(r.fonte.url) ? html`<p class="recipe-src">Fonte: <a href="${safeUrl(r.fonte.url)}" target="_blank" rel="noopener">${r.fonte.nome || hostOf(r.fonte.url)}</a>${r.fonte.licenza ? ` · ${r.fonte.licenza}` : ''}</p>` : ''}
       <button class="btn block" style="margin-top:22px" data-action="ricetta-edit" data-id="${r.id}">${icon('pencil', 'sm')} Modifica ricetta</button>
       </div></div>
     </article>`;
 }
 
-function recipeSheet(r = null) {
-  let photo = r ? r.photo || '' : '';
+function recipeSheet(r = null, preset = null) {
+  const d = r || preset || {};
+  let photo = d.photo || '';
+  let fonte = d.fonte || null;
   openSheet({
-    title: r ? 'Modifica ricetta' : 'Nuova ricetta',
+    title: r ? 'Modifica ricetta' : preset ? 'Importa ricetta' : 'Nuova ricetta',
     body: html`
-      <label class="field"><span>Nome</span><input name="title" value="${r ? r.title : ''}" placeholder="es. Lasagne della nonna" required ${r ? '' : raw('autofocus')}></label>
-      <div class="field"><span>Tema</span>${themeChoices('themes', r ? r.themes || [] : ['sempre'], THEMES)}</div>
+      ${!r && isSynced() ? html`<div class="field import-link"><span>Da un sito di ricette <em class="opt">facoltativo</em></span>
+        <div class="il-row"><input name="url" type="url" inputmode="url" autocomplete="off" placeholder="Incolla il link della ricetta"><button class="btn" type="button" id="r-import">${icon('download', 'sm')} Importa</button></div>
+        <p class="help" id="r-import-help">${preset ? html`Controlla e salva: fonte ${fonte && fonte.nome ? fonte.nome : ''}.` : 'Funziona con quasi tutti i siti di cucina (GialloZafferano, Misya, Cucchiaio d’argento…).'}</p></div>` : ''}
+      <label class="field"><span>Nome</span><input name="title" value="${d.title || ''}" placeholder="es. Lasagne della nonna" required ${r || preset ? '' : raw('autofocus')}></label>
+      <div class="field"><span>Tema</span>${themeChoices('themes', d.themes || ['sempre'], THEMES)}</div>
       <div class="field-row">
-        <label class="field"><span>Tempo (min)</span><input name="time" type="number" inputmode="numeric" min="0" value="${r && r.time ? r.time : ''}"></label>
-        <label class="field"><span>Porzioni</span><input name="servings" type="number" inputmode="numeric" min="0" value="${r && r.servings ? r.servings : ''}"></label>
+        <label class="field"><span>Tempo (min)</span><input name="time" type="number" inputmode="numeric" min="0" value="${d.time || ''}"></label>
+        <label class="field"><span>Porzioni</span><input name="servings" type="number" inputmode="numeric" min="0" value="${d.servings || ''}"></label>
       </div>
-      <label class="field"><span>Ingredienti</span><textarea name="ingredients" placeholder="Uno per riga&#10;200 g farina&#10;2 uova">${r ? (r.ingredients || []).join('\n') : ''}</textarea></label>
-      <label class="field"><span>Preparazione</span><textarea name="steps" placeholder="Un passaggio per riga" style="min-height:150px">${r ? (r.steps || []).join('\n') : ''}</textarea></label>
-      <label class="field"><span>Nota / segreto</span><input name="note" value="${r ? r.note || '' : ''}"></label>
+      <label class="field"><span>Ingredienti</span><textarea name="ingredients" placeholder="Uno per riga&#10;200 g farina&#10;2 uova">${(d.ingredients || []).join('\n')}</textarea></label>
+      <label class="field"><span>Preparazione</span><textarea name="steps" placeholder="Un passaggio per riga" style="min-height:150px">${(d.steps || []).join('\n')}</textarea></label>
+      <label class="field"><span>Nota / segreto</span><input name="note" value="${d.note || ''}"></label>
       <div class="field"><span>Foto</span><div class="photo-pick">
         <span class="thumb" id="r-thumb" style="${safeImg(photo) ? `background-image:url('${safeImg(photo)}')` : ''}">${safeImg(photo) ? '' : icon('camera')}</span>
         <label class="btn" style="height:42px">${icon('upload', 'sm')} Scegli<input type="file" accept="image/*" id="r-photo" hidden></label>
-        ${photo ? html`<button class="btn danger" type="button" id="r-photo-del" style="height:42px">${icon('trash', 'sm')}</button>` : ''}
+        ${photo ? html`<button class="btn danger" aria-label="Elimina" type="button" id="r-photo-del" style="height:42px">${icon('trash', 'sm')}</button>` : ''}
       </div></div>`,
-    extra: r ? html`<button class="btn danger" type="button" data-action="ricetta-del" data-id="${r.id}">${icon('trash', 'sm')}</button>` : '',
+    extra: r ? html`<button class="btn danger" aria-label="Elimina" type="button" data-action="ricetta-del" data-id="${r.id}">${icon('trash', 'sm')}</button>` : '',
     onOpen: (root) => {
       const thumb = root.querySelector('#r-thumb');
+      const form = root.querySelector('#sheet-form');
+      const imp = root.querySelector('#r-import');
+      if (imp) imp.addEventListener('click', async () => {
+        const link = safeUrl(form.url.value);
+        const help = root.querySelector('#r-import-help');
+        if (!link) { sheetError('Incolla il link di una ricetta (https://…)'); return; }
+        imp.disabled = true;
+        help.textContent = 'Leggo la ricetta…';
+        sheetError('');
+        try {
+          const x = await store.call(`ricette?url=${encodeURIComponent(link)}`);
+          if (x.titolo) form.title.value = x.titolo;
+          if (x.tempo) form.time.value = x.tempo;
+          if (x.porzioni) form.servings.value = x.porzioni;
+          if (x.ingredienti && x.ingredienti.length) form.ingredients.value = x.ingredienti.join('\n');
+          if (x.passi && x.passi.length) form.steps.value = x.passi.join('\n');
+          fonte = x.fonte || null;
+          const foto = x.immagine ? await ridimensiona(x.immagine) : '';
+          if (foto) { photo = foto; thumb.style.backgroundImage = `url('${foto}')`; thumb.innerHTML = ''; }
+          help.textContent = `Fatto: controlla e salva. Fonte: ${fonte ? fonte.nome : hostOf(link)}.`;
+        } catch (e) {
+          help.textContent = '';
+          sheetError(e && e.message ? e.message : 'Non riesco a leggere questa pagina');
+        } finally { imp.disabled = false; }
+      });
       root.querySelector('#r-photo').addEventListener('change', async (e) => {
         const f = e.target.files[0];
         if (!f) return;
@@ -142,6 +259,7 @@ function recipeSheet(r = null) {
         time: Number(val(fd, 'time')) || null, servings: Number(val(fd, 'servings')) || null,
         ingredients: lines(val(fd, 'ingredients')), steps: lines(val(fd, 'steps')), note: val(fd, 'note'), photo,
       };
+      if (fonte && safeUrl(fonte.url)) data.fonte = { nome: String(fonte.nome || hostOf(fonte.url)).slice(0, 80), url: safeUrl(fonte.url), licenza: String(fonte.licenza || '').slice(0, 40) };
       if (r) store.update('ricette', r.id, data);
       else { const id = store.add('ricette', { ...data, fav: false }); setTimeout(() => navigate(`#/ricette/${id}`), 50); }
     },
@@ -173,7 +291,21 @@ export const actions = {
     } catch { toast('Non riesco a tenere acceso lo schermo'); }
   },
   'ricette-theme': ({ el, ev }) => { ev.preventDefault(); setUi('ricette.theme', el.dataset.theme); if (location.hash !== '#/ricette') navigate('#/ricette'); },
-  'ricette-q': ({ el }) => setUi('ricette.q', el.value),
+  'ricette-q': ({ el }) => { programmaWeb(el.value); setUi('ricette.q', el.value); },
+  'ricette-web-riprova': () => { const t = ui('ricette.q', ''); webCache.delete(norm(t)); programmaWeb(t); rerender(); },
+  'ricetta-importa': async ({ el }) => {
+    if (el.disabled) return;
+    el.disabled = true;
+    const prima = el.innerHTML;
+    el.innerHTML = html`<span class="web-spin sm"></span> Preparo…`.s;
+    try {
+      const x = await store.call(`ricette?fonte=${encodeURIComponent(el.dataset.fonte)}&id=${encodeURIComponent(el.dataset.id)}`);
+      const photo = x.immagine ? await ridimensiona(x.immagine) : '';
+      recipeSheet(null, { title: x.titolo, ingredients: x.ingredienti || [], steps: x.passi || [], time: x.tempo, servings: x.porzioni, photo, fonte: x.fonte, themes: ['sempre'] });
+    } catch (e) {
+      toast(e && e.message ? e.message : 'Non riesco a importarla adesso');
+    } finally { if (el.isConnected) { el.disabled = false; el.innerHTML = prima; } }
+  },
   'ricetta-new': () => recipeSheet(),
   'ricetta-edit': ({ id }) => recipeSheet(state.data.ricette.find((r) => r.id === id)),
   'ricetta-fav': ({ id }) => { const r = state.data.ricette.find((x) => x.id === id); if (r) { vibrate(); store.update('ricette', id, { fav: !r.fav }); } },

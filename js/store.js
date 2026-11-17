@@ -72,12 +72,13 @@ function applyOp(map, op) {
   else if (op.op === 'remove') delete map[op.id];
 }
 
-export async function api(path, { method = 'GET', body, code } = {}) {
+export async function api(path, { method = 'GET', body, code, signal } = {}) {
   const r = await fetch(`api/${path}`, {
     method,
     cache: 'no-store',
     headers: { 'Content-Type': 'application/json', ...(code ? { 'x-famiglia': code } : {}) },
     body: body ? JSON.stringify(body) : undefined,
+    signal,
   });
   const j = await r.json().catch(() => ({}));
   if (r.status === 401) throw new AuthError(j.error || 'Codice di famiglia sbagliato');
@@ -152,6 +153,7 @@ class SyncStore extends LocalStore {
 
   /** Spedisce le modifiche e scarica quelle degli altri. */
   sync() {
+    if (this.fermato) return Promise.resolve(); // dispositivo scollegato (o codice cambiato): questo archivio non parla più col server
     if (this.busy) { this.again = true; return this.busy; }
     this.busy = (async () => {
       const era = this.offline;
@@ -187,18 +189,33 @@ class SyncStore extends LocalStore {
       }, fermo < 60000 ? 6000 : fermo < 5 * 60000 ? 12000 : 30000);
     };
     giro();
+    // ascoltatori tenuti da parte: si tolgono quando questo archivio viene scollegato
     const sveglia = () => { this.attivo = Date.now(); this.sync(); };
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) sveglia(); });
+    const visibile = () => { if (!document.hidden) sveglia(); };
+    const tocco = () => { this.attivo = Date.now(); };
+    document.addEventListener('visibilitychange', visibile);
     window.addEventListener('online', sveglia);
     window.addEventListener('focus', sveglia);
-    window.addEventListener('pointerdown', () => { this.attivo = Date.now(); }, { passive: true });
+    window.addEventListener('pointerdown', tocco, { passive: true });
+    this.stacca = () => {
+      document.removeEventListener('visibilitychange', visibile);
+      window.removeEventListener('online', sveglia);
+      window.removeEventListener('focus', sveglia);
+      window.removeEventListener('pointerdown', tocco);
+    };
   }
 
-  /** Scollega questo dispositivo (i dati restano sul server). */
-  forget() {
+  /**
+   * Scollega questo dispositivo (i dati restano sul server).
+   * tieniCoda: il codice è cambiato su un altro dispositivo → le modifiche fatte qui e non ancora
+   * spedite restano in coda e partono appena si scrive il codice nuovo (con "Esci" invece si buttano).
+   */
+  forget(tieniCoda = false) {
     this.fermato = true;
     clearTimeout(this.timer);
-    ['casa.sync.code', 'casa.sync.v', 'casa.sync.q', 'casa.sync.at'].forEach((k) => lsSet(k, null));
+    clearTimeout(this.kickT);
+    if (this.stacca) this.stacca();
+    ['casa.sync.code', 'casa.sync.v', 'casa.sync.at', ...(tieniCoda ? [] : ['casa.sync.q'])].forEach((k) => lsSet(k, null));
     COLLECTIONS.forEach((c) => { try { localStorage.removeItem(this.prefix + c); } catch {} });
   }
 }

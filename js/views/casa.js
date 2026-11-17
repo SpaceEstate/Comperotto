@@ -163,7 +163,7 @@ function choreSheet(c = null) {
       </div>
       <div class="field"><span>Di solito chi la fa</span>${whoChoices('who', c ? c.who : '')}</div>
       ${c && c.history && c.history.length ? html`<div class="field"><span>Ultime volte</span><p class="small muted" style="margin:0">${c.history.slice(-6).reverse().map((h) => `${shortDate(h.date)}${h.by ? ` (${nameOf(h.by)})` : ''}`).join(' · ')}</p></div>` : ''}`,
-    extra: c ? html`<button class="btn danger" type="button" data-action="chore-del" data-id="${c.id}">${icon('trash', 'sm')}</button>` : '',
+    extra: c ? html`<button class="btn danger" aria-label="Elimina" type="button" data-action="chore-del" data-id="${c.id}">${icon('trash', 'sm')}</button>` : '',
     // "Ogni N giorni" mostra il numero, "Giorni fissi" mostra i giorni della settimana
     onOpen: (root) => root.querySelectorAll('input[name=ftype]').forEach((r) => r.addEventListener('change', () => {
       const fissi = root.querySelector('input[name=ftype]:checked').value === 'weekdays';
@@ -195,7 +195,7 @@ function lavoroSheet(l = null) {
       </div></div>
       <div class="field"><span>Chi</span>${whoChoices('who', l ? l.who : '')}</div>
       <label class="field"><span>Note</span><textarea name="note" placeholder="Misure, cosa serve, link…" style="min-height:80px">${l ? l.note || '' : ''}</textarea></label>`,
-    extra: l ? html`<button class="btn danger" type="button" data-action="lavoro-del" data-id="${l.id}">${icon('trash', 'sm')}</button>` : '',
+    extra: l ? html`<button class="btn danger" aria-label="Elimina" type="button" data-action="lavoro-del" data-id="${l.id}">${icon('trash', 'sm')}</button>` : '',
     onSubmit: (fd) => {
       const title = cap(val(fd, 'title'));
       if (!title) return false;

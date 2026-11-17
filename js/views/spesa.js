@@ -149,7 +149,7 @@ function editSheet(it) {
         </select></label>
       </div>
       <label class="field"><span>Nota</span><input name="note" value="${it.note || ''}" placeholder="es. quello senza lattosio"></label>`,
-    extra: html`<button class="btn danger" type="button" data-action="spesa-del" data-id="${it.id}">${icon('trash', 'sm')}</button>`,
+    extra: html`<button class="btn danger" aria-label="Elimina" type="button" data-action="spesa-del" data-id="${it.id}">${icon('trash', 'sm')}</button>`,
     onSubmit: (fd) => {
       const name = cleanName(val(fd, 'name'));
       if (!name) return false;

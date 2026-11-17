@@ -216,7 +216,7 @@ function detailSheet(f) {
       <div class="section-title"><span>Dove vederlo in Italia</span>${isSynced() ? html`<button class="card-link" data-action="film-refresh" data-id="${f.id}">${icon('refresh', 'xs')} Aggiorna</button>` : ''}</div>
       <div id="prov-box" class="card">${offersBlock(f)}</div>
       <div class="btn-row" style="margin-top:16px">
-        <button class="btn danger" type="button" data-action="film-del" data-id="${f.id}">${icon('trash', 'sm')}</button>
+        <button class="btn danger" aria-label="Elimina" type="button" data-action="film-del" data-id="${f.id}">${icon('trash', 'sm')}</button>
         <button class="btn" type="button" data-action="film-edit" data-id="${f.id}">${icon('pencil', 'sm')} Modifica</button>
       </div>`,
     onOpen: async (root) => {

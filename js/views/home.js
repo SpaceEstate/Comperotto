@@ -87,8 +87,8 @@ function doveCard() {
     ${['p1', 'p2'].map((k) => {
       const st = statusOf(k);
       return html`<div class="dh-row">${personBadge(k)}<span class="dh-name">${nameOf(k)}</span>
-        ${st.p ? html`<span class="pill ${pillOf(st)}">${icon(iconOf(st), 'xs')} ${st.cls ? st.label : 'Posizione'}</span>
-          <span class="dh-sub">${[st.since, st.place].filter(Boolean).join(' · ') || timeAgo(st.p.at)}</span>` : html`<span class="dh-sub">non ancora condivisa</span>`}
+        ${st.p ? html`<span class="pill ${pillOf(st)}">${icon(st.old ? 'clock' : iconOf(st), 'xs')} ${st.cls || st.old ? st.label : 'Posizione'}</span>
+          <span class="dh-sub ${st.old ? 'old' : ''}">${st.old ? timeAgo(st.p.at) : [st.since, st.place].filter(Boolean).join(' · ') || timeAgo(st.p.at)}</span>` : html`<span class="dh-sub">non ancora condivisa</span>`}
       </div>`;
     })}
   </a>`;

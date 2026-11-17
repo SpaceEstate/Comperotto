@@ -76,6 +76,15 @@ const P = {
   battery: '<rect x="3" y="7.5" width="16" height="9" rx="2.2"/><path d="M21 10.5v3"/><path d="M6 10.5v3M9 10.5v3"/>',
   bell: '<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
   briefcase: '<rect x="3.5" y="7.5" width="17" height="12" rx="2.2"/><path d="M9 7.5V5.8A1.3 1.3 0 0 1 10.3 4.5h3.4A1.3 1.3 0 0 1 15 5.8v1.7"/><path d="M3.5 12.5h17"/>',
+  pause: '<rect x="6.5" y="5" width="3.6" height="14" rx="1.2"/><rect x="13.9" y="5" width="3.6" height="14" rx="1.2"/>',
+  prev: '<path d="M18 6.2v11.6L9.8 12z"/><path d="M6.5 6v12"/>',
+  next: '<path d="M6 6.2v11.6l8.2-5.8z"/><path d="M17.5 6v12"/>',
+  shuffle: '<path d="M3.5 7.5h2.8c1.9 0 3.1.9 4.1 2.4l2.2 3.4c1 1.5 2.2 2.2 4.1 2.2h3.3"/><path d="M3.5 16.5h2.8c1.3 0 2.2-.4 3-1.1M13.4 8.6c.8-.7 1.7-1.1 3.1-1.1h3.5"/><path d="M17.5 5 20 7.5 17.5 10M17.5 13 20 15.5 17.5 18"/>',
+  volume: '<path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4a.5.5 0 0 1-.5-.5v-4a.5.5 0 0 1 .5-.5z"/><path d="M15.5 9.2a4 4 0 0 1 0 5.6M18 6.8a7.4 7.4 0 0 1 0 10.4"/>',
+  speaker: '<rect x="6" y="3" width="12" height="18" rx="6"/><circle cx="12" cy="14.2" r="2.6"/><path d="M10.6 7.6h2.8"/>',
+  phone: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.6"/><path d="M10.8 18.5h2.4"/>',
+  tablet: '<rect x="4.5" y="2.5" width="15" height="19" rx="2.4"/><path d="M10.8 18.5h2.4"/>',
+  laptop: '<rect x="4.5" y="5" width="15" height="10.5" rx="1.6"/><path d="M2.5 19h19"/>',
   headphones: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3.5" y="14" width="4.5" height="6.5" rx="1.5"/><rect x="16" y="14" width="4.5" height="6.5" rx="1.5"/>',
 };
 

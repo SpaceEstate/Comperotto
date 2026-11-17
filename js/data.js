@@ -84,60 +84,73 @@ export function upcomingDates(settings, cats = [], ref = todayIso()) {
 // ---------------------------------------------------------------------------
 // Spesa
 // ---------------------------------------------------------------------------
-// Reparti nell'ordine del giro al supermercato (i surgelati alla fine, così restano freddi)
+// Reparti nell'ordine del giro al supermercato (surgelati e bevande alla fine: restano freddi e non schiacciano il resto).
+// Gli id vecchi restano validi grazie a LEGACY_CATS (es. il vecchio "freschi" era latte e formaggi: ora è "frigo").
 export const SHOP_CATS = [
-  { id: 'frutta', label: 'Frutta e verdura', color: '#8DBF7E' },
-  { id: 'forno', label: 'Pane e forno', color: '#E2B47E' },
-  { id: 'freschi', label: 'Freschi: latte, formaggi, salumi', color: '#F2CF72' },
-  { id: 'carne', label: 'Carne e pesce', color: '#E59A8C' },
-  { id: 'dispensa', label: 'Dispensa', color: '#CFA57A' },
-  { id: 'bevande', label: 'Bevande', color: '#8FB9D8' },
-  { id: 'casa', label: 'Casa e igiene', color: '#B6A79A' },
-  { id: 'gatti', label: 'Per Thor e Minù', color: '#C3A5D6' },
-  { id: 'surgelati', label: 'Surgelati', color: '#9CC9E6' },
-  { id: 'altro', label: 'Altro', color: '#C9C0B6' },
+  { id: 'fresco', emoji: '🥬', label: 'Freschi', color: '#8DBF7E' },
+  { id: 'frigo', emoji: '🧀', label: 'Frigo', color: '#F2CF72' },
+  { id: 'forno', emoji: '🥖', label: 'Forno', color: '#E2B47E' },
+  { id: 'dispensa', emoji: '🍝', label: 'Dispensa', color: '#CFA57A' },
+  { id: 'sfizi', emoji: '🍫', label: 'Sfizi', color: '#D79A8E' },
+  { id: 'casa', emoji: '🧹', label: 'Casa', color: '#B6A79A' },
+  { id: 'cura', emoji: '🧴', label: 'Cura personale', color: '#E5AFC4' },
+  { id: 'animali', emoji: '🐈', label: 'Animali', color: '#C3A5D6' },
+  { id: 'surgelati', emoji: '🧊', label: 'Surgelati', color: '#9CC9E6' },
+  { id: 'bevande', emoji: '🥤', label: 'Bevande', color: '#8FB9D8' },
+  { id: 'altro', emoji: '🛒', label: 'Altro', color: '#C9C0B6' },
 ];
-const LEGACY_CATS = { latticini: 'freschi' };
-export const shopCat = (id) => SHOP_CATS.find((c) => c.id === (LEGACY_CATS[id] || id)) || SHOP_CATS[SHOP_CATS.length - 1];
-export const normCat = (id) => (SHOP_CATS.some((c) => c.id === (LEGACY_CATS[id] || id)) ? LEGACY_CATS[id] || id : 'altro');
+const LEGACY_CATS = { frutta: 'fresco', carne: 'fresco', freschi: 'frigo', latticini: 'frigo', gatti: 'animali' };
+const legacy = (id) => LEGACY_CATS[id] || id;
+export const shopCat = (id) => SHOP_CATS.find((c) => c.id === legacy(id)) || SHOP_CATS[SHOP_CATS.length - 1];
+export const normCat = (id) => (SHOP_CATS.some((c) => c.id === legacy(id)) ? legacy(id) : 'altro');
 
 // Parole che fanno capire il reparto (separate da virgola; vanno bene anche più parole)
 const KW = {
-  frutta: `frutta, verdura, mela, mele, banana, banane, pera, pere, arancia, arance, limone, limoni, lime, insalata, insalata in busta, lattuga, rucola,
+  fresco: `frutta, verdura, mela, mele, banana, banane, pera, pere, arancia, arance, limone, limoni, lime, insalata, insalata in busta, lattuga, rucola,
     valeriana, songino, spinaci, pomodoro, pomodori, pomodorini, patata, patate, cipolla, cipolle, cipollotti, scalogno, aglio, carota, carote, zucchina,
     zucchine, zucca, melanzana, melanzane, peperone, peperoni, funghi, champignon, basilico, prezzemolo, rosmarino, salvia, menta, erba cipollina,
     fragole, uva, kiwi, avocado, sedano, broccoli, cavolfiore, cavolo, cavolini, verza, finocchio, finocchi, porro, porri, mandarini, clementine,
     ananas, lamponi, mirtilli, frutti di bosco, pesche, albicocche, ciliegie, anguria, melone, fichi, radicchio, cetriolo, cetrioli, zenzero fresco,
-    castagne, melograno, cachi, asparagi, carciofi, fagiolini, piselli freschi, legumi freschi, mango, cocco, datteri, prugne, susine`,
-  forno: `pane, panini, pancarre, pan carre, pane in cassetta, pane integrale, grissini, piadina, piadine, focaccia, cornetti, croissant, brioche,
-    fette biscottate, taralli, cracker, crackers, gallette, panettone, pandoro, colomba, pangrattato, pan grattato, torta, crostata, ciambella`,
-  freschi: `latte, latte fresco, latte di soia, latte di mandorla, latte di avena, yogurt, yogurt greco, burro, panna, panna da cucina, uova, uovo, mozzarella,
+    castagne, melograno, cachi, asparagi, carciofi, fagiolini, piselli freschi, legumi freschi, mango, cocco, datteri, prugne, susine,
+    carne, carne macinata, macinato, pollo, petto di pollo, cosce di pollo, alette di pollo, manzo, maiale, vitello, agnello, coniglio, salsiccia, salsicce,
+    tacchino, hamburger, bistecca, bistecche, fettine, cotolette, spezzatino, arrosto, fesa, lonza, costine, cotechino, zampone, pesce, salmone,
+    tonno fresco, gamberi, gamberetti, merluzzo, orata, branzino, spigola, pesce spada, cozze, vongole, calamari, polpo, seppie, alici, sgombro`,
+  frigo: `latte, latte fresco, latte di soia, latte di mandorla, latte di avena, yogurt, yogurt greco, burro, panna, panna da cucina, uova, uovo, mozzarella,
     mozzarelle, burrata, stracciatella, parmigiano, grana, grana padano, pecorino, ricotta, mascarpone, formaggio, formaggi, stracchino, crescenza,
     gorgonzola, scamorza, fontina, provola, provolone, emmental, robiola, philadelphia, sottilette, feta, asiago, taleggio, kefir, besciamella,
     prosciutto, prosciutto cotto, prosciutto crudo, salame, salamino, speck, bresaola, mortadella, pancetta, guanciale, affettati, affettato, wurstel,
-    coppa, porchetta, tacchino affettato, pasta fresca, tortellini, ravioli, gnocchi, pasta sfoglia, pasta brise, pasta frolla, impasto pizza,
-    lievito di birra, hummus, tofu, budino, budini, panna cotta, tiramisu`,
-  carne: `carne, carne macinata, macinato, pollo, petto di pollo, cosce di pollo, alette di pollo, manzo, maiale, vitello, agnello, coniglio, salsiccia, salsicce,
-    tacchino, hamburger, bistecca, bistecche, fettine, cotolette, spezzatino, arrosto, fesa, lonza, costine, cotechino, zampone, pesce, salmone,
-    tonno fresco, gamberi, gamberetti, merluzzo, orata, branzino, spigola, pesce spada, cozze, vongole, calamari, polpo, seppie, alici, sgombro`,
+    coppa, porchetta, tacchino affettato, salmone affumicato, pasta fresca, tortellini, ravioli, gnocchi, pasta sfoglia, pasta brise, pasta frolla,
+    impasto pizza, lievito di birra, hummus, tofu, budino, budini, panna cotta, tiramisu`,
+  forno: `pane, panini, pancarre, pan carre, pane in cassetta, pane integrale, grissini, piadina, piadine, focaccia, cornetti, croissant, brioche,
+    fette biscottate, cracker, crackers, gallette, friselle, bruschette`,
   dispensa: `pasta, spaghetti, rigatoni, penne, fusilli, tagliatelle, lasagne, linguine, farfalle, mezze maniche, orecchiette, paccheri, riso, farina, zucchero,
     sale, sale grosso, olio, olio extravergine, olio di semi, aceto, aceto balsamico, tonno, tonno in scatola, sgombro in scatola, passata,
-    passata di pomodoro, pelati, polpa di pomodoro, concentrato, ceci, lenticchie, fagioli, piselli in scatola, mais, caffe, cialde, capsule,
-    te, the, tisana, camomilla, biscotti, cereali, muesli, fiocchi di avena, marmellata, confettura, miele, nutella, crema spalmabile, cioccolato,
-    cioccolata, cacao, lievito, brodo, dado, spezie, pepe, cannella, noce moscata, chiodi di garofano, origano, paprika, curcuma, zenzero, sugo, pesto,
-    olive, capperi, savoiardi, frutta secca, mandorle, noci, nocciole, pinoli, uvetta, pistacchi, arachidi, amido, maizena, vanillina,
-    zucchero a velo, maionese, ketchup, senape, salsa, patatine, popcorn, snack, merendine, legumi, polenta, cous cous, latte a lunga conservazione, risotto, zuppa, minestra, burro di arachidi`,
+    passata di pomodoro, pelati, polpa di pomodoro, concentrato, ceci, lenticchie, fagioli, piselli in scatola, mais, biscotti, cereali, muesli,
+    fiocchi di avena, marmellata, confettura, miele, nutella, crema spalmabile, cacao, lievito, brodo, dado, spezie, pepe, cannella, noce moscata,
+    chiodi di garofano, origano, paprika, curcuma, zenzero, sugo, pesto, olive, capperi, savoiardi, frutta secca, mandorle, noci, nocciole, pinoli,
+    uvetta, amido, maizena, vanillina, zucchero a velo, maionese, ketchup, senape, salsa, legumi, polenta, cous cous, latte a lunga conservazione,
+    risotto, zuppa, minestra, burro di arachidi, pangrattato, pan grattato, conserve, sottoli, sottaceti`,
+  sfizi: `cioccolato, cioccolata, cioccolatini, tavoletta, ovetti, caramelle, gomme, chewing gum, liquirizia, merendine, merendina, wafer, barrette,
+    patatine, popcorn, snack, salatini, taralli, tarallini, arachidi, noccioline, pistacchi, anacardi, panettone, pandoro, colomba, torta, crostata,
+    ciambella, dolci, dolcetti, dolce, pasticcini, pasticceria, krapfen, aperitivo, aperitivi, crodino, sanbitter, aperol, campari, spritz`,
+  casa: `detersivo, detersivi, detersivo piatti, detersivo per i piatti, detersivo lavatrice, detersivo per la lavatrice, sapone piatti, sapone per i piatti, sapone lavatrice, sapone per la lavatrice,
+    carta igienica, scottex, carta assorbente, rotoloni, spugne, spugna, sacchetti, sacchi, sacchetti spazzatura, sacchetti della spazzatura,
+    sacchi immondizia, ammorbidente, candeggina, pellicola, alluminio, carta forno, carta da forno, lampadina, lampadine, pile, batterie, tovaglioli,
+    fazzoletti, anticalcare, sgrassatore, pastiglie lavastoviglie, brillantante, sale lavastoviglie, guanti, profumatore, igienizzante, panni, panno,
+    mocio, scopa, varechina, smacchiatore, stuzzicadenti, piatti di carta, bicchieri di plastica, accendino, fiammiferi, candela, candele`,
+  cura: `sapone, saponi, sapone mani, sapone liquido, saponetta, shampoo, balsamo, bagnoschiuma, docciaschiuma, dentifricio, spazzolino, spazzolini,
+    collutorio, filo interdentale, deodorante, cotton fioc, dischetti, dischetti struccanti, struccante, assorbenti, salvaslip, rasoi, rasoio, lamette,
+    schiuma da barba, dopobarba, crema mani, crema corpo, crema viso, crema solare, profumo, gel, lacca, balsamo labbra, burrocacao, mascara,
+    trucco, smalto, acetone, salviette, salviettine, cerotti, lenti a contatto, liquido lenti, tamponi`,
+  animali: `croccantini, crocchette, scatolette, scatolette per i gatti, bustine, umido gatti, cibo gatti, cibo per gatti, cibo per i gatti, lettiera, sabbia,
+    sabbia gatti, sabbia per i gatti, snack gatti, snack per i gatti, erba gatta, catnip, antiparassitario, tiragraffi, giochini gatti, gatti, gatto,
+    animali, cibo animali`,
+  surgelati: `surgelati, surgelato, surgelata, gelato, gelati, ghiacciolo, ghiaccioli, piselli, piselli surgelati, spinaci surgelati, verdure surgelate,
+    pesce surgelato, bastoncini, bastoncini di pesce, minestrone surgelato, ghiaccio, pizza surgelata, pizze surgelate, patatine surgelate, sofficini,
+    cordon bleu, frutti di bosco surgelati`,
   bevande: `acqua, acqua frizzante, acqua naturale, vino, vino rosso, vino bianco, birra, birre, succo, succhi, succo di frutta, coca cola, aranciata,
-    spumante, prosecco, bibita, bibite, acqua tonica, tonica, gin, vodka, rum, aperol, campari, limonata, te freddo, energy drink, sciroppo`,
-  casa: `detersivo, detersivi, detersivo piatti, detersivo per i piatti, detersivo lavatrice, detersivo per la lavatrice, sapone, sapone mani, carta igienica,
-    scottex, carta assorbente, rotoloni, spugne, spugna, sacchetti, sacchi, sacchetti spazzatura, sacchetti della spazzatura, sacchi immondizia,
-    ammorbidente, candeggina, pellicola, alluminio, carta forno, carta da forno, lampadina, lampadine, pile, batterie, tovaglioli, fazzoletti, shampoo,
-    balsamo, bagnoschiuma, docciaschiuma, dentifricio, spazzolino, collutorio, deodorante, cotton fioc, dischetti, assorbenti, rasoi, crema mani,
-    crema corpo, crema viso, anticalcare, sgrassatore, pastiglie lavastoviglie, brillantante, sale lavastoviglie, guanti, profumatore, igienizzante`,
-  gatti: `croccantini, crocchette, scatolette, scatolette per i gatti, bustine, umido gatti, cibo gatti, cibo per gatti, cibo per i gatti, lettiera, sabbia,
-    sabbia gatti, sabbia per i gatti, snack gatti, snack per i gatti, erba gatta, catnip, antiparassitario, tiragraffi, giochini gatti, gatti, gatto`,
-  surgelati: `surgelati, surgelato, surgelata, gelato, gelati, piselli, piselli surgelati, spinaci surgelati, verdure surgelate, bastoncini, bastoncini di pesce,
-    minestrone surgelato, ghiaccio, pizza surgelata, pizze surgelate, patatine surgelate, sofficini, cordon bleu`,
+    spumante, prosecco, bibita, bibite, acqua tonica, tonica, gin, vodka, rum, whisky, amaro, limoncello, limonata, te freddo, energy drink, sciroppo,
+    caffe, caffe macinato, caffe in grani, caffe d orzo, cialde, capsule, te, the, tisana, tisane, camomilla, infuso`,
 };
 
 // le parole più lunghe vincono ("pasta fresca" prima di "pasta", "sale lavastoviglie" prima di "sale")
@@ -149,6 +162,8 @@ const KW_LIST = Object.entries(KW)
 export function classify(name) {
   const t = norm(name).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
   const words = t.split(' ');
+  // "gamberi surgelati", "spinaci congelati": comanda il freezer
+  if (words.some((w) => /^(surgelat|congelat)/.test(w))) return 'surgelati';
   let best = null;
   for (const [kw, cat] of KW_LIST) {
     let pos = -1;

@@ -174,6 +174,7 @@ initGestures({
   run,
   refresh: async () => {
     if (route()[0] === 'dove') { await dove.actions['dove-aggiorna'](); return; }
+    if (route()[0] === 'musica') await musica.refresh();
     if (store.mode === 'sync') await store.sync();
     rerender();
   },

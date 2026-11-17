@@ -4,14 +4,14 @@ La casa della famiglia Comperotto, in tasca: Patrick, Serena, Thor e Minù.
 Un'app fatta su misura per **iPhone e iPad** (si installa dalla schermata Home e si apre a tutto schermo, come un'app vera) con:
 
 - **Casa**
-  - **Spesa**: divisa per reparto in automatico, "spesso comprati" con un tocco, carrello e "svuota", e voci aggiunte con **Alexa**. Niente doppioni: ogni cosa ha la maiuscola, se è già da comprare non si ripete e se era nel carrello torna da comprare;
+  - **Spesa**: divisa per reparto in automatico, nell'ordine del giro al supermercato (🥬 Freschi, 🧀 Frigo, 🥖 Forno, 🍝 Dispensa, 🍫 Sfizi, 🧹 Casa, 🧴 Cura personale, 🐈 Animali, 🧊 Surgelati, 🥤 Bevande, 🛒 Altro: si vedono solo i reparti con qualcosa dentro), "spesso comprati" con un tocco, carrello e "svuota", e voci aggiunte con **Alexa**. Niente doppioni: ogni cosa ha la maiuscola, se è già da comprare non si ripete e se era nel carrello torna da comprare;
   - **Faccende** che si ripetono (lettiera, lavatrice, lenzuola, bagno…) con scadenze e chi le ha fatte;
   - **Lavori** da fare (tagliare le tende, sistemare i mobili…) per stanza e priorità;
   - **Rifiuti**: il calendario della raccolta. Ogni sera la Home dice cosa portare fuori.
 - **Ricette** per tema (Tutti i giorni, Natale, Capodanno, San Valentino, Pasqua, Estate, Halloween, Compleanni, Parigi e Canarie): si aggiungono e si modificano dall'app (tasto **+ Ricetta**, e **Modifica ricetta** in fondo a ognuna), con foto. Si spuntano gli ingredienti e finiscono nella spesa; c'è il dado "cosa cuciniamo?" e il tasto **Tieni lo schermo acceso** mentre si cucina.
 - **Film e serie**, a tema e non: copertina e **dove vederli in Italia** (abbonamento, noleggio, acquisto) arrivano da soli e si aggiornano ogni giorno; in cima un "Stasera guardiamo…".
 - **Desideri**: cose da comprare con prezzo, link e totale.
-- **Musica** a tema del periodo, con il lettore Spotify integrato (dalla Home o, su iPad, dalla barra laterale).
+- **Musica** a tema del periodo e **Spotify** collegato: cosa suona, play/pausa/avanti/volume, le vostre playlist con un tocco e la scelta di dove ascoltare (iPhone, iPad, **Echo**…). Dalla Home o, su iPad, dalla barra laterale.
 - **Thor e Minù**: foto, età, peso, antiparassitari, vaccini e veterinario, con promemoria (dalla Home).
 - **Lavagnetta** in Home per lasciarsi biglietti, **conto alla rovescia** per le feste e i compleanni (Serena il 29/04, Patrick il 20/12, Thor e Minù il 04/10, il vostro anniversario il 18/07): il giorno giusto la Home fa festa.
 - **Atmosfere stagionali**: cambiano colori e decorazioni da sole.
@@ -42,6 +42,7 @@ Tutto funziona sia in chiaro sia in scuro. In *Impostazioni → Atmosfera* si pu
 | 2 | **Database** su Vercel (Neon, piano Free) | Sì: senza, ogni dispositivo ha i suoi dati | sezione 1 |
 | 3 | Scegliere il **codice di famiglia** e installarla su **ogni iPhone/iPad** | Sì | sezione 2 |
 | 4 | **Skill Alexa** | Per usare la voce | sezione 3 |
+| 5 | **App Spotify** (Client ID) | Per le playlist e la musica sugli Echo | sezione 7 |
 
 Niente Firebase, niente account da creare per l'app: i dati stanno nel database di Vercel e si aprono con il **codice di famiglia**.
 
@@ -134,9 +135,19 @@ Su ogni iPhone/iPad con l'app **installata sulla schermata Home**: **Impostazion
 
 Ogni tipo si può spegnere dal singolo dispositivo; "Prova" manda una notifica di prova.
 
-## 7. Musica
+## 7. Musica e Spotify
 
 Aggiungete brani, album o playlist con un tema (Natale, Halloween, Estate, Parigi e Canarie…). Se incollate un **link Spotify** (Condividi → Copia link) si ascolta direttamente nell'app. Nel periodo giusto la sezione mette in cima la musica a tema.
+
+**Spotify collegato** (serve Premium): in cima a *Musica* compaiono cosa sta suonando e dove, i comandi (casuale, indietro, play/pausa, avanti, volume), le vostre playlist da far partire con un tocco e il foglio **Dove ascoltare?** con iPhone, iPad ed **Echo**. Con Spotify collegato anche il ▶ della nostra musica la fa partire lì (se un brano non ha il link, l'app lo cerca su Spotify).
+
+Una volta sola, da un computer:
+
+1. Su <https://developer.spotify.com/dashboard> entra con l'account Spotify **Premium** → **Create app**: nome "Comperotto", descrizione a piacere, **Redirect URI** `https://comperotto.vercel.app/api/spotify` (esatto, con **Add**), spunta **Web API** → **Save**.
+2. Nell'app appena creata: **Settings** → copia il **Client ID**. Se anche l'altro vuole collegare il suo account Spotify: **User Management** → aggiungi nome ed email del suo account Spotify (massimo 5 persone).
+3. Sull'iPhone: *Musica* → **Collega** → incolla il Client ID (solo la prima volta) → accedi a Spotify e **Accetta**. Si torna da soli nell'app.
+
+Gli Echo compaiono in *Dove ascoltare?* se Spotify è collegato nell'app Alexa (*Altro → Impostazioni → Musica e podcast*): se non si vedono, basta chiedere una volta ad Alexa di mettere qualcosa da Spotify. Il permesso resta sul server (nel database), non sui telefoni; si toglie da *Musica → Spotify → Scollega*.
 
 ---
 
@@ -156,10 +167,11 @@ js/seed.js              esempi iniziali (ricette, film, musica, faccende)
 js/gestures.js          gesti dell'iPhone (fogli da trascinare, indietro dal bordo, righe da scorrere)
 js/mappa.js             stile della mappa di Dov'è (attività, i nostri posti, satellite, scuro)
 js/notifiche.js         notifiche di questo dispositivo
+js/spotify.js           Spotify: lettore, dispositivi, playlist (parla con Spotify con un token di un'ora)
 js/views/*.js           le schermate
 assets/fonts/           i caratteri (dentro l'app: niente richieste esterne)
 api/                    funzioni Vercel: stato, setup del codice, dati (Neon/Postgres o Upstash Redis), film,
-                        posizione, notifiche (push, promemoria della sera)
+                        posizione, notifiche (push, promemoria della sera), spotify (collegamento e token)
 alexa-skill/            skill Alexa (modello italiano + codice)
 ```
 

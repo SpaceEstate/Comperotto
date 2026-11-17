@@ -21,6 +21,12 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   aes128gcm fatta a mano e verificata contro la libreria `web-push`), `api/push.js` (iscrizioni), `api/promemoria.js` (cron serale in
   `vercel.json`: rifiuti, compleanni, gatti), avvisi di arrivo/partenza in `api/posizione.js`, biglietti in `api/dati.js`.
   Lato app: `js/notifiche.js`, interruttori in Impostazioni, gestione in `sw.js`. Su iPhone servono l'app sulla schermata Home e iOS 16.4+.
+- **Spotify** (`api/spotify.js` + `js/spotify.js`, pagina Musica): ognuno collega il suo account con OAuth PKCE (niente segreti:
+  il Client ID dell'app di developer.spotify.com si scrive dall'app e sta nel database, `fam_meta` `m:spotify:*`, insieme ai refresh token).
+  Redirect URI registrato: `https://comperotto.vercel.app/api/spotify`. I dispositivi chiedono a `/api/spotify?azione=token` un token di un'ora
+  e parlano direttamente con api.spotify.com (lettore, dispositivi/Echo, `me/playlists`). App in modalità sviluppo: max 5 utenti,
+  proprietario Premium; nel 2026 i campi `tracks` delle playlist sono diventati `items`.
+- **Spesa:** reparti in `SHOP_CATS` (`js/data.js`) nell'ordine del giro; gli id vecchi passano da `LEGACY_CATS` (il vecchio `freschi` ora è `frigo`).
 - **Avvio e aggiornamenti:** un dispositivo già collegato parte subito dai dati salvati (non aspetta `/api/stato`). A ogni pubblicazione
   cambiare `CACHE` in `sw.js`: l'app aperta si ricarica da sola (non mentre si scrive). I caratteri sono in `assets/fonts/`.
 - **Controllo delle pagine:** prima di pubblicare modifiche di aspetto, provarle su iPhone piccolo (320 px), iPhone, iPad verticale

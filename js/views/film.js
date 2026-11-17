@@ -1,11 +1,15 @@
-// Film e serie che ci piacciono, a tema e non: copertina e "dove vederlo" arrivano da soli
+// Film e serie che ci piacciono, per categoria (Famiglia, Natale, Halloween, Sempre, Thriller, Azione, Horror):
+// copertina e "dove vederlo" arrivano da soli, e cercando un titolo la categoria si propone dal genere.
 import { html, raw, norm, cap, vibrate, todayIso } from '../utils.js';
 import { icon, catFace } from '../icons.js';
-import { THEMES, themeLabel } from '../data.js';
-import { state, store, openSheet, closeSheet, toast, val, emptyState, ui, setUi, themeChoices, pageHead, isSynced } from '../core.js';
+import { FILM_CATS, filmCats } from '../data.js';
+import { state, store, openSheet, closeSheet, toast, val, emptyState, ui, setUi, themeChoices, pageHead, isSynced, settings, saveSettings } from '../core.js';
 import { currentTheme } from '../season.js';
 
-const mainTheme = (f) => (f.themes && f.themes[0]) || 'sempre';
+const mainTheme = (f) => filmCats(f)[0];
+/** La categoria del periodo (Natale, Halloween), se il periodo ne ha una */
+const catDelPeriodo = () => { const c = currentTheme(); return c && FILM_CATS[c.id] ? c.id : null; };
+const FILTRI = [['davedere', 'Da vedere'], ['visti', 'Visti'], ['tutti', 'Tutti']];
 const safePoster = (u) => (typeof u === 'string' && /^https:\/\/(images\.justwatch\.com|is\d+-ssl\.mzstatic\.com|image\.tmdb\.org)\//.test(u) ? u : '');
 const safeIcon = (u) => (typeof u === 'string' && /^https:\/\/images\.justwatch\.com\//.test(u) ? u : '');
 const searchUrl = (title) => `https://www.justwatch.com/it/cerca?q=${encodeURIComponent(title)}`;
@@ -25,7 +29,7 @@ const rotte = new Set(); // copertine che non si sono caricate: al loro posto il
 function poster(f, size = '') {
   const src = safePoster(f.poster);
   if (src && !rotte.has(src)) return html`<img src="${src}" alt="" loading="lazy" decoding="async" data-poster="${f.id || ''}">`;
-  return html`<div class="poster-ph th-${THEMES[mainTheme(f)] ? mainTheme(f) : 'sempre'} ${size}">${icon(f.kind === 'tv' ? 'tv' : 'film')}<span>${f.title}</span></div>`;
+  return html`<div class="poster-ph th-${mainTheme(f)} ${size}">${icon(f.kind === 'tv' ? 'tv' : 'film')}<span>${f.title}</span></div>`;
 }
 // un'immagine che non arriva (rete lenta, indirizzo cambiato) non lascia un buco
 document.addEventListener('error', (ev) => {
@@ -47,7 +51,6 @@ function grid(list) {
   return html`<div class="posters">${list.map((f) => html`
     <button class="poster ${f.watched ? 'seen' : ''}" data-action="film-open" data-id="${f.id}" aria-label="${f.title}">
       ${poster(f)}
-      ${f.fav ? html`<span class="p-fav">${icon('heart', 'filled')}</span>` : ''}
       ${f.watched ? html`<span class="p-seen">${icon('check', 'xs')}</span>` : ''}
       ${streaming(f).length ? html`<div class="prov-strip">${providerIcons(streaming(f))}</div>` : ''}
     </button>`)}</div>`;
@@ -57,8 +60,8 @@ function grid(list) {
 function featured(all) {
   const pool = all.filter((f) => !f.watched);
   if (!pool.length) return '';
-  const cur = currentTheme();
-  const score = (f) => (cur && (f.themes || []).includes(cur.id) ? 2 : 0) + (streaming(f).length ? 1 : 0) + (safePoster(f.poster) && !rotte.has(f.poster) ? 1 : 0);
+  const cur = catDelPeriodo();
+  const score = (f) => (cur && filmCats(f).includes(cur) ? 2 : 0) + (streaming(f).length ? 1 : 0) + (safePoster(f.poster) && !rotte.has(f.poster) ? 1 : 0);
   const best = Math.max(...pool.map(score));
   const top = pool.filter((f) => score(f) === best);
   const seed = [...todayIso()].reduce((a, c) => a + c.charCodeAt(0), 0) + Number(ui('film.spin', 0));
@@ -71,7 +74,7 @@ function featured(all) {
     <div class="fh-body">
       <p class="fh-eyebrow">Stasera guardiamo…</p>
       <h2>${f.title}</h2>
-      <p class="fh-meta">${f.kind === 'tv' ? 'Serie' : 'Film'}${f.year ? ` · ${f.year}` : ''}${cur && (f.themes || []).includes(cur.id) ? ` · ${THEMES[cur.id].label}` : ''}</p>
+      <p class="fh-meta">${f.kind === 'tv' ? 'Serie' : 'Film'}${f.year ? ` · ${f.year}` : ''} · ${filmCats(f).map((c) => FILM_CATS[c].label).join(', ')}</p>
       ${on.length ? html`<div class="fh-on">${on.slice(0, 3).map((o) => html`<span>${safeIcon(o.icon) ? html`<img src="${safeIcon(o.icon)}" alt="">` : ''}${o.name}</span>`)}</div>` : ''}
       <div class="fh-actions">
         <button class="btn primary" data-action="film-open" data-id="${f.id}">${icon('play', 'sm')} Dove vederlo</button>
@@ -82,18 +85,17 @@ function featured(all) {
 }
 
 export function render() {
-  const filter = ui('film.filter', 'davedere');
-  const theme = ui('film.theme', 'tutti');
+  const filter = FILTRI.some(([v]) => v === ui('film.filter', 'davedere')) ? ui('film.filter', 'davedere') : 'davedere';
+  const theme = FILM_CATS[ui('film.theme', 'tutti')] ? ui('film.theme', 'tutti') : 'tutti';
   const results = ui('film.results', null);
   const all = [...state.data.film].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   const pass = (f) =>
-    (filter === 'tutti' || (filter === 'davedere' && !f.watched) || (filter === 'visti' && f.watched) || (filter === 'preferiti' && f.fav)) &&
-    (theme === 'tutti' || (f.themes || []).includes(theme));
+    (filter === 'tutti' || (filter === 'davedere' && !f.watched) || (filter === 'visti' && f.watched)) &&
+    (theme === 'tutti' || filmCats(f).includes(theme));
   const list = all.filter(pass);
-  const cur = currentTheme();
-  const seasonal = cur && theme === 'tutti' ? list.filter((f) => (f.themes || []).includes(cur.id)) : [];
+  const cur = catDelPeriodo();
+  const seasonal = cur && theme === 'tutti' ? list.filter((f) => filmCats(f).includes(cur)) : [];
   const rest = seasonal.length ? list.filter((f) => !seasonal.includes(f)) : list;
-  const used = Object.keys(THEMES).filter((t) => all.some((f) => (f.themes || []).includes(t)));
 
   return html`
     ${pageHead('Film', { eyebrow: 'Da vedere sul divano' })}
@@ -116,14 +118,16 @@ export function render() {
 
     ${!results && filter === 'davedere' && theme === 'tutti' ? featured(all) : ''}
 
-    <div class="chips">
-      ${[['davedere', 'Da vedere'], ['visti', 'Visti'], ['preferiti', 'Preferiti'], ['tutti', 'Tutti']].map(([v, l]) => html`<button class="chip ${filter === v ? 'on' : ''}" data-action="film-filter" data-v="${v}">${l}</button>`)}
-      ${used.length > 1 ? html`<span class="chip-sep"></span>${used.map((t) => html`<button class="chip ${theme === t ? 'on' : ''}" data-action="film-theme" data-v="${theme === t ? 'tutti' : t}">${icon(THEMES[t].icon, 'xs')} ${themeLabel(t, true)}</button>`)}` : ''}
+    <div class="chips" role="group" aria-label="Quali film">
+      ${FILTRI.map(([v, l]) => html`<button class="chip ${filter === v ? 'on' : ''}" data-action="film-filter" data-v="${v}" aria-pressed="${filter === v}">${l}</button>`)}
+    </div>
+    <div class="chips film-cats" role="group" aria-label="Categorie">
+      ${Object.entries(FILM_CATS).map(([k, c]) => html`<button class="chip ${theme === k ? 'on' : ''}" data-action="film-theme" data-v="${theme === k ? 'tutti' : k}" aria-pressed="${theme === k}">${icon(c.icon, 'xs')} ${c.label}</button>`)}
     </div>
 
-    ${seasonal.length ? html`<div class="section-title"><span>${icon(THEMES[cur.id].icon, 'xs')} Atmosfera ${THEMES[cur.id].label}</span></div>${grid(seasonal)}` : ''}
+    ${seasonal.length ? html`<div class="section-title"><span>${icon(FILM_CATS[cur].icon, 'xs')} Atmosfera ${FILM_CATS[cur].label}</span></div>${grid(seasonal)}` : ''}
     ${rest.length ? html`${seasonal.length ? html`<div class="section-title"><span>Tutti gli altri</span></div>` : html`<div style="height:10px"></div>`}${grid(rest)}` : ''}
-    ${!list.length ? emptyState(filter === 'visti' ? 'Ancora nessun film visto' : 'Nessun film qui', 'Cerca un titolo qui sopra per aggiungerlo.', catFace('a')) : ''}`;
+    ${!list.length ? emptyState(filter === 'visti' ? 'Ancora nessun film visto' : theme !== 'tutti' ? `Nessun film ${FILM_CATS[theme].label}` : 'Nessun film qui', 'Cerca un titolo qui sopra per aggiungerlo.', catFace('a')) : ''}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -162,7 +166,31 @@ async function refresh(f) {
   return { ...f, ...patch };
 }
 
+// Una volta sola: gli esempi iniziali passano alle categorie nuove, ma solo se non li avete cambiati
+const ESEMPI = {
+  'Mamma, ho perso l’aereo': [['natale'], ['natale', 'famiglia']],
+  'Il Grinch': [['natale'], ['natale', 'famiglia']],
+  'Hocus Pocus': [['halloween'], ['halloween', 'famiglia']],
+  Luca: [['estate'], ['famiglia']],
+  'Mamma Mia!': [['estate'], ['sempre']],
+  'Il favoloso mondo di Amélie': [['aprile'], ['sempre']],
+  'Midnight in Paris': [['aprile'], ['sempre']],
+  Ratatouille: [['aprile', 'sempre'], ['famiglia']],
+  'Gli Aristogatti': [['sempre'], ['famiglia']],
+};
+function aggiornaEsempi() {
+  if (settings().filmCats || !state.loaded.has('film') || !state.loaded.has('settings')) return;
+  // con il database condiviso aspetto i dati veri del server (all'inizio ci sono solo quelli salvati qui, magari nessuno)
+  if (store.mode === 'sync' && !(store.synced && store.synced.has('film') && store.synced.has('settings'))) return;
+  state.data.film.forEach((f) => {
+    const e = ESEMPI[f.title];
+    if (e && JSON.stringify(f.themes || []) === JSON.stringify(e[0])) store.update('film', f.id, { themes: e[1] });
+  });
+  saveSettings({ filmCats: 1 });
+}
+
 export async function after() {
+  aggiornaEsempi();
   if (!isSynced() || busy) return;
   const now = Date.now();
   const todo = state.data.film.filter((f) => !tried.has(f.id) && (
@@ -205,10 +233,9 @@ function detailSheet(f) {
         <div class="film-poster">${poster(f)}</div>
         <div>
           <p class="muted small" style="margin:0 0 8px">${f.kind === 'tv' ? 'Serie TV' : 'Film'}${f.year ? ` · ${f.year}` : ''}</p>
-          <div class="chips wrap" style="gap:6px">${(f.themes || []).map((t) => html`<span class="pill">${icon((THEMES[t] || THEMES.sempre).icon, 'xs')} ${themeLabel(t, true)}</span>`)}</div>
+          <div class="chips wrap" style="gap:6px">${filmCats(f).map((c) => html`<span class="pill">${icon(FILM_CATS[c].icon, 'xs')} ${FILM_CATS[c].label}</span>`)}</div>
           <div class="wish-actions" style="flex-wrap:wrap">
             <button class="mini-btn ${f.watched ? 'primary' : ''}" data-action="film-watched" data-id="${f.id}">${icon(f.watched ? 'check' : 'eye', 'xs')} ${f.watched ? 'Visto' : 'Segna visto'}</button>
-            <button class="mini-btn" data-action="film-fav" data-id="${f.id}" style="${f.fav ? 'color:var(--rose)' : ''}">${icon('heart', f.fav ? 'xs filled' : 'xs')} ${f.fav ? 'Preferito' : 'Preferito?'}</button>
           </div>
         </div>
       </div>
@@ -236,7 +263,9 @@ function detailSheet(f) {
 
 function editSheet(f = null, preset = {}) {
   const d = f || preset;
-  const cur = currentTheme();
+  // categoria proposta: quella già scelta, altrimenti dal genere (ricerca), altrimenti quella del periodo
+  const proposte = f ? filmCats(f) : (preset.categorie || []).filter((c) => FILM_CATS[c]);
+  const scelte = proposte.length ? proposte : [catDelPeriodo() || 'sempre'];
   openSheet({
     title: f ? 'Modifica' : 'Nuovo film o serie',
     body: html`
@@ -247,7 +276,7 @@ function editSheet(f = null, preset = {}) {
         <label class="field"><span>Anno</span><input name="year" inputmode="numeric" value="${d.year || ''}"></label>
         <label class="field"><span>Tipo</span><select name="kind"><option value="movie" ${d.kind !== 'tv' ? raw('selected') : ''}>Film</option><option value="tv" ${d.kind === 'tv' ? raw('selected') : ''}>Serie TV</option></select></label>
       </div>
-      <div class="field"><span>Tema</span>${themeChoices('themes', d.themes || (cur ? [cur.id] : ['sempre']), THEMES)}</div>
+      <div class="field"><span>Categoria</span>${themeChoices('themes', scelte, FILM_CATS)}</div>
       <label class="field"><span>Nota</span><input name="note" value="${d.note || ''}" placeholder="es. da vedere sotto la coperta"></label>`,
     submit: f ? 'Salva' : 'Aggiungi',
     onSubmit: (fd) => {
@@ -260,7 +289,7 @@ function editSheet(f = null, preset = {}) {
         if (changed) tried.delete(f.id);
       } else {
         store.add('film', {
-          ...data, watched: false, fav: false,
+          ...data, watched: false,
           jw: preset.jw || null, link: preset.link || '', poster: safePoster(preset.poster),
           offers: preset.offers || [], offersAt: preset.offers ? Date.now() : null,
         });
@@ -301,13 +330,6 @@ export const actions = {
     store.update('film', id, { watched: !f.watched, watchedAt: f.watched ? null : Date.now() });
     closeSheet();
     toast(f.watched ? 'Rimesso tra i da vedere' : 'Visto! Com’era?');
-  },
-  'film-fav': ({ id }) => {
-    const f = state.data.film.find((x) => x.id === id);
-    if (!f) return;
-    vibrate();
-    store.update('film', id, { fav: !f.fav });
-    closeSheet();
   },
   'film-refresh': ({ id }) => { const f = state.data.film.find((x) => x.id === id); if (f) { state.ui['film.force'] = true; detailSheet(f); } },
   'film-edit': ({ id }) => { const f = state.data.film.find((x) => x.id === id); closeSheet(); if (f) setTimeout(() => editSheet(f), 320); },

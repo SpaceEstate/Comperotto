@@ -1,7 +1,7 @@
 // Home: buongiorno, gatti, cosa si butta stasera, faccende di oggi, atmosfera del periodo, lavagnetta
 import { html, raw, longDate, todayIso, timeAgo, vibrate, cap, plural, isIOS, isStandalone, lsGet, lsSet } from '../utils.js';
 import { icon } from '../icons.js';
-import { THEMES, upcomingDates, CAT_EVENTS } from '../data.js';
+import { THEMES, upcomingDates, CAT_EVENTS, FILM_CATS, filmCats } from '../data.js';
 import { state, store, settings, me, nameOf, myName, openSheet, toast, val, confirmSheet, rerender, ui, isSynced } from '../core.js';
 import { dueChores, choreRow, trashFor, binChips } from './casa.js';
 import { cats, catAvatar, upcomingFor, lastWeight } from './gatti.js';
@@ -30,6 +30,8 @@ function catStatus(c) {
 function seasonCard(s) {
   const th = s.theme;
   const n = (col) => state.data[col].filter((x) => (x.themes || []).includes(th)).length;
+  // i film hanno le loro categorie: nei periodi senza una categoria (mare, aprile) conto quelli da vedere
+  const nFilm = FILM_CATS[th] ? state.data.film.filter((f) => filmCats(f).includes(th)).length : state.data.film.filter((f) => !f.watched).length;
   return html`<section class="season-card">
     <div class="sc-top">
       <span class="sc-ico">${icon(s.icon, 'lg')}</span>
@@ -38,7 +40,7 @@ function seasonCard(s) {
     <div class="sc-links">
       <a href="#/ricette" data-action="ricette-theme" data-theme="${th}">${icon('chef', 'sm')}<span>${n('ricette')}</span>Ricette</a>
       <a href="#/musica" data-action="musica-theme-go" data-v="${th}">${icon('music', 'sm')}<span>${n('musica')}</span>Musica</a>
-      <a href="#/film" data-action="film-theme-go" data-v="${th}">${icon('film', 'sm')}<span>${n('film')}</span>Film</a>
+      <a href="#/film" data-action="film-theme-go" data-v="${FILM_CATS[th] ? th : 'tutti'}">${icon('film', 'sm')}<span>${nFilm}</span>Film</a>
     </div>
   </section>`;
 }
@@ -236,7 +238,7 @@ function noteSheet() {
 export const actions = {
   noop: () => {},
   'musica-theme-go': ({ el }) => { state.ui['musica.theme'] = el.dataset.v; location.hash = '#/musica'; },
-  'film-theme-go': ({ el }) => { state.ui['film.theme'] = el.dataset.v; state.ui['film.filter'] = 'tutti'; location.hash = '#/film'; },
+  'film-theme-go': ({ el }) => { state.ui['film.theme'] = FILM_CATS[el.dataset.v] ? el.dataset.v : 'tutti'; state.ui['film.filter'] = FILM_CATS[el.dataset.v] ? 'tutti' : 'davedere'; location.hash = '#/film'; },
   'hint-close': () => { lsSet('casa.hint.install', '1'); rerender(); },
   'hint-push-close': () => { lsSet('casa.hint.push', '1'); rerender(); },
   'note-new': () => noteSheet(),

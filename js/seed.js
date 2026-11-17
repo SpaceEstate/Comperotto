@@ -185,16 +185,16 @@ const MUSICA = [
 ];
 
 const FILM = [
-  { title: 'Mamma, ho perso l’aereo', year: 1990, kind: 'movie', themes: ['natale'], watched: false, fav: false },
-  { title: 'Love Actually - L’amore davvero', year: 2003, kind: 'movie', themes: ['natale'], watched: false, fav: false },
-  { title: 'Il Grinch', year: 2000, kind: 'movie', themes: ['natale'], watched: false, fav: false },
-  { title: 'Nightmare Before Christmas', year: 1993, kind: 'movie', themes: ['halloween', 'natale'], watched: false, fav: false },
-  { title: 'Hocus Pocus', year: 1993, kind: 'movie', themes: ['halloween'], watched: false, fav: false },
-  { title: 'La famiglia Addams', year: 1991, kind: 'movie', themes: ['halloween'], watched: false, fav: false },
-  { title: 'Luca', year: 2021, kind: 'movie', themes: ['estate'], watched: false, fav: false },
-  { title: 'Mamma Mia!', year: 2008, kind: 'movie', themes: ['estate'], watched: false, fav: false },
-  { title: 'Il favoloso mondo di Amélie', year: 2001, kind: 'movie', themes: ['aprile'], watched: false, fav: false },
-  { title: 'Midnight in Paris', year: 2011, kind: 'movie', themes: ['aprile'], watched: false, fav: false },
-  { title: 'Ratatouille', year: 2007, kind: 'movie', themes: ['aprile', 'sempre'], watched: false, fav: false },
-  { title: 'Gli Aristogatti', year: 1970, kind: 'movie', themes: ['sempre'], watched: false, fav: true },
+  { title: 'Mamma, ho perso l’aereo', year: 1990, kind: 'movie', themes: ['natale', 'famiglia'], watched: false },
+  { title: 'Love Actually - L’amore davvero', year: 2003, kind: 'movie', themes: ['natale'], watched: false },
+  { title: 'Il Grinch', year: 2000, kind: 'movie', themes: ['natale', 'famiglia'], watched: false },
+  { title: 'Nightmare Before Christmas', year: 1993, kind: 'movie', themes: ['halloween', 'natale'], watched: false },
+  { title: 'Hocus Pocus', year: 1993, kind: 'movie', themes: ['halloween', 'famiglia'], watched: false },
+  { title: 'La famiglia Addams', year: 1991, kind: 'movie', themes: ['halloween'], watched: false },
+  { title: 'Luca', year: 2021, kind: 'movie', themes: ['famiglia'], watched: false },
+  { title: 'Mamma Mia!', year: 2008, kind: 'movie', themes: ['sempre'], watched: false },
+  { title: 'Il favoloso mondo di Amélie', year: 2001, kind: 'movie', themes: ['sempre'], watched: false },
+  { title: 'Midnight in Paris', year: 2011, kind: 'movie', themes: ['sempre'], watched: false },
+  { title: 'Ratatouille', year: 2007, kind: 'movie', themes: ['famiglia'], watched: false },
+  { title: 'Gli Aristogatti', year: 1970, kind: 'movie', themes: ['famiglia'], watched: false },
 ];

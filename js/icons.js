@@ -86,6 +86,9 @@ const P = {
   airplay: '<path d="M7 17H5a1.5 1.5 0 0 1-1.5-1.5v-10A1.5 1.5 0 0 1 5 4h14a1.5 1.5 0 0 1 1.5 1.5v10A1.5 1.5 0 0 1 19 17h-2"/><path d="M12 14.5l4.5 6h-9z"/>',
   radio: '<rect x="3.5" y="8" width="17" height="12" rx="2.2"/><path d="M7 8l9.5-4.5"/><circle cx="15.5" cy="14" r="2.6"/><path d="M6.8 12.5h4.4M6.8 15.5h4.4"/>',
   queue: '<path d="M4 6.5h11M4 11.5h11M4 16.5h7"/><path d="M17 14v6.5l4-3.2z"/>',
+  // categorie dei film
+  bolt: '<path d="M13.2 2.8 5 13.6h6.3l-1 7.6 8.7-11h-6.4z"/>',
+  ghost: '<path d="M5.5 20.5V10.2a6.5 6.5 0 0 1 13 0v10.3l-2.2-1.6-2.1 1.6-2.2-1.6-2.2 1.6-2.1-1.6z"/><path d="M9.6 10.4h.01M14.4 10.4h.01"/>',
 };
 
 /** Il disegno "nudo" di un'icona (per ridisegnarla altrove, es. sulla mappa). */

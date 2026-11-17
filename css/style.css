@@ -1536,3 +1536,14 @@ html.pl-open body { overflow: hidden; }
 .amz-open .row-main span { font-size: 12.5px; color: var(--text-3); }
 .amz-open > svg.i { color: var(--text-3); }
 .mini-btn.amz { background: var(--oak-soft); color: var(--oak-deep); border-color: transparent; }
+
+/* Film: categorie (due file di scelte: quali film, poi la categoria) */
+.chips.film-cats { margin-top: 2px; }
+.poster-ph.th-famiglia { background: linear-gradient(160deg, #FCEBC8, #F1CF8E); color: #6B4E14; }
+.poster-ph.th-thriller { background: linear-gradient(160deg, #DFE4EC, #B6C0D0); color: #2E3A4F; }
+.poster-ph.th-azione { background: linear-gradient(160deg, #F8DCCD, #EBA98E); color: #7A2E14; }
+.poster-ph.th-horror { background: linear-gradient(160deg, #3D3142, #1D1621); color: #EED7E6; }
+@media (min-width: 700px) and (min-height: 560px) {
+  /* su iPad le categorie stanno tutte in vista (vanno a capo invece di scorrere) */
+  .chips.film-cats { flex-wrap: wrap; overflow: visible; margin-right: 0; padding-right: 0; }
+}

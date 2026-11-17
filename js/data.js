@@ -16,6 +16,23 @@ export const THEMES = {
   aprile: { label: 'Parigi e Canarie', short: 'Parigi e Canarie', icon: 'eiffel' },
 };
 export const THEME_IDS = Object.keys(THEMES);
+
+// Categorie dei film (diverse dai temi di ricette e musica), nell'ordine in cui compaiono
+export const FILM_CATS = {
+  famiglia: { label: 'Famiglia', icon: 'users' },
+  natale: { label: 'Natale', icon: 'tree' },
+  halloween: { label: 'Halloween', icon: 'pumpkin' },
+  sempre: { label: 'Sempre', icon: 'film' },
+  thriller: { label: 'Thriller', icon: 'eye' },
+  azione: { label: 'Azione', icon: 'bolt' },
+  horror: { label: 'Horror', icon: 'ghost' },
+};
+/** Le categorie di un film. I temi di prima che non sono più categorie (es. "Parigi e Canarie", "Estate")
+ *  restano salvati ma non si mostrano: se non resta niente, il film è in "Sempre". */
+export const filmCats = (f) => {
+  const c = ((f && f.themes) || []).filter((t) => FILM_CATS[t]);
+  return c.length ? c : ['sempre'];
+};
 export const themeLabel = (id, short = false) => (THEMES[id] ? (short && THEMES[id].short) || THEMES[id].label : id);
 
 // ---------------------------------------------------------------------------

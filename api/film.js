@@ -18,6 +18,7 @@ const QUERY = `query CercaTitoli($filter: TitleFilter!, $country: Country!, $lan
           fullPath
           originalReleaseYear
           posterUrl(profile: S718, format: JPG)
+          genres { shortName }
         }
         offers(country: $country, platform: WEB, filter: $offerFilter) {
           monetizationType
@@ -32,6 +33,12 @@ const QUERY = `query CercaTitoli($filter: TitleFilter!, $country: Country!, $lan
 }`;
 
 const TYPES = { FLATRATE: 'flatrate', FREE: 'free', ADS: 'free', FAST: 'free', RENT: 'rent', BUY: 'buy' };
+
+// Generi di JustWatch → categorie dei film dell'app (Natale e Halloween non sono generi: li sceglie la famiglia)
+const GENERI = { fml: 'famiglia', act: 'azione', trl: 'thriller', hrr: 'horror' };
+const categorie = (gs) => [...new Set((gs || []).map((g) => g && GENERI[g.shortName]).filter(Boolean))];
+// lo stesso per i generi di Apple (in inglese o in italiano)
+const daGenere = (g) => { const x = String(g || ''); return [/horror|orrore/i.test(x) && 'horror', /thriller/i.test(x) && 'thriller', /action|azione/i.test(x) && 'azione', /family|kids|famiglia|bambini/i.test(x) && 'famiglia'].filter(Boolean); };
 const QUALITY = { _4K: 3, HD: 2, SD: 1 };
 
 function offersFrom(list) {
@@ -77,6 +84,7 @@ async function justwatch(q) {
     poster: n.content && n.content.posterUrl ? IMG + n.content.posterUrl : '',
     link: n.content && n.content.fullPath ? `https://www.justwatch.com${n.content.fullPath}` : '',
     offers: offersFrom(n.offers),
+    categorie: categorie(n.content && n.content.genres),
   })).filter((x) => x.title);
 }
 
@@ -94,6 +102,7 @@ async function itunes(q, kind) {
     poster: (x.artworkUrl100 || '').replace(/\/\d+x\d+bb\./, '/600x900bb.'),
     link: '',
     offers: null,
+    categorie: daGenere(x.primaryGenreName),
   })).filter((x) => x.title);
 }
 

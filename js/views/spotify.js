@@ -73,11 +73,10 @@ function nowCard() {
   const playing = Boolean(p && p.is_playing);
   const img = it ? S.bestImage((it.album && it.album.images) || it.images || (it.show && it.show.images), 200) : '';
   const dur = (it && it.duration_ms) || 0;
-  // mentre si trascina comanda il dito; altrimenti la barra va verso dove sarà tra 5 secondi
-  // (il prossimo aggiornamento): così scorre liscia
-  const trascino = sp.trascino != null;
-  const pos = trascino ? sp.trascino : S.progresso();
-  const pct = dur ? Math.min(100, ((pos + (playing && !trascino ? 5000 : 0)) / dur) * 100) : 0;
+  // mentre si trascina comanda il dito; altrimenti la posizione vera (poi la muove l'orologio qui sotto)
+  const pos = sp.trascino != null ? sp.trascino : S.progresso();
+  const pct = dur ? Math.min(100, (pos / dur) * 100) : 0;
+  ultimo = ''; // i minuti li riscrive il disegno: l'orologio riparte da qui
   const saved = it ? S.salvato(it.uri) : false;
   if (it && it.uri && saved === undefined) queueMicrotask(() => S.controllaSalvati([it.uri]));
   const al = it && it.album;
@@ -86,15 +85,15 @@ function nowCard() {
       ${al && al.id ? html`<a class="sp-cover" href="#/musica/album/${al.id}" aria-label="Album">${icon('music', 'lg')}${img ? html`<img src="${img}" alt="" decoding="async">` : ''}</a>`
         : html`<div class="sp-cover">${icon('music', 'lg')}${img ? html`<img src="${img}" alt="" decoding="async">` : ''}</div>`}
       <div class="sp-meta">
-        <b>${it ? it.name : sp.playerAt ? 'Niente in riproduzione' : 'Spotify'}</b>
-        <span>${it ? nomiArtisti(it) || (it.show && it.show.name) || '' : sp.playerAt ? 'Cerca qualcosa o tocca una playlist' : 'Un attimo…'}</span>
+        <b>${it ? it.name : sp.playerAt && !S.inArrivo() ? 'Niente in riproduzione' : 'Spotify'}</b>
+        <span>${it ? nomiArtisti(it) || (it.show && it.show.name) || '' : sp.playerAt && !S.inArrivo() ? 'Cerca qualcosa o tocca una playlist' : 'Un attimo…'}</span>
         <button class="sp-dev ${dev ? '' : 'none'}" data-action="sp-dispositivi">${icon(dev ? devIcon(dev) : 'speaker', 'xs')}<span>${dev ? devNome(dev) : 'Scegli dove ascoltare'}</span>${icon('down', 'xs')}</button>
       </div>
       ${it && it.type !== 'episode' ? html`<button class="sp-ic big ${saved ? 'on' : ''}" data-action="sp-cuore" data-uri="${it.uri}" aria-label="${saved ? 'Togli dai preferiti' : 'Aggiungi ai preferiti'}">${icon('heart', saved ? 'filled' : '')}</button>` : ''}
     </div>
     ${it ? html`
       <div class="sp-seek no-gesture" id="sp-seek-${it.id || 'x'}">
-        <div class="sp-bar"><i style="width:${pct.toFixed(2)}%;transition-duration:${trascino ? 0 : playing ? 5 : 0.3}s"></i></div>
+        <div class="sp-bar"><i style="width:${pct.toFixed(2)}%"></i></div>
         <input type="range" min="0" max="${dur}" step="1000" value="${Math.round(pos)}" data-change="sp-seek" aria-label="Posizione nel brano">
       </div>
       <div class="sp-times"><span id="sp-t1">${tempo(pos)}</span><span id="sp-t2">-${tempo(dur - pos)}</span></div>
@@ -115,11 +114,17 @@ function tempo(ms) {
 }
 
 // la barra del brano: mentre il dito trascina mostro subito dove si arriva, al rilascio ci vado (azione sp-seek)
-function mostraPosizione(ms) {
+let ultimo = '';
+function mostraPosizione(ms, dito = false) {
   const it = sp.player && sp.player.item;
   const dur = (it && it.duration_ms) || 0;
-  const bar = document.querySelector('.sp-seek .sp-bar > i');
-  if (bar && dur) { bar.style.transitionDuration = '0s'; bar.style.width = `${Math.min(100, (ms / dur) * 100)}%`; }
+  const bar = document.querySelector('#sp-now .sp-bar > i');
+  if (!bar || !dur) return;
+  bar.classList.toggle('dito', dito); // sotto il dito niente scivolamento
+  bar.style.width = `${Math.min(100, (ms / dur) * 100).toFixed(2)}%`;
+  const testo = `${tempo(ms)}|${tempo(dur - ms)}`;
+  if (testo === ultimo) return; // i numeri cambiano una volta al secondo
+  ultimo = testo;
   const t1 = document.getElementById('sp-t1'), t2 = document.getElementById('sp-t2');
   if (t1) t1.textContent = tempo(ms);
   if (t2) t2.textContent = `-${tempo(dur - ms)}`;
@@ -129,19 +134,16 @@ document.addEventListener('input', (ev) => {
   if (!el || !el.matches || !el.matches('.sp-seek input')) return;
   el._busy = true; // il ridisegno non mi sposta il pallino sotto il dito
   sp.trascino = Number(el.value);
-  mostraPosizione(sp.trascino);
+  mostraPosizione(sp.trascino, true);
 }, true);
-// i minuti scorrono ogni secondo (la barra scorre da sola)
+// l'orologio della barra: 4 volte al secondo, solo con la scheda del lettore sullo schermo e la musica che va
 setInterval(() => {
-  if (document.hidden || sp.trascino != null || !sp.player || !sp.player.is_playing) return;
-  const t1 = document.getElementById('sp-t1');
-  if (!t1) return;
+  const p = sp.player;
+  if (document.hidden || sp.trascino != null || !p || !p.item || !p.is_playing || !document.getElementById('sp-now')) return;
   const ms = S.progresso();
-  const dur = (sp.player.item && sp.player.item.duration_ms) || 0;
-  t1.textContent = tempo(ms);
-  const t2 = document.getElementById('sp-t2');
-  if (t2) t2.textContent = `-${tempo(dur - ms)}`;
-}, 1000);
+  mostraPosizione(ms);
+  if (p.item.duration_ms && ms >= p.item.duration_ms - 250) S.fineBrano(); // finito: chiedo subito il prossimo
+}, 250);
 
 function mini() {
   const p = sp.player;
@@ -435,6 +437,19 @@ function caricaPagine(base, fn) {
 }
 const uriDi = (list) => (list || []).map((t) => t.uri);
 
+let suggerimenti = false;
+window.addEventListener('hashchange', () => { if (!location.hash.startsWith('#/musica')) suggerimenti = false; });
+/** La lista a tema vale per tutti (una settimana), "per te" è del proprio account (qualche ora). */
+async function caricaSuggerimenti() {
+  if (!S.chi()) return;
+  const kp = S.chiave('perte');
+  try {
+    const d = await S.leggi(kp, () => S.perTe(), { maxAge: 6 * 3600000, conserva: { dopo: (x) => S.registra(x.scelti) } });
+    S.controllaSalvati(uriDi(d.scelti));
+  } catch { /* riprovo alla prossima visita */ }
+  try { await S.leggi(chiaveTema(), () => S.trovaBrani(periodoMusica().brani), { maxAge: 7 * 86400000, conserva: { dopo: S.registra } }); } catch { /* idem */ }
+}
+
 let cercaT;
 let messoFuoco = false;
 export function after(r) {
@@ -442,13 +457,8 @@ export function after(r) {
   if (!isSynced() || !S.chi()) return;
   const [, sub, id] = r;
   if (!sub) {
-    // suggerimenti: la lista a tema vale per tutti (una settimana), "per te" è del proprio account (qualche ora)
-    const kt = chiaveTema();
-    if (!S.letto(kt) && !S.fallito(kt)) S.leggi(kt, () => S.trovaBrani(periodoMusica().brani), { maxAge: 7 * 86400000, conserva: { dopo: S.registra } }).catch(muto);
-    const kp = S.chiave('perte');
-    if (!S.letto(kp) && !S.fallito(kp) && sp.playlists[S.chi()]) {
-      S.leggi(kp, () => S.perTe(), { maxAge: 6 * 3600000, conserva: { dopo: (d) => S.registra(d.scelti) } }).then((d) => S.controllaSalvati(uriDi(d.scelti))).catch(muto);
-    }
+    // suggerimenti: dopo il lettore e uno alla volta (Spotify non ama le raffiche di richieste)
+    if (!suggerimenti && sp.playerAt && sp.playlists[S.chi()]) { suggerimenti = true; setTimeout(caricaSuggerimenti, 600); }
   } else if (sub === 'cerca') {
     const q = ui('sp.q', '').trim();
     const tipo = ui('sp.tipo', 'tutto');

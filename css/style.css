@@ -675,7 +675,8 @@ svg.i.lg { width: 28px; height: 28px; stroke-width: 1.6; }
 .sp-dev.none { background: var(--oak-soft); color: var(--oak-deep); }
 .sp-seek { position: relative; height: 30px; margin: 8px 2px 0; display: flex; align-items: center; }
 .sp-bar { position: relative; flex: 1; height: 5px; border-radius: 5px; background: var(--line); }
-.sp-bar > i { position: relative; display: block; height: 100%; border-radius: 5px; background: var(--sage); transition-property: width; transition-timing-function: linear; }
+.sp-bar > i { position: relative; display: block; height: 100%; border-radius: 5px; background: var(--sage); transition: width .25s linear; }
+.sp-bar > i.dito { transition: none; }
 .sp-bar > i::after { content: ''; position: absolute; right: -7px; top: 50%; width: 14px; height: 14px; margin-top: -7px; border-radius: 50%; background: var(--sage); box-shadow: 0 1px 4px rgba(0, 0, 0, .2); }
 /* il cursore vero è trasparente sopra la barra: prende il dito, la barra disegna */
 .sp-seek input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; touch-action: none; -webkit-appearance: none; appearance: none; }

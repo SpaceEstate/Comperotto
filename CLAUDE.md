@@ -29,6 +29,9 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   (seek), niente volume. Suggerimenti: musica a tema del periodo (`MUSICA_TEMA` in `js/data.js`, periodo da `periodoMusica()` in
   `season.js`, trovata con la ricerca e tenuta una settimana) e "Scelti per te" (artisti dei brani salvati → loro brani non salvati e
   uscite dell'ultimo anno: le raccomandazioni di Spotify non ci sono più per le app nuove). "La nostra musica" non c'è più (i dati restano).
+  Lettore (`js/spotify.js`): dopo un comando lo schermo cambia subito e le "attese" tengono lo stato chiesto finché Spotify non lo
+  conferma (min 2,5 s, max 4,5 s: gli Echo rispondono in ritardo); comandi in fila uno alla volta; richieste con timeout di 10 s e
+  pausa automatica sui 429; si ridisegna solo se cambia brano/stato/dispositivo; la barra la muove un orologio locale (250 ms).
   "Questo iPhone/iPad" = Web Playback SDK (`sdk.scdn.co`, caricato solo quando serve; `activateElement()` dentro il tocco;
   vuole i permessi `streaming user-read-email user-read-private`, altrimenti "Invalid token scopes").
   Regole 2026 (modalità sviluppo, max 5 utenti, proprietario Premium): ricerca max 10 per tipo, `tracks`→`items` nelle playlist,

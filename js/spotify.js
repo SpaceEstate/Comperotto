@@ -1,7 +1,8 @@
 // Spotify dall'app: il server tiene i permessi (api/spotify.js), qui si parla direttamente con Spotify
-// con un token che dura un'ora. Playlist, cosa suona, dispositivi (iPhone, iPad, Echo…) e comandi.
-import { lsGet, lsSet } from './utils.js';
-import { store, isSynced, me, rerender } from './core.js';
+// con un token che dura un'ora. Cosa suona e dove (iPhone, iPad, Echo…), comandi, ricerca, preferiti,
+// playlist (anche crearle e modificarle), coda e il lettore dentro l'app (Web Playback SDK).
+import { lsGet, lsSet, isIPad } from './utils.js';
+import { store, isSynced, me, myName, rerender } from './core.js';
 
 const API = 'https://api.spotify.com/v1/';
 const parse = (s) => { try { return JSON.parse(s); } catch { return null; } };
@@ -130,14 +131,8 @@ export async function caricaPlaylist(k = chi(), forza = false) {
   let path = 'me/playlists?limit=50';
   for (let i = 0; path && i < 6; i++) {
     const j = await call(path, {}, k);
-    (j.items || []).filter(Boolean).forEach((p) => list.push({
-      id: p.id,
-      uri: p.uri,
-      name: p.name || '',
-      img: bestImage(p.images, 300),
-      n: (p.items && p.items.total) ?? (p.tracks && p.tracks.total) ?? null,
-      owner: (p.owner && p.owner.display_name) || '',
-    }));
+    const io = await mioId(k);
+    (j.items || []).filter(Boolean).forEach((p) => list.push(playlistBreve(p, io)));
     path = j.next ? j.next.replace(API, '') : '';
   }
   sp.playlists[k] = { at: Date.now(), list };
@@ -175,7 +170,7 @@ const ripassa = () => { setTimeout(() => aggiorna(), 600); setTimeout(() => aggi
 export async function suona({ context, uris, offset }, device = doveSuonare()) {
   if (!device) throw new SpotifyError('Scegli dove ascoltare', 0, 'NO_DEVICE');
   const q = `me/player/play?device_id=${encodeURIComponent(device)}`;
-  await call(q, { method: 'PUT', body: context ? { context_uri: context, ...(offset ? { offset } : {}) } : { uris } });
+  await call(q, { method: 'PUT', body: { ...(context ? { context_uri: context } : { uris }), ...(offset ? { offset } : {}) } });
   scegliDispositivo(device);
   if (sp.player) sp.player.is_playing = true;
   ripassa();
@@ -197,7 +192,11 @@ export async function playPausa() {
   if (suonava) p.progress_ms = progresso();
   sp.playerAt = Date.now();
   rerender();
-  try { await call(suonava ? 'me/player/pause' : 'me/player/play', { method: 'PUT' }); } catch (e) { p.is_playing = suonava; rerender(); throw e; }
+  try {
+    // suona dentro l'app: comando diretto al lettore (su iPhone/iPad deve partire dal tocco)
+    if (qui.player && eQui(p.device && p.device.id)) await qui.player.togglePlay();
+    else await call(suonava ? 'me/player/pause' : 'me/player/play', { method: 'PUT' });
+  } catch (e) { p.is_playing = suonava; rerender(); throw e; }
   ripassa();
 }
 
@@ -263,4 +262,250 @@ export function uriDaLink(link) {
   if (!m) return null;
   const uri = `spotify:${m[1]}:${m[2]}`;
   return m[1] === 'track' || m[1] === 'episode' ? { uris: [uri] } : { context: uri };
+}
+
+// ---------------------------------------------------------------------------
+// Dati letti da Spotify (con una piccola memoria, così tornare indietro è immediato)
+// ---------------------------------------------------------------------------
+const cache = new Map();
+const inVolo = new Map();
+const errori = new Map();
+/** Dato già letto (o undefined). */
+export const letto = (key) => (cache.get(key) || {}).data;
+export const fallito = (key) => errori.get(key) || null;
+/** Legge una volta e tiene a mente per qualche minuto; ridisegna la pagina quando arriva. */
+export function leggi(key, fn, { maxAge = 5 * 60000, forza = false } = {}) {
+  const c = cache.get(key);
+  if (!forza && c && Date.now() - c.at < maxAge) return Promise.resolve(c.data);
+  if (inVolo.has(key)) return inVolo.get(key);
+  errori.delete(key);
+  const pr = fn()
+    .then((data) => { cache.set(key, { at: Date.now(), data }); return data; })
+    .catch((e) => { errori.set(key, e); throw e; })
+    .finally(() => { inVolo.delete(key); rerender(); });
+  inVolo.set(key, pr);
+  return pr;
+}
+export function dimentica(prefix) {
+  for (const m of [cache, errori]) for (const k of [...m.keys()]) if (k.startsWith(prefix)) m.delete(k);
+}
+export const chiave = (...parti) => [chi(), ...parti].join(':');
+
+const ids = {};
+/** Il mio id su Spotify (per sapere quali playlist sono nostre e si possono modificare). */
+export async function mioId(k = chi()) {
+  const a = sp.info && sp.info.account && sp.info.account[k];
+  if (a && a.id) return a.id;
+  if (!ids[k]) ids[k] = call('me', {}, k).then((j) => j.id || '').catch(() => '');
+  return ids[k];
+}
+
+// forme semplici di brani, album, artisti, playlist (le risposte di Spotify sono enormi)
+const tutti = (x) => ((x && x.items) || []).filter(Boolean);
+export function brano(t, album = null) {
+  if (!t || !t.uri) return null;
+  const al = t.album || album;
+  return {
+    id: t.id, uri: t.uri, name: t.name || '', ms: t.duration_ms || 0, n: t.track_number || 0,
+    artists: (t.artists || []).map((a) => ({ id: a.id, name: a.name })),
+    album: al ? { id: al.id, name: al.name || '' } : null,
+    img: bestImage((al && al.images) || (t.show && t.show.images) || t.images, 64),
+    big: bestImage((al && al.images) || t.images, 300),
+    ok: t.is_playable !== false && !t.is_local,
+  };
+}
+export const albumBreve = (a) => a && ({ id: a.id, uri: a.uri, name: a.name || '', img: bestImage(a.images, 300), anno: String(a.release_date || '').slice(0, 4), artists: (a.artists || []).map((x) => ({ id: x.id, name: x.name })), tipo: a.album_type || '' });
+export const artistaBreve = (a) => a && ({ id: a.id, uri: a.uri, name: a.name || '', img: bestImage(a.images, 300) });
+export function playlistBreve(p, io = '') {
+  return p && {
+    id: p.id, uri: p.uri, name: p.name || '', img: bestImage(p.images, 300),
+    n: (p.items && p.items.total) ?? (p.tracks && p.tracks.total) ?? null,
+    owner: (p.owner && p.owner.display_name) || '',
+    own: Boolean(p.collaborative || (io && p.owner && p.owner.id === io)),
+  };
+}
+/** Tutti i brani conosciuti per uri: servono al foglio "⋯" di un brano. */
+export const brani = new Map();
+const registra = (list) => { list.forEach((t) => t && brani.set(t.uri, t)); return list; };
+
+// ---------------------------------------------------------------------------
+// Ricerca
+// ---------------------------------------------------------------------------
+export const TIPI = ['track', 'artist', 'album', 'playlist'];
+/** Cerca (Spotify oggi dà al massimo 10 risultati per tipo a ogni richiesta). */
+export async function cercaSu(q, tipi = TIPI, offset = 0) {
+  const j = await call(`search?type=${tipi.join(',')}&limit=10&offset=${offset}&market=from_token&q=${encodeURIComponent(q)}`);
+  const io = await mioId();
+  return {
+    track: registra(tutti(j.tracks).map((t) => brano(t)).filter(Boolean)),
+    artist: tutti(j.artists).map(artistaBreve),
+    album: tutti(j.albums).map(albumBreve),
+    playlist: tutti(j.playlists).map((p) => playlistBreve(p, io)),
+    altri: Object.fromEntries(TIPI.map((t) => [t, Boolean(j[`${t}s`] && j[`${t}s`].next)])),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Pagine: preferiti, playlist, album, artista
+// ---------------------------------------------------------------------------
+export async function preferiti(offset = 0) {
+  const j = await call(`me/tracks?limit=50&offset=${offset}&market=from_token`);
+  const list = registra(tutti(j).map((x) => brano(x.item || x.track)).filter(Boolean));
+  list.forEach((t) => salvatiMap.set(t.uri, true));
+  return { list, totale: j.total || list.length, altri: Boolean(j.next) };
+}
+
+export async function playlist(id, offset = 0) {
+  const io = await mioId();
+  const [p, items] = await Promise.all([
+    offset ? null : call(`playlists/${encodeURIComponent(id)}?market=from_token`),
+    call(`playlists/${encodeURIComponent(id)}/items?limit=50&offset=${offset}&market=from_token&additional_types=track,episode`).catch((e) => (e.status === 403 || e.status === 404 ? null : Promise.reject(e))),
+  ]);
+  const list = items ? registra(tutti(items).map((x) => brano(x.item || x.track)).filter(Boolean)) : null;
+  return {
+    info: p ? { ...playlistBreve(p, io), big: bestImage(p.images, 600), descr: String(p.description || '').replace(/<[^>]*>/g, ''), snapshot: p.snapshot_id } : null,
+    list, // null = Spotify non mostra i brani (playlist di altri)
+    totale: items ? items.total : null,
+    altri: Boolean(items && items.next),
+  };
+}
+
+export async function album(id) {
+  const a = await call(`albums/${encodeURIComponent(id)}?market=from_token`);
+  const tracce = a.tracks || a.items || {};
+  return { info: { ...albumBreve(a), big: bestImage(a.images, 600) }, list: registra(tutti(tracce).map((t) => brano(t, a)).filter(Boolean)) };
+}
+
+export async function artista(id) {
+  const [a, al] = await Promise.all([
+    call(`artists/${encodeURIComponent(id)}`),
+    call(`artists/${encodeURIComponent(id)}/albums?include_groups=album,single,compilation&limit=30&market=from_token`).catch(() => null),
+  ]);
+  return { info: { ...artistaBreve(a), big: bestImage(a.images, 600) }, albums: tutti(al).map(albumBreve) };
+}
+
+// ---------------------------------------------------------------------------
+// Preferiti (la libreria di Spotify): brani, album, playlist
+// ---------------------------------------------------------------------------
+const salvatiMap = new Map();
+export const salvato = (uri) => salvatiMap.get(uri);
+/** Chiede a Spotify quali di questi sono già tra i preferiti (a gruppi di 40). */
+export async function controllaSalvati(uris) {
+  const da = [...new Set(uris.filter((u) => u && !salvatiMap.has(u)))];
+  for (let i = 0; i < da.length; i += 40) {
+    const parte = da.slice(i, i + 40);
+    parte.forEach((u) => salvatiMap.set(u, false)); // intanto: così non lo richiedo di nuovo
+    try {
+      const j = await call(`me/library/contains?uris=${encodeURIComponent(parte.join(','))}`);
+      if (Array.isArray(j)) parte.forEach((u, n) => salvatiMap.set(u, Boolean(j[n])));
+    } catch { parte.forEach((u) => salvatiMap.delete(u)); return; }
+  }
+  if (da.length) rerender();
+}
+export async function salva(uri, si = true) {
+  const prima = salvatiMap.get(uri);
+  salvatiMap.set(uri, si);
+  rerender();
+  try {
+    await call(`me/library?uris=${encodeURIComponent(uri)}`, { method: si ? 'PUT' : 'DELETE' });
+  } catch (e) { salvatiMap.set(uri, prima); rerender(); throw e; }
+  dimentica(chiave('preferiti'));
+  if (uri.startsWith('spotify:playlist:')) caricaPlaylist(chi(), true).catch(() => {});
+}
+
+// ---------------------------------------------------------------------------
+// Le nostre playlist: crearle, rinominarle, aggiungere e togliere brani
+// ---------------------------------------------------------------------------
+export async function nuovaPlaylist(name) {
+  const p = await call('me/playlists', { method: 'POST', body: { name, public: false, description: '' } });
+  await caricaPlaylist(chi(), true).catch(() => {});
+  return p;
+}
+export async function rinomina(id, name) {
+  await call(`playlists/${encodeURIComponent(id)}`, { method: 'PUT', body: { name } });
+  dimentica(chiave('pl', id));
+  await caricaPlaylist(chi(), true).catch(() => {});
+}
+export async function eliminaPlaylist(id) {
+  await call(`me/library?uris=${encodeURIComponent(`spotify:playlist:${id}`)}`, { method: 'DELETE' });
+  dimentica(chiave('pl', id));
+  await caricaPlaylist(chi(), true).catch(() => {});
+}
+export async function aggiungiA(id, uris) {
+  await call(`playlists/${encodeURIComponent(id)}/items`, { method: 'POST', body: { uris } });
+  dimentica(chiave('pl', id));
+  caricaPlaylist(chi(), true).catch(() => {});
+}
+export async function togliDa(id, uris) {
+  await call(`playlists/${encodeURIComponent(id)}/items`, { method: 'DELETE', body: { items: uris.map((uri) => ({ uri })) } });
+  dimentica(chiave('pl', id));
+  caricaPlaylist(chi(), true).catch(() => {});
+}
+
+// ---------------------------------------------------------------------------
+// Coda e "casuale" all'avvio
+// ---------------------------------------------------------------------------
+export async function inCoda(uri) {
+  const d = doveSuonare();
+  if (!d) throw new SpotifyError('Scegli dove ascoltare', 0, 'NO_DEVICE');
+  await call(`me/player/queue?uri=${encodeURIComponent(uri)}&device_id=${encodeURIComponent(d)}`, { method: 'POST' });
+}
+export async function suonaCasuale(target, d = doveSuonare()) {
+  if (!d) throw new SpotifyError('Scegli dove ascoltare', 0, 'NO_DEVICE');
+  await call(`me/player/shuffle?state=true&device_id=${encodeURIComponent(d)}`, { method: 'PUT' }).catch(() => {});
+  await suona(target, d);
+  if (sp.player) sp.player.shuffle_state = true;
+}
+
+// ---------------------------------------------------------------------------
+// Il lettore dentro l'app: questo iPhone/iPad diventa un dispositivo Spotify
+// ---------------------------------------------------------------------------
+export const qui = { player: null, id: null, chi: null, pronto: null };
+let sdk = null;
+/** Carica il lettore di Spotify (una volta sola, quando serve). */
+export function caricaSdk() {
+  if (window.Spotify) return Promise.resolve();
+  if (sdk) return sdk;
+  sdk = new Promise((ok, ko) => {
+    window.onSpotifyWebPlaybackSDKReady = ok;
+    const s = document.createElement('script');
+    s.src = 'https://sdk.scdn.co/spotify-player.js';
+    s.async = true;
+    s.onerror = () => { sdk = null; ko(new SpotifyError('Il lettore di Spotify non si carica', 0, 'SDK')); };
+    document.head.appendChild(s);
+  });
+  return sdk;
+}
+export const nomeQui = () => `Comperotto · ${isIPad() ? 'iPad' : /iPhone/.test(navigator.userAgent) ? 'iPhone' : 'web'}${myName() ? ` di ${myName()}` : ''}`;
+export const eQui = (id) => Boolean(id && qui.id && id === qui.id);
+
+let statoT;
+/**
+ * Accende il lettore dentro l'app. Va chiamata subito nel tocco: su iPhone e iPad l'audio
+ * parte solo se il primo "play" arriva da un gesto (activateElement).
+ */
+export function attivaQui() {
+  if (!window.Spotify) return caricaSdk().then(() => attivaQui());
+  const k = chi();
+  if (!qui.player || qui.chi !== k) {
+    if (qui.player) qui.player.disconnect();
+    const player = new window.Spotify.Player({ name: nomeQui(), getOAuthToken: (cb) => { token(k).then(cb).catch(() => {}); }, volume: 0.8 });
+    qui.player = player;
+    qui.chi = k;
+    qui.id = null;
+    qui.pronto = new Promise((ok, ko) => {
+      const t = setTimeout(() => ko(new SpotifyError('Il lettore non risponde', 0, 'SDK')), 15000);
+      player.addListener('ready', ({ device_id }) => { clearTimeout(t); qui.id = device_id; ok(device_id); });
+      player.addListener('not_ready', () => { qui.id = null; });
+      for (const ev of ['initialization_error', 'authentication_error', 'account_error']) {
+        player.addListener(ev, ({ message }) => { clearTimeout(t); ko(new SpotifyError(message, 0, ev)); });
+      }
+      // cosa suona cambia subito sullo schermo (senza aspettare il prossimo giro)
+      player.addListener('player_state_changed', () => { clearTimeout(statoT); statoT = setTimeout(() => aggiorna(), 400); });
+    });
+    qui.pronto.catch(() => { if (qui.player === player) { player.disconnect(); qui.player = null; } });
+    player.connect();
+  }
+  if (qui.player.activateElement) qui.player.activateElement();
+  return qui.pronto;
 }

@@ -139,7 +139,13 @@ Ogni tipo si può spegnere dal singolo dispositivo; "Prova" manda una notifica d
 
 Aggiungete brani, album o playlist con un tema (Natale, Halloween, Estate, Parigi e Canarie…). Se incollate un **link Spotify** (Condividi → Copia link) si ascolta direttamente nell'app. Nel periodo giusto la sezione mette in cima la musica a tema.
 
-**Spotify collegato** (serve Premium): in cima a *Musica* compaiono cosa sta suonando e dove, i comandi (casuale, indietro, play/pausa, avanti, volume), le vostre playlist da far partire con un tocco e il foglio **Dove ascoltare?** con iPhone, iPad ed **Echo**. Con Spotify collegato anche il ▶ della nostra musica la fa partire lì (se un brano non ha il link, l'app lo cerca su Spotify).
+**Spotify collegato** (serve Premium), come nell'app di Spotify:
+- in cima a *Musica* cosa sta suonando e dove, con casuale, indietro, play/pausa, avanti, volume e ♥;
+- **Cerca** brani, artisti, album e playlist; pagine di playlist, album e artista con *Riproduci* e *Casuale*;
+- **Brani che ti piacciono** (il ♥ accanto a ogni brano), album e playlist salvati nella libreria;
+- **playlist vostre**: crearle, rinominarle, eliminarle, aggiungere e togliere brani (⋯ accanto al brano → *Aggiungi a una playlist*), e *Aggiungi in coda*;
+- **Dove ascoltare?**: *questo iPhone/iPad* (la musica suona dentro l'app), gli altri dispositivi con Spotify aperto e gli **Echo**;
+- il ▶ della nostra musica la fa partire lì (se un brano non ha il link, l'app lo cerca su Spotify), e da ⋯ un brano di Spotify si aggiunge alla nostra musica.
 
 Una volta sola, da un computer:
 

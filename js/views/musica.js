@@ -1,13 +1,13 @@
-// La nostra musica, anche a tema del periodo (Natale, Halloween, mare, Parigi…), e Spotify:
-// cosa suona, su quale dispositivo (iPhone, iPad, Echo…), le playlist da far partire con un tocco.
+// Musica: Spotify in cima (lettore, ricerca, libreria: vedi views/spotify.js) e "La nostra musica",
+// la lista di famiglia anche a tema del periodo (Natale, Halloween, mare, Parigi…).
 import { html, raw, cap, safeUrl, vibrate } from '../utils.js';
 import { icon, catFace } from '../icons.js';
 import { THEMES, themeLabel, MUSIC_TYPES } from '../data.js';
-import { state, store, openSheet, closeSheet, toast, val, emptyState, ui, setUi, themeChoices, me, whoBadge, pageHead, isSynced, nameOf, sheetError, rerender } from '../core.js';
+import { state, store, openSheet, closeSheet, toast, val, emptyState, ui, setUi, themeChoices, me, whoBadge, pageHead, isSynced } from '../core.js';
 import { currentTheme } from '../season.js';
 import * as S from '../spotify.js';
+import * as SPV from './spotify.js';
 
-const { sp } = S;
 const TYPE_ICON = { brano: 'music', album: 'disc', playlist: 'headphones' };
 
 /** Riconosce i link di Spotify per mostrare il lettore integrato. */
@@ -19,86 +19,6 @@ const query = (m) => `${m.title} ${m.artist || ''}`.trim();
 export const spotifySearch = (m) => `https://open.spotify.com/search/${encodeURIComponent(query(m))}`;
 export const ytSearch = (m) => `https://music.youtube.com/search?q=${encodeURIComponent(query(m))}`;
 
-// ---------------------------------------------------------------------------
-// Spotify: in riproduzione e dispositivi
-// ---------------------------------------------------------------------------
-const DEV_ICON = { Speaker: 'speaker', Smartphone: 'phone', Tablet: 'tablet', Computer: 'laptop', TV: 'tv', CastVideo: 'tv', CastAudio: 'speaker', AVR: 'speaker', STB: 'tv', Automobile: 'music', GameConsole: 'tv' };
-const DEV_LABEL = { Speaker: 'Altoparlante', Smartphone: 'Telefono', Tablet: 'Tablet', Computer: 'Computer', TV: 'TV', CastVideo: 'TV', CastAudio: 'Altoparlante', AVR: 'Amplificatore', STB: 'TV', Automobile: 'Auto', GameConsole: 'Console' };
-const devIcon = (d) => DEV_ICON[d && d.type] || 'speaker';
-const artisti = (it) => (it.artists || []).map((a) => a.name).join(', ') || (it.show && it.show.name) || '';
-const copertina = (it) => S.bestImage((it.album && it.album.images) || it.images || (it.show && it.show.images), 200);
-const sceltoOAttivo = () => S.attivo() || (sp.devices || []).find((d) => d.id === S.dispositivoScelto()) || null;
-
-function nowCard() {
-  const p = sp.player;
-  const it = p && p.item;
-  const dev = sceltoOAttivo();
-  const playing = Boolean(p && p.is_playing);
-  const img = it ? copertina(it) : '';
-  const dur = (it && it.duration_ms) || 0;
-  // la barra va verso dove sarà tra 5 secondi (il prossimo aggiornamento): così scorre liscia
-  const pct = dur ? Math.min(100, ((S.progresso() + (playing ? 5000 : 0)) / dur) * 100) : 0;
-  const vol = dev && dev.supports_volume !== false && dev.volume_percent != null ? dev.volume_percent : null;
-  return html`<div class="card sp-now ${playing ? 'playing' : ''}" id="sp-now">
-    <div class="sp-top">
-      <div class="sp-cover">${icon('music', 'lg')}${img ? html`<img src="${img}" alt="" decoding="async">` : ''}</div>
-      <div class="sp-meta">
-        <b>${it ? it.name : sp.playerAt ? 'Niente in riproduzione' : 'Spotify'}</b>
-        <span>${it ? artisti(it) : sp.playerAt ? 'Tocca una playlist per farla partire' : 'Un attimo…'}</span>
-        <button class="sp-dev ${dev ? '' : 'none'}" data-action="sp-dispositivi">${icon(dev ? devIcon(dev) : 'speaker', 'xs')}<span>${dev ? dev.name : 'Scegli dove ascoltare'}</span>${icon('down', 'xs')}</button>
-      </div>
-    </div>
-    ${it ? html`
-      <div class="sp-bar" id="sp-bar-${it.id || 'x'}"><i style="width:${pct.toFixed(2)}%;transition-duration:${playing ? 5 : 0.3}s"></i></div>
-      <div class="sp-ctrl">
-        <button class="sp-btn ${p.shuffle_state ? 'on' : ''}" data-action="sp-casuale" aria-label="Ordine casuale" aria-pressed="${p.shuffle_state ? 'true' : 'false'}">${icon('shuffle', 'sm')}</button>
-        <button class="sp-btn" data-action="sp-indietro" aria-label="Precedente">${icon('prev', 'filled')}</button>
-        <button class="sp-play" data-action="sp-playpausa" aria-label="${playing ? 'Pausa' : 'Riproduci'}">${icon(playing ? 'pause' : 'play', 'filled')}</button>
-        <button class="sp-btn" data-action="sp-avanti" aria-label="Successivo">${icon('next', 'filled')}</button>
-        <button class="sp-btn" data-action="sp-dispositivi" aria-label="Dove ascoltare">${icon(dev ? devIcon(dev) : 'speaker', 'sm')}</button>
-      </div>
-      ${vol != null ? html`<label class="sp-vol">${icon('volume', 'sm')}<input type="range" min="0" max="100" step="1" value="${vol}" data-input="sp-volume" aria-label="Volume"></label>` : ''}` : ''}
-  </div>`;
-}
-
-function playlistGrid(k) {
-  const pl = sp.playlists[k];
-  const list = (pl && pl.list) || [];
-  const tutte = ui('sp.tutte', false);
-  const ctx = sp.player && sp.player.context && sp.player.context.uri;
-  const shown = tutte ? list : list.slice(0, 12);
-  if (!pl) return html`<p class="muted small sp-wait">Cerco le playlist…</p>`;
-  if (!list.length) return html`<p class="muted small sp-wait">Nessuna playlist su questo account.</p>`;
-  return html`<div class="sp-grid">${shown.map((p) => html`
-    <button class="sp-pl ${ctx === p.uri ? 'on' : ''}" data-action="sp-playlist" data-uri="${p.uri}" aria-label="Fai partire ${p.name}">
-      <span class="sp-pl-img">${icon('headphones', 'lg')}${p.img ? html`<img src="${p.img}" alt="" loading="lazy" decoding="async">` : ''}${ctx === p.uri ? html`<span class="sp-eq ${sp.player.is_playing ? '' : 'stop'}"><i></i><i></i><i></i></span>` : ''}</span>
-      <b>${p.name}</b>
-      ${p.n != null ? html`<span>${p.n === 1 ? '1 brano' : `${p.n} brani`}</span>` : ''}
-    </button>`)}</div>
-    ${list.length > 12 ? html`<button class="card-link sp-more" data-action="sp-tutte">${tutte ? 'Mostra meno' : `Mostra tutte (${list.length})`}</button>` : ''}`;
-}
-
-function spotifyBlock() {
-  if (!isSynced() || !sp.info) return '';
-  const k = S.chi();
-  if (!k) {
-    return html`<div class="card sp-connect">
-      <span class="sp-logo">${icon('music')}</span>
-      <div class="row-main"><b>Spotify</b><span>Le vostre playlist e la musica sugli Echo, da qui.</span></div>
-      <button class="btn primary" data-action="sp-collega" ${sp.busy === 'collega' ? raw('disabled') : ''}>Collega</button>
-    </div>`;
-  }
-  const acc = S.collegati();
-  return html`
-    ${nowCard()}
-    <div class="section-title"><span>${acc.length > 1 ? 'Playlist' : `Le playlist di ${nameOf(k)}`}</span><button class="card-link" data-action="sp-account">Spotify ${icon('right', 'xs')}</button></div>
-    ${acc.length > 1 ? html`<div class="segmented sp-who">${acc.map((x) => html`<button class="${x === k ? 'on' : ''}" data-action="sp-chi" data-v="${x}">${nameOf(x)}</button>`)}</div>` : ''}
-    ${playlistGrid(k)}`;
-}
-
-// ---------------------------------------------------------------------------
-// La nostra musica
-// ---------------------------------------------------------------------------
 function row(m) {
   const open = ui('musica.open', null) === m.id;
   const embed = spotifyEmbed(m.link);
@@ -121,7 +41,8 @@ function row(m) {
     ${open && embed && !connect ? html`<div class="embed"><iframe title="${m.title}" src="${embed}" height="${m.type === 'brano' ? 152 : 352}" frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>` : ''}`;
 }
 
-export function render() {
+export function render(r = []) {
+  if (SPV.SOTTO.includes(r[1])) return SPV.render(r);
   const theme = ui('musica.theme', 'tutti');
   const all = [...state.data.musica].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   const cur = currentTheme();
@@ -129,7 +50,7 @@ export function render() {
   const list = all.filter((m) => theme === 'tutti' || (m.themes || []).includes(theme));
   const seasonal = cur && theme === 'tutti' ? list.filter((m) => (m.themes || []).includes(cur.id)) : [];
   const rest = list.filter((m) => !seasonal.includes(m));
-  const spot = spotifyBlock();
+  const spot = SPV.blocco();
 
   return html`
     <a class="back-link phone-only" href="#/">${icon('left', 'sm')} Home</a>
@@ -155,159 +76,9 @@ export function render() {
     <button class="fab" data-action="musica-new">${icon('plus')} Musica</button>`;
 }
 
-// Entrando nella pagina: account, lettore, dispositivi e playlist (una volta per visita)
-let dentro = false;
-export function after() {
-  if (dentro || !isSynced()) return;
-  dentro = true;
-  let partito = false;
-  const parti = () => {
-    if (partito || !S.chi()) return;
-    partito = true;
-    S.aggiorna({ dispositivi: true });
-    S.caricaPlaylist().catch(errore);
-    S.avviaGiro();
-  };
-  parti(); // dall'ultima volta so già chi è collegato: parto subito
-  S.caricaInfo().then(parti);
-}
-window.addEventListener('hashchange', () => { if (!location.hash.startsWith('#/musica')) dentro = false; });
+export const after = (r = []) => SPV.after(r);
+export const refresh = () => SPV.refresh();
 
-/** Tira giù per aggiornare: anche lettore, dispositivi e playlist. */
-export async function refresh() {
-  if (!isSynced() || !S.chi()) return;
-  await Promise.all([S.aggiorna({ dispositivi: true }), S.caricaPlaylist(S.chi(), true).catch(() => {})]);
-}
-
-// copertine che non arrivano: resta l'icona sotto
-document.addEventListener('error', (ev) => {
-  const el = ev.target;
-  if (el && el.tagName === 'IMG' && el.closest('.sp-cover, .sp-pl-img')) el.remove();
-}, true);
-
-// di ritorno dalla pagina di Spotify
-{
-  const esito = new URLSearchParams(location.search).get('spotify');
-  if (esito) {
-    history.replaceState(null, '', location.pathname + location.hash);
-    const msg = {
-      ok: 'Spotify collegato',
-      annullato: 'Collegamento a Spotify annullato',
-      utente: 'Spotify non conosce ancora questo account: va aggiunto agli utenti dell’app Spotify',
-      errore: 'Spotify non ha risposto: riprova',
-    }[esito];
-    if (msg) setTimeout(() => toast(msg, { ms: esito === 'utente' ? 7000 : 3200 }), 700);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Fogli: dove ascoltare, account, Client ID
-// ---------------------------------------------------------------------------
-let inAttesa = null; // cosa far partire appena si sceglie il dispositivo
-
-function devList() {
-  const list = sp.devices;
-  if (!list) return html`<p class="muted small" style="padding:14px">Cerco i dispositivi…</p>`;
-  if (!list.length) {
-    return html`<div class="sp-nodev">${icon('speaker', 'lg')}<p><b>Nessun dispositivo acceso</b></p>
-      <p class="small">Apri Spotify sul telefono, oppure chiedi una volta ad Alexa di mettere musica da Spotify: poi l’Echo compare qui.</p></div>`;
-  }
-  const cur = sceltoOAttivo();
-  return html`<div class="list">${list.map((d) => html`
-    <button class="set-row sp-devrow ${d.is_restricted || !d.id ? 'off' : ''}" data-action="sp-dispositivo" data-id="${d.id || ''}" ${d.is_restricted || !d.id ? raw('disabled') : ''}>
-      ${icon(devIcon(d))}
-      <div class="row-main"><b>${d.name}</b><span>${d.is_active ? (sp.player && sp.player.is_playing ? 'Sta suonando' : 'In pausa') : d.is_restricted ? 'Non si comanda da qui' : DEV_LABEL[d.type] || 'Dispositivo'}</span></div>
-      ${cur && cur.id === d.id ? html`<span class="sp-check">${icon('check', 'sm')}</span>` : ''}
-    </button>`)}</div>`;
-}
-
-function devSheet(msg = '') {
-  openSheet({
-    title: 'Dove ascoltare?',
-    body: html`${msg ? html`<p class="prose" style="margin-top:-4px">${msg}</p>` : ''}
-      <div id="sp-devlist">${devList()}</div>
-      <div class="btn-row" style="margin-top:12px"><button class="btn" type="button" data-action="sp-cerca-dev">${icon('refresh', 'sm')} Aggiorna</button></div>`,
-  });
-  aggiornaDev();
-}
-
-async function aggiornaDev() {
-  const box = () => document.getElementById('sp-devlist');
-  const btn = document.querySelector('[data-action="sp-cerca-dev"] svg');
-  if (btn) btn.classList.add('spin');
-  await S.aggiorna({ dispositivi: true });
-  if (btn) btn.classList.remove('spin');
-  if (box()) box().innerHTML = devList().s;
-}
-
-/** Fa partire qualcosa: sul dispositivo che suona o sull'ultimo scelto, altrimenti chiede dove. */
-async function suonaQui(target) {
-  if (!S.doveSuonare()) {
-    if (!sp.devices) await S.aggiorna({ dispositivi: true });
-    if (!S.doveSuonare()) { inAttesa = target; devSheet(); return; }
-  }
-  try {
-    await S.suona(target);
-  } catch (e) {
-    if (e.status === 404 || e.reason === 'NO_DEVICE' || e.reason === 'NO_ACTIVE_DEVICE') { inAttesa = target; devSheet('Quel dispositivo non risponde: scegline un altro.'); return; }
-    throw e;
-  }
-}
-
-function errore(e) {
-  console.error(e);
-  if (!(e instanceof S.SpotifyError) || !e.status) {
-    const msg = (e && e.message) || '';
-    toast(!msg || /fetch|load failed|network/i.test(msg) ? 'Spotify non risponde: controlla la connessione' : msg);
-    return;
-  }
-  if (e.reason === 'PREMIUM_REQUIRED') toast('Per comandare la musica serve Spotify Premium');
-  else if (e.status === 429) toast('Spotify chiede una pausa: riprova tra poco');
-  else if (e.status === 403) toast('Adesso Spotify non permette questo comando');
-  else if (e.status === 404) toast('Il dispositivo non risponde');
-  else toast('Spotify non ha risposto: riprova');
-}
-const prova = (fn) => async (ctx) => { try { await fn(ctx); } catch (e) { errore(e); } };
-
-function accountSheet() {
-  const a = (sp.info && sp.info.account) || {};
-  openSheet({
-    title: 'Spotify',
-    body: html`<div class="list">${['p1', 'p2'].map((k) => html`
-      <div class="set-row">${icon('user')}
-        <div class="row-main"><b>${nameOf(k)}</b><span>${a[k] ? `Collegato${a[k].nome ? ` come ${a[k].nome}` : ''}` : 'Non collegato'}</span></div>
-        ${a[k]
-          ? html`<button class="mini-btn" type="button" data-action="sp-scollega" data-v="${k}">Scollega</button>`
-          : html`<button class="mini-btn primary" type="button" data-action="sp-collega" data-v="${k}">Collega</button>`}
-      </div>`)}</div>
-      <div class="btn-row" style="margin-top:12px"><button class="btn" type="button" data-action="sp-ricarica">${icon('refresh', 'sm')} Aggiorna le playlist</button></div>`,
-  });
-}
-
-async function vaiASpotify(per) {
-  sp.busy = 'collega';
-  rerender();
-  try { await S.collega('', per); } catch (e) {
-    if (/Client ID/.test(e.message)) clientIdSheet(per); else throw e;
-  } finally { sp.busy = ''; rerender(); }
-}
-
-function clientIdSheet(per) {
-  openSheet({
-    title: 'Collega Spotify',
-    body: html`<label class="field"><span>Client ID dell’app Spotify</span>
-      <input name="clientId" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="32 lettere e numeri" ${raw('autofocus')}></label>`,
-    submit: 'Continua',
-    onSubmit: async (fd) => {
-      try { await S.collega(val(fd, 'clientId'), per); } catch (e) { sheetError(e.message); }
-      return false;
-    },
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Foglio della nostra musica
-// ---------------------------------------------------------------------------
 function sheet(m = null) {
   const cur = currentTheme();
   openSheet({
@@ -335,6 +106,7 @@ function sheet(m = null) {
 }
 
 export const actions = {
+  ...SPV.actions,
   'musica-theme': ({ el }) => setUi('musica.theme', el.dataset.v),
   'musica-new': () => sheet(),
   'musica-edit': ({ id }) => sheet(state.data.musica.find((m) => m.id === id)),
@@ -347,7 +119,7 @@ export const actions = {
     toast(`Tolto: ${m.title}`, { undo: () => { const { id: _, ...rest } = m; store.set('musica', id, rest); } });
   },
   // un brano/album/playlist della nostra lista su Spotify: dal link, o cercandolo per titolo e artista
-  'musica-sp': prova(async ({ id }) => {
+  'musica-sp': SPV.prova(async ({ id }) => {
     const m = state.data.musica.find((x) => x.id === id);
     if (!m) return;
     vibrate();
@@ -358,49 +130,6 @@ export const actions = {
       if (!r) { toast('Non lo trovo su Spotify'); return; }
       target = tipo === 'track' ? { uris: [r.uri] } : { context: r.uri };
     }
-    await suonaQui(target);
-  }),
-
-  // il proprio account, oppure quello dell'altro (si entra con i suoi dati nella pagina di Spotify)
-  'sp-collega': prova(async ({ el }) => {
-    const per = (el && el.dataset.v) || me();
-    if (!per) { toast('Prima scegli chi sei in Impostazioni'); return; }
-    if (sp.info && !sp.info.pronta) { clientIdSheet(per); return; }
-    if (per === me()) { await vaiASpotify(per); return; }
-    openSheet({
-      title: `Spotify di ${nameOf(per)}`,
-      body: html`<p class="prose" style="margin-top:-4px">Nella pagina di Spotify tocca «Non sei tu?» ed entra con l’account di ${nameOf(per)}.</p>
-        <div class="btn-row"><button class="btn primary" type="button" data-action="sp-collega-altro" data-v="${per}">Continua</button></div>`,
-    });
-  }),
-  'sp-collega-altro': prova(async ({ el }) => { await vaiASpotify(el.dataset.v); }),
-  'sp-account': () => accountSheet(),
-  'sp-scollega': prova(async ({ el }) => {
-    closeSheet();
-    await S.scollega(el.dataset.v);
-    toast(`Spotify di ${nameOf(el.dataset.v)} scollegato`);
-  }),
-  'sp-ricarica': prova(async () => { closeSheet(); await S.caricaPlaylist(S.chi(), true); toast('Playlist aggiornate'); }),
-  'sp-chi': ({ el }) => { S.scegliAccount(el.dataset.v); S.caricaPlaylist().catch(errore); },
-  'sp-tutte': () => setUi('sp.tutte', !ui('sp.tutte', false)),
-  'sp-playlist': prova(async ({ el }) => { vibrate(); await suonaQui({ context: el.dataset.uri }); }),
-  'sp-playpausa': prova(async () => { vibrate(); await S.playPausa(); }),
-  'sp-avanti': prova(async () => { vibrate(); await S.salta(true); }),
-  'sp-indietro': prova(async () => { vibrate(); await S.salta(false); }),
-  'sp-casuale': prova(async () => { vibrate(); await S.casuale(); }),
-  'sp-volume': prova(async ({ el }) => { await S.volume(Number(el.value)); }),
-  'sp-dispositivi': () => devSheet(),
-  'sp-cerca-dev': () => aggiornaDev(),
-  'sp-dispositivo': prova(async ({ id }) => {
-    if (!id) return;
-    vibrate();
-    const d = (sp.devices || []).find((x) => x.id === id);
-    closeSheet();
-    const target = inAttesa;
-    inAttesa = null;
-    if (target) await S.suona(target, id);
-    else if (sp.player) await S.sposta(id);
-    else { S.scegliDispositivo(id); rerender(); }
-    if (d) toast(`Su ${d.name}`);
+    await SPV.suonaQui(target);
   }),
 };

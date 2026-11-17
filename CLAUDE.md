@@ -24,8 +24,12 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
 - **Spotify** (`api/spotify.js` + `js/spotify.js`, pagina Musica): ognuno collega il suo account con OAuth PKCE (niente segreti:
   il Client ID dell'app di developer.spotify.com si scrive dall'app e sta nel database, `fam_meta` `m:spotify:*`, insieme ai refresh token).
   Redirect URI registrato: `https://comperotto.vercel.app/api/spotify`. I dispositivi chiedono a `/api/spotify?azione=token` un token di un'ora
-  e parlano direttamente con api.spotify.com (lettore, dispositivi/Echo, `me/playlists`). App in modalità sviluppo: max 5 utenti,
-  proprietario Premium; nel 2026 i campi `tracks` delle playlist sono diventati `items`.
+  e parlano direttamente con api.spotify.com. Pagine in `js/views/spotify.js`: `#/musica` (lettore, cerca, libreria), `#/musica/cerca`,
+  `/preferiti`, `/pl/<id>`, `/album/<id>`, `/artista/<id>`, foglio "⋯" del brano (coda, preferiti, playlist, nostra musica).
+  "Questo iPhone/iPad" = Web Playback SDK (`sdk.scdn.co`, caricato solo quando serve; `activateElement()` dentro il tocco).
+  Regole 2026 (modalità sviluppo, max 5 utenti, proprietario Premium): ricerca max 10 per tipo, `tracks`→`items` nelle playlist,
+  preferiti con `PUT/DELETE me/library?uris=`, brani solo delle playlist proprie (`/playlists/{id}/items`, altrimenti 403).
+  Collegamenti senza i permessi nuovi → `completo: false` e la pagina chiede "Ricollega".
 - **Spesa:** reparti in `SHOP_CATS` (`js/data.js`) nell'ordine del giro; gli id vecchi passano da `LEGACY_CATS` (il vecchio `freschi` ora è `frigo`).
 - **Avvio e aggiornamenti:** un dispositivo già collegato parte subito dai dati salvati (non aspetta `/api/stato`). A ogni pubblicazione
   cambiare `CACHE` in `sw.js`: l'app aperta si ricarica da sola (non mentre si scrive). I caratteri sono in `assets/fonts/`.

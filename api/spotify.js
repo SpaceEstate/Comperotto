@@ -4,7 +4,7 @@
 // dell'app creata su developer.spotify.com (si scrive una volta dall'app e resta nel database).
 // I permessi (refresh token) restano qui sul server: ai dispositivi va solo un token che dura un'ora.
 //
-//   GET  /api/spotify?azione=stato             → { pronta, account: { p1: { nome } | null, p2: … } }
+//   GET  /api/spotify?azione=stato             → { pronta, account: { p1: { nome, id, completo } | null, p2: … } }
 //   POST /api/spotify { azione: 'collega', chi, clientId? } → { url } la pagina di Spotify dove dare il permesso
 //   GET  /api/spotify?azione=token&chi=p1      → { token, scade }
 //   POST /api/spotify { azione: 'scollega', chi }
@@ -15,7 +15,16 @@ import { origineDi } from './_push.js';
 
 const ACCOUNTS = 'https://accounts.spotify.com';
 const API = 'https://api.spotify.com/v1';
-const SCOPE = 'user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private playlist-read-collaborative';
+// lettore e dispositivi, playlist (leggere e creare/modificare), preferiti, lettore dentro l'app (streaming)
+const SCOPE = [
+  'user-read-playback-state', 'user-modify-playback-state', 'user-read-currently-playing',
+  'playlist-read-private', 'playlist-read-collaborative', 'playlist-modify-private', 'playlist-modify-public',
+  'user-library-read', 'user-library-modify', 'user-follow-read', 'user-follow-modify',
+  'streaming', 'user-read-private',
+].join(' ');
+// senza questi va ricollegato (collegamenti fatti prima che l'app sapesse salvare brani e creare playlist)
+const NECESSARI = ['user-library-modify', 'playlist-modify-private', 'streaming'];
+const completo = (a) => Boolean(a && a.scope && NECESSARI.every((x) => a.scope.split(' ').includes(x)));
 const CHI = ['p1', 'p2'];
 const CLIENT_ID = /^[0-9a-f]{32}$/i;
 
@@ -43,7 +52,7 @@ async function token(chi) {
   if (a.access && a.scade - Date.now() > 120000) return a;
   try {
     const j = await chiediToken({ grant_type: 'refresh_token', refresh_token: a.refresh, client_id: a.clientId });
-    const nuovo = { ...a, access: j.access_token, scade: Date.now() + (Number(j.expires_in) || 3600) * 1000, refresh: j.refresh_token || a.refresh };
+    const nuovo = { ...a, access: j.access_token, scade: Date.now() + (Number(j.expires_in) || 3600) * 1000, refresh: j.refresh_token || a.refresh, scope: j.scope || a.scope };
     await scrivi(`spotify:${chi}`, nuovo);
     return nuovo;
   } catch (e) {
@@ -82,6 +91,8 @@ async function ritorno(req, res, p) {
       access: j.access_token,
       scade: Date.now() + (Number(j.expires_in) || 3600) * 1000,
       nome: String(io.display_name || io.id || '').slice(0, 60),
+      id: String(io.id || '').slice(0, 80),
+      scope: j.scope || '',
       at: Date.now(),
     });
     torna(res, 'ok');
@@ -104,7 +115,7 @@ export default async function handler(req, res) {
 
     if (azione === 'stato') {
       const account = {};
-      for (const k of CHI) { const a = await leggi(`spotify:${k}`); account[k] = a && a.refresh ? { nome: a.nome || '' } : null; }
+      for (const k of CHI) { const a = await leggi(`spotify:${k}`); account[k] = a && a.refresh ? { nome: a.nome || '', id: a.id || '', completo: completo(a) } : null; }
       return send(res, 200, { pronta: Boolean(await appId()), account });
     }
 

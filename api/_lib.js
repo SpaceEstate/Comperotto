@@ -6,7 +6,7 @@
 // L'app usa quello che trova.
 import crypto from 'node:crypto';
 
-export const COLLECTIONS = ['settings', 'spesa', 'freq', 'lavori', 'routine', 'ricette', 'desideri', 'gatti', 'eventiGatti', 'bacheca', 'musica', 'film', 'posizioni', 'liste'];
+export const COLLECTIONS = ['settings', 'spesa', 'freq', 'lavori', 'routine', 'ricette', 'desideri', 'gatti', 'eventiGatti', 'bacheca', 'musica', 'film', 'posizioni', 'liste', 'viaggi', 'valigia'];
 
 const stripId = (o) => { const x = { ...(o && typeof o === 'object' ? o : {}) }; delete x.id; return x; };
 const parse = (s) => { try { return JSON.parse(s); } catch { return null; } };

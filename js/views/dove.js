@@ -147,14 +147,17 @@ export function render(route) {
   const posti = luoghi();
   if (route && route[1] === 'condividi') setTimeout(() => chiestaCondivisione(), 350);
   const auto = lsGet('casa.dove.app') === '1';
+  const grande = Boolean(ui('dove.grande', false));
   return html`
     <a class="back-link phone-only" href="#/">${icon('left', 'sm')} Home</a>
     ${pageHead('Dov’è', { eyebrow: `${nameOf('p1')} e ${nameOf('p2')}` })}
 
-    ${any ? html`<div class="map-card"><div id="mappa" class="mappa" data-keep></div>
+    ${any ? html`<div class="map-card ${grande ? 'grande' : ''}" ${grande ? raw('role="dialog" aria-modal="true" aria-label="Mappa"') : ''}><div id="mappa" class="mappa" data-keep></div>
+      ${grande ? html`<button class="map-btn map-chiudi" data-action="mappa-piccola" aria-label="Chiudi la mappa grande">${icon('x', 'sm')}</button>` : ''}
       <div class="map-tools">
         <div class="map-switch">${[['mappa', 'Mappa'], ['satellite', 'Satellite']].map(([v, t]) => html`<button class="${tipoMappa() === v ? 'on' : ''}" data-action="mappa-tipo" data-v="${v}">${t}</button>`)}</div>
         <button class="map-btn" data-action="mappa-centra" aria-label="Mostra tutti">${icon('users', 'sm')}</button>
+        ${grande ? '' : html`<button class="map-btn" data-action="mappa-grande" aria-label="Mappa a tutto schermo">${icon('expand', 'sm')}</button>`}
       </div></div>` : ''}
 
     <div class="dove-list">${PEOPLE.map((k) => {
@@ -269,6 +272,12 @@ function markerEl(x) {
 const scuro = () => { const t = document.documentElement.dataset.theme; return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; };
 const chiaveStile = () => `${tipoMappa()}|${scuro() ? 'scuro' : 'chiaro'}`;
 
+// La mappa a tutto schermo: si apre con un tocco sulla mappa (o col pulsante), si chiude con la X o Esc.
+function apriGrande() { setUi('dove.grande', true); }
+function chiudiGrande() { if (ui('dove.grande', false)) setUi('dove.grande', false); }
+window.addEventListener('hashchange', () => { if (!location.hash.startsWith('#/dove')) { state.ui['dove.grande'] = false; document.documentElement.classList.remove('mappa-grande'); } });
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && location.hash.startsWith('#/dove')) chiudiGrande(); });
+
 // La mappa resta viva quando si cambia pagina: tornando su Dov'è è già lì, senza ricaricare nulla.
 let viva = null;
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (document.getElementById('mappa')) after(); });
@@ -303,6 +312,7 @@ export async function after() {
       // a ogni cambio di stile (Mappa/Satellite, chiaro/scuro) le nostre icone vanno rimesse
       map.on('style.load', () => mettiIcone(map, imgs));
       map.on('styleimagemissing', (e) => { const im = imgs.get(e.id); if (im && !map.hasImage(e.id)) map.addImage(e.id, im.data, { pixelRatio: im.pixelRatio }); });
+      map.on('click', () => { if (!ui('dove.grande', false)) apriGrande(); });
       el._ml = ml;
       el._map = map;
       el._markers = [];
@@ -313,6 +323,13 @@ export async function after() {
     } catch { el.classList.add('no-map'); return; } finally { el._inCorso = false; }
   }
   const map = el._map;
+  // mappa grande o piccola: la mappa si adatta al riquadro nuovo
+  const grande = Boolean(ui('dove.grande', false));
+  document.documentElement.classList.toggle('mappa-grande', grande);
+  if (el._grande !== grande) {
+    el._grande = grande;
+    requestAnimationFrame(() => { map.resize(); inquadra(map, false); });
+  }
   const posti = postiGeo(), pk = JSON.stringify(posti);
   // Mappa/Satellite o chiaro/scuro sono cambiati
   const chiave = chiaveStile();
@@ -554,6 +571,8 @@ export const actions = {
     lsSet('casa.mappa', v === 'satellite' ? 'satellite' : null);
     setUi('mappa.tipo', v); // ridisegna: after() si accorge del cambio e aggiorna lo stile
   },
+  'mappa-grande': () => apriGrande(),
+  'mappa-piccola': () => chiudiGrande(),
   'mappa-centra': () => { const m = document.getElementById('mappa'); if (m && m._map) inquadra(m._map); },
   // tocco sulla scheda di una persona: la mappa vola da lei
   'dove-vai': ({ el }) => {

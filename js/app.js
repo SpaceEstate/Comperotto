@@ -18,17 +18,18 @@ import * as musica from './views/musica.js';
 import * as desideri from './views/desideri.js';
 import * as gatti from './views/gatti.js';
 import * as dove from './views/dove.js';
+import * as viaggi from './views/viaggi.js';
 import * as impostazioni from './views/impostazioni.js';
 import * as login from './views/login.js';
 
 // Cibo = Spesa | Ricette, Svago = Film | Musica (pagine a due zone); #/ricette/<id> e #/musica/<…> sono le loro pagine interne
-const VIEWS = { '': home, cibo, casa, svago, ricette, musica, desideri, gatti, dove, impostazioni };
+const VIEWS = { '': home, cibo, casa, svago, ricette, musica, desideri, gatti, dove, viaggi, impostazioni };
 const actions = {
   ...home.actions, ...spesa.actions, ...casa.actions, ...ricette.actions, ...film.actions,
-  ...musica.actions, ...desideri.actions, ...gatti.actions, ...dove.actions, ...impostazioni.actions, ...login.actions,
+  ...musica.actions, ...desideri.actions, ...gatti.actions, ...dove.actions, ...viaggi.actions, ...impostazioni.actions, ...login.actions,
 };
 
-// sul telefono: le 5 schede in basso; su iPad la barra laterale mostra anche Dov'è e Gatti
+// sul telefono: le 5 schede in basso; su iPad la barra laterale mostra anche Dov'è, Gatti e Viaggi
 const TABS = [
   { key: '', label: 'Home', icon: 'home', href: () => '#/' },
   { key: 'cibo', label: 'Cibo', icon: 'bowl', href: () => `#/cibo/${cibo.zona()}`, badge: () => spesa.badge() },
@@ -37,6 +38,7 @@ const TABS = [
   { key: 'desideri', label: 'Desideri', icon: 'gift', href: () => '#/desideri' },
   { key: 'dove', label: 'Dov’è', icon: 'pin', href: () => '#/dove', side: true },
   { key: 'gatti', label: 'Thor e Minù', icon: 'cat', href: () => '#/gatti', side: true },
+  { key: 'viaggi', label: 'Viaggi', icon: 'suitcase', href: () => '#/viaggi', side: true },
 ];
 // le pagine interne accendono la scheda della loro pagina
 const TAB_DI = { ricette: 'cibo', musica: 'svago' };
@@ -46,6 +48,7 @@ function canonico(r) {
   const [a, b] = r;
   if (a === 'spesa' || (a === 'casa' && b === 'spesa')) return '#/cibo/spesa';
   if (a === 'casa' && b === 'routine') return '#/casa/faccende';
+  if (a === 'casa' && b === 'rifiuti') return '#/impostazioni/rifiuti';
   if (a === 'noi') return b === 'musica' ? '#/svago/musica' : '#/svago/film';
   if (a === 'ricette' && !b) return '#/cibo/ricette';
   if (a === 'film') return '#/svago/film';
@@ -148,7 +151,7 @@ function render() {
     </div>
     ${TABS.map((t) => {
       const n = t.badge ? t.badge() : 0;
-      const on = t.key === cur || (t.key === '' && ['impostazioni', 'gatti', 'dove'].includes(cur) && !wide());
+      const on = t.key === cur || (t.key === '' && ['impostazioni', 'gatti', 'dove', 'viaggi'].includes(cur) && !wide());
       return html`<a class="tab ${on ? 'on' : ''} ${t.side ? 'side-only side-mid' : ''}" href="${t.href()}" ${on ? raw('aria-current="page"') : ''}>
         <span class="tab-ico">${icon(t.icon)}</span><span class="tab-label">${t.label}</span>${n ? html`<span class="badge">${n > 99 ? '99+' : n}</span>` : ''}</a>`;
     })}
@@ -332,7 +335,7 @@ function maybeWelcome() {
       // i nomi ci sono già (dall'altro telefono): basta sapere chi sei
       openSheet({
         title: 'Ciao! Chi sei?',
-        body: html`<p class="prose" style="margin-top:-4px">Così biglietti, faccende e spesa portano la tua firma.</p>
+        body: html`<p class="prose" style="margin-top:-4px">Così faccende, lavori e spesa portano la tua firma.</p>
           <div class="btn-row">${['p1', 'p2'].map((k) => html`<button class="btn ${k === 'p2' ? 'primary' : 'dark'}" type="button" data-action="welcome-me" data-v="${k}">${n[k]}</button>`)}</div>`,
       });
       return;

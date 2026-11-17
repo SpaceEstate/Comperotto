@@ -214,7 +214,11 @@ function stileMappa(b, posti, scuro) {
   s.layers.forEach((l) => {
     if (l.filter) l.filter = sana(l.filter);
     if (scuro) {
-      if (NOTTE[l.id]) l.paint = { ...l.paint, ...NOTTE[l.id] };
+      if (NOTTE[l.id]) {
+        l.paint = { ...l.paint, ...NOTTE[l.id] };
+        // un colore pieno al posto del disegno (es. "wood-pattern", che nella mappa scura manca e dà avvisi)
+        if (NOTTE[l.id]['fill-color']) delete l.paint['fill-pattern'];
+      }
       const c = l.type === 'symbol' && SCRITTE_NOTTE[l['source-layer']];
       if (c) l.paint = { ...l.paint, 'text-color': c, 'text-halo-color': 'rgba(18, 15, 12, .85)', 'text-halo-width': 1.2, 'text-halo-blur': 0.4 };
     }

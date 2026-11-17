@@ -79,31 +79,18 @@ export function render() {
   const items = state.data.spesa;
   const todo = items.filter((i) => !i.done);
   const done = items.filter((i) => i.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
-  const inList = new Set(todo.map((i) => norm(i.name)));
-  const frequent = [...state.data.freq]
-    .filter((f) => f.name && !inList.has(norm(f.name)))
-    .sort((a, b) => (b.count || 0) - (a.count || 0))
-    .slice(0, 14);
 
   const groups = SHOP_CATS.map((c) => ({ ...c, items: todo.filter((i) => catOf(i) === c.id).sort((a, b) => cleanName(a.name).localeCompare(cleanName(b.name), 'it', { sensitivity: 'base' })) })).filter((g) => g.items.length);
 
   const total = todo.length + done.length;
   const pct = total ? Math.round((done.length / total) * 100) : 0;
   return html`
-    ${total ? html`<div class="shop-progress">
-      <div><b>${todo.length ? plural(todo.length, 'cosa da prendere', 'cose da prendere') : 'Tutto nel carrello!'}</b>
-        <span>${done.length ? `${done.length} già nel carrello` : 'Buona spesa'}</span></div>
-      <i class="bar"><i style="width:${pct}%"></i></i>
-    </div>` : ''}
+    ${total ? html`<div class="shop-progress solo" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="${done.length} di ${total} già nel carrello"><i class="bar"><i style="width:${pct}%"></i></i></div>` : ''}
 
     <form class="quick-add" data-form="spesa-add">
       <input id="spesa-input" name="q" placeholder="Aggiungi… (es. 2 latte, uova)" enterkeyhint="done" autocomplete="off" aria-label="Aggiungi alla spesa">
       <button type="submit" aria-label="Aggiungi">${icon('plus')}</button>
     </form>
-
-    ${frequent.length ? html`<div class="chips" aria-label="Spesso comprati">
-      ${frequent.map((f) => html`<button class="chip" data-action="spesa-quick" data-name="${f.name}">${icon('plus', 'xs')} ${f.name}</button>`)}
-    </div>` : ''}
 
     ${!todo.length && !done.length ? emptyState('Frigo pieno, lista vuota', 'Scrivi qui sopra cosa serve.', catFace('a')) : ''}
 
@@ -170,7 +157,6 @@ export const actions = {
     if (added.length) vibrate();
     if (added.already.length) toast(`${added.already.join(', ')}: ${added.already.length > 1 ? 'ci sono già' : 'c’è già'} in lista`);
   },
-  'spesa-quick': ({ el }) => { addShopping(el.dataset.name); vibrate(); },
   'spesa-toggle': ({ id, el }) => {
     const it = state.data.spesa.find((i) => i.id === id);
     if (!it) return;

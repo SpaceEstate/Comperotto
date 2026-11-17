@@ -3,7 +3,7 @@
 // Sottopagine: #/musica/cerca, #/musica/preferiti, #/musica/pl/<id>, #/musica/album/<id>, #/musica/artista/<id>
 import { html, raw, vibrate, lsGet, lsSet, isIPad, cap } from '../utils.js';
 import { icon } from '../icons.js';
-import { openSheet, closeSheet, toast, val, ui, setUi, me, isSynced, nameOf, sheetError, rerender, confirmSheet, state, cancella } from '../core.js';
+import { openSheet, closeSheet, toast, val, ui, setUi, me, isSynced, nameOf, sheetError, rerender, confirmSheet, state, cancella, settings, saveSettings } from '../core.js';
 import { periodoMusica } from '../season.js';
 import * as S from '../spotify.js';
 
@@ -831,26 +831,36 @@ export async function suonaQui(target, casuale = false) {
   }
 }
 
+// i dispositivi che non si vogliono vedere (es. l'Echo di qualcun altro): per nome, uguali per tutta la casa
+const nascosti = () => (Array.isArray(settings().spotifyNascosti) ? settings().spotifyNascosti : []);
+
 function devList() {
   const list = sp.devices;
   const cur = sceltoOAttivo();
   const quiAcceso = list && S.qui.id && list.find((d) => d.id === S.qui.id);
   // un vecchio lettore di questo stesso dispositivo (tentativo precedente) non va mostrato due volte
   const altri = (list || []).filter((d) => !S.eQui(d.id) && !(comperotto(d) && d.name === S.nomeQui()));
+  const via = nascosti();
+  // quello che sta suonando si vede sempre, anche se è tra i nascosti
+  const visibili = altri.filter((d) => d.is_active || !via.includes(d.name));
+  const celati = [...new Set(altri.filter((d) => !d.is_active && via.includes(d.name)).map((d) => d.name))];
   const tocco = matchMedia('(pointer: coarse)').matches;
-  const riga = (d) => html`
+  const riga = (d, puoiNascondere = false) => html`<div class="sp-devline">
     <button class="set-row sp-devrow ${d.is_restricted || !d.id ? 'off' : ''}" data-action="sp-dispositivo" data-id="${d.id || ''}" ${d.is_restricted || !d.id ? raw('disabled') : ''}>
       ${icon(devIcon(d))}
       <div class="row-main"><b>${devNome(d)}</b><span>${d.is_active ? (sp.player && sp.player.is_playing ? 'Sta suonando' : 'In pausa') : S.eQui(d.id) || comperotto(d) ? 'Dentro l’app' : d.is_restricted ? 'Non si comanda da qui' : DEV_LABEL[d.type] || 'Dispositivo'}</span></div>
       ${cur && cur.id === d.id ? html`<span class="sp-check">${icon('check', 'sm')}</span>` : ''}
-    </button>`;
+    </button>
+    ${puoiNascondere && !d.is_active ? html`<button class="sp-ic sp-nascondi" type="button" data-action="sp-nascondi" data-nome="${d.name}" aria-label="Nascondi ${d.name}">${icon('eyeoff', 'sm')}</button>` : ''}
+  </div>`;
   return html`<div class="list">
       ${quiAcceso ? riga(quiAcceso) : html`<button class="set-row sp-devrow" data-action="sp-qui">${icon(isIPad() ? 'tablet' : 'phone')}
         <div class="row-main"><b>Ascolta su ${questo()}</b><span>${sp.busy === 'qui' ? 'Accendo il lettore…' : 'Dentro l’app'}</span></div>${sp.busy === 'qui' ? icon('refresh', 'sm spin') : cur && cur.id === S.QUI ? html`<span class="sp-check">${icon('check', 'sm')}</span>` : ''}</button>`}
-      ${altri.map(riga)}
+      ${visibili.map((d) => riga(d, true))}
     </div>
     ${!list ? html`<p class="muted small" style="padding:10px 4px 0">Cerco gli altri dispositivi…</p>` : ''}
-    ${list && !altri.length ? html`<p class="small muted sp-nodev-txt">Gli Echo compaiono qui quando Spotify è collegato ad Alexa: se non li vedi, chiedi una volta ad Alexa di mettere musica da Spotify.</p>` : ''}
+    ${list && !visibili.length && !celati.length ? html`<p class="small muted sp-nodev-txt">Gli Echo compaiono qui quando Spotify è collegato ad Alexa: se non li vedi, chiedi una volta ad Alexa di mettere musica da Spotify.</p>` : ''}
+    ${celati.length ? html`<p class="small muted sp-celati">${icon('eyeoff', 'xs')} Nascosti: ${celati.join(', ')} <button class="card-link" type="button" data-action="sp-mostra">Mostrali</button></p>` : ''}
     ${tocco ? html`<button class="card-link sp-apri" type="button" data-action="sp-apri-app">${icon('link', 'xs')} Apri l’app Spotify</button>` : ''}`;
 }
 
@@ -1088,6 +1098,17 @@ export const actions = {
   // dispositivi
   'sp-dispositivi': () => devSheet(),
   'sp-cerca-dev': () => aggiornaDev(),
+  // un dispositivo che non si vuole vedere (es. l'Echo di un'altra casa): sparisce dalla lista per tutti e due
+  'sp-nascondi': ({ el }) => {
+    const nome = el.dataset.nome;
+    if (!nome) return;
+    vibrate();
+    const prima = nascosti();
+    saveSettings({ spotifyNascosti: [...new Set([...prima, nome])] });
+    ridisegnaDev();
+    toast(`«${nome}» nascosto`, { undo: () => { saveSettings({ spotifyNascosti: prima }); ridisegnaDev(); } });
+  },
+  'sp-mostra': () => { saveSettings({ spotifyNascosti: [] }); ridisegnaDev(); },
   'sp-dispositivo': prova(async ({ id }) => {
     if (!id) return;
     vibrate();

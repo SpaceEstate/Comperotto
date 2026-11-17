@@ -1,13 +1,14 @@
-// Home: buongiorno, gatti, cosa si butta stasera, faccende di oggi, atmosfera del periodo, lavagnetta
-import { html, raw, longDate, todayIso, timeAgo, vibrate, cap, plural, isIOS, isStandalone, lsGet, lsSet } from '../utils.js';
+// Home: buongiorno; dov'è Patrick e Serena; oggi in casa (faccende e rifiuti di stasera); lavori; le liste
+// per la valigia; Thor e Minù; l'atmosfera del periodo e il conto alla rovescia.
+import { html, raw, longDate, todayIso, timeAgo, isIOS, isStandalone, lsGet, lsSet } from '../utils.js';
 import { icon } from '../icons.js';
 import { upcomingDates, CAT_EVENTS, MUSICA_TEMA, FILM_CATS, filmCats, RICETTE_CATS, ricetteCats } from '../data.js';
-import { state, store, settings, me, nameOf, myName, openSheet, toast, val, confirmSheet, rerender, ui, isSynced } from '../core.js';
-import { dueChores, choreRow, trashFor, binChips } from './casa.js';
+import { state, settings, me, nameOf, myName, rerender, ui, isSynced } from '../core.js';
+import { dueChores, choreRow, trashFor, binChips, lavoroRow, lavoriAperti } from './casa.js';
 import { cats, catAvatar, upcomingFor, lastWeight } from './gatti.js';
-import { seasonInfo, seasonDeco, periodoMusica } from '../season.js';
-import { badge as shopBadge } from './spesa.js';
+import { seasonInfo, seasonDeco } from '../season.js';
 import { statusOf, personBadge, pillOf, iconOf } from './dove.js';
+import { sezioneHome as viaggiHome } from './viaggi.js';
 
 function greeting() {
   const h = new Date().getHours();
@@ -129,6 +130,20 @@ function ring(pct) {
   return html`<svg class="ring" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="${r}" class="ring-bg"/><circle cx="26" cy="26" r="${r}" class="ring-fg" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${(c * (1 - pct)).toFixed(1)}"/></svg>`;
 }
 
+/** I lavori da fare: i primi tre (con la spunta), il resto in Casa. */
+function lavoriCard() {
+  const aperti = lavoriAperti();
+  return html`<section class="card today-card lavori-home">
+    <div class="today-head">
+      <span class="dot-ico tone-sage lh-ico">${icon('hammer', 'sm')}</span>
+      <div><h3>Lavori</h3><p>${aperti.length ? `${aperti.length} da fare` : 'Niente in sospeso'}</p></div>
+      <a class="card-link" href="#/casa/lavori">Tutti ${icon('right', 'xs')}</a>
+    </div>
+    ${aperti.length ? html`<div class="lh-righe">${aperti.slice(0, 3).map((l) => lavoroRow(l, { compact: true }))}</div>
+      ${aperti.length > 3 ? html`<a class="today-more" href="#/casa/lavori">e altri ${aperti.length - 3}</a>` : ''}` : ''}
+  </section>`;
+}
+
 export function render() {
   const s = settings();
   const season = seasonInfo();
@@ -142,12 +157,6 @@ export function render() {
   const trashDone = s.rifiutiFatto && s.rifiutiFatto.date === t;
   const todayTotal = due.length + doneToday + (tonight.length ? 1 : 0);
   const todayDone = doneToday + (tonight.length && trashDone ? 1 : 0);
-  const notes = [...state.data.bacheca].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 6);
-  const lavori = state.data.lavori.filter((l) => !l.done);
-  const wishes = state.data.desideri.filter((w) => !w.bought);
-  const films = state.data.film.filter((f) => !f.watched);
-  const shop = shopBadge();
-  const musica = periodoMusica();
 
   return html`
     <div class="home-top">
@@ -167,15 +176,10 @@ export function render() {
       ${pushHint()}
       ${bdays.map(birthdayCard)}
 
-      <div class="cats-strip">${cats().map((c) => html`
-        <a class="cat-chip" href="#/gatti">${catAvatar(c)}<div><b>${c.name}</b><span>${catStatus(c)}</span></div></a>`)}</div>
-
       ${doveCard()}
 
       <div class="home-grid">
         <div class="home-col">
-          ${season ? seasonCard(season) : ''}
-
           <section class="card today-card">
             <div class="today-head">
               <div class="ring-wrap">${ring(todayTotal ? todayDone / todayTotal : 1)}<span>${todayTotal ? `${todayDone}/${todayTotal}` : icon('check', 'sm')}</span></div>
@@ -191,48 +195,19 @@ export function render() {
               ${due.length > 4 ? html`<a class="today-more" href="#/casa/faccende">e altre ${due.length - 4}</a>` : ''}` : ''}
           </section>
 
-          ${countdowns(dates)}
+          ${lavoriCard()}
+          ${viaggiHome()}
         </div>
 
         <div class="home-col">
-          <div class="hero-tiles">
-            <a class="tile t-oak" href="#/cibo/spesa"><span class="tile-ico">${icon('basket')}</span><span class="tile-num">${shop}</span><span class="tile-label">${shop === 1 ? 'Cosa da comprare' : 'Da comprare'}</span><span class="tile-mark">${icon('basket')}</span></a>
-            <a class="tile t-sage" href="#/casa/lavori"><span class="tile-ico">${icon('hammer')}</span><span class="tile-num">${lavori.length}</span><span class="tile-label">Lavori</span><span class="tile-mark">${icon('hammer')}</span></a>
-            <a class="tile t-sky" href="#/svago/film"><span class="tile-ico">${icon('film')}</span><span class="tile-num">${films.length}</span><span class="tile-label">Film da vedere</span><span class="tile-mark">${icon('film')}</span></a>
-            <a class="tile t-rose" href="#/desideri"><span class="tile-ico">${icon('gift')}</span><span class="tile-num">${wishes.length}</span><span class="tile-label">Desideri</span><span class="tile-mark">${icon('gift')}</span></a>
-            <a class="tile t-plum" href="#/svago/musica"><span class="tile-ico">${icon('music')}</span><span class="tile-num">${musica.brani.length}</span><span class="tile-label">${musica.tile}</span><span class="tile-mark">${icon('music')}</span></a>
-            <button class="tile t-gold" data-action="ricetta-random"><span class="tile-ico">${icon('dice')}</span><span class="tile-num tile-q">?</span><span class="tile-label">Cosa cuciniamo?</span><span class="tile-mark">${icon('chef')}</span></button>
-          </div>
-
-          <div>
-            <div class="section-title"><span>Lavagnetta</span></div>
-            <div class="notes">
-              ${notes.map((n) => html`<button class="note c-${['oak', 'sage', 'sky', 'rose'].includes(n.color) ? n.color : 'oak'}" data-action="note-open" data-id="${n.id}">
-                <span>${n.text}</span><small>${nameOf(n.by) || ''}${n.createdAt ? ` · ${timeAgo(n.createdAt)}` : ''}</small></button>`)}
-              <button class="note note-add" data-action="note-new">${icon('plus', 'sm')} Scrivi un biglietto</button>
-            </div>
-          </div>
+          <div class="cats-strip">${cats().map((c) => html`
+            <a class="cat-chip" href="#/gatti">${catAvatar(c)}<div><b>${c.name}</b><span>${catStatus(c)}</span></div></a>`)}</div>
+          ${season ? seasonCard(season) : ''}
+          ${countdowns(dates)}
         </div>
       </div>
     </div>
   `;
-}
-
-function noteSheet() {
-  openSheet({
-    title: 'Un biglietto per casa',
-    body: html`
-      <label class="field"><span>Messaggio</span><textarea name="text" maxlength="200" placeholder="es. Ho comprato il gelato, è nel freezer ♡" required autofocus style="min-height:90px"></textarea></label>
-      <div class="field"><span>Colore</span><div class="radio-chips">${[['oak', 'Miele'], ['sage', 'Salvia'], ['sky', 'Cielo'], ['rose', 'Rosa']].map(([v, l], i) => html`
-        <label><input type="radio" name="color" value="${v}" ${i === 0 ? raw('checked') : ''}><span><i class="note c-${v}" style="width:14px;height:14px;min-height:0;padding:0;border-radius:4px;transform:none"></i>${l}</span></label>`)}</div></div>`,
-    submit: 'Attacca',
-    onSubmit: (fd) => {
-      const text = cap(val(fd, 'text'));
-      if (!text) return false;
-      store.add('bacheca', { text, color: val(fd, 'color') || 'oak', by: me() || '' });
-      vibrate(10);
-    },
-  });
 }
 
 export const actions = {
@@ -240,13 +215,4 @@ export const actions = {
   'film-theme-go': ({ el }) => { state.ui['film.theme'] = FILM_CATS[el.dataset.v] ? el.dataset.v : 'tutti'; state.ui['film.filter'] = FILM_CATS[el.dataset.v] ? 'tutti' : 'davedere'; location.hash = '#/svago/film'; },
   'hint-close': () => { lsSet('casa.hint.install', '1'); rerender(); },
   'hint-push-close': () => { lsSet('casa.hint.push', '1'); rerender(); },
-  'note-new': () => noteSheet(),
-  'note-open': ({ id }) => {
-    const n = state.data.bacheca.find((x) => x.id === id);
-    if (!n) return;
-    confirmSheet({
-      title: 'Staccare il biglietto?', text: `“${n.text}”`, yes: 'Stacca',
-      onYes: () => { store.remove('bacheca', id); toast('Biglietto staccato', { undo: () => { const { id: _, ...rest } = n; store.set('bacheca', id, rest); } }); },
-    });
-  },
 };

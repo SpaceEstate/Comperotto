@@ -23,11 +23,20 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   a OwnTracks si mandano i nostri posti come zone (`setWaypoints`, una volta, o ogni 12 h finché non funzionano). Il codice di famiglia
   non si accetta mai nell'indirizzo (finirebbe nei log). Dall'app la posizione parte solo con l'interruttore acceso (e permesso già dato)
   o con un tocco; "Chiedi a…" manda una notifica all'altro (`#/dove/condividi`).
-- **Pagine e barra:** Home · Cibo · Casa · Svago · Desideri (su iPad la barra laterale aggiunge Dov'è, Thor e Minù, Impostazioni).
+- **Pagine e barra:** Home · Cibo · Casa · Svago · Desideri (su iPad la barra laterale aggiunge Dov'è, Thor e Minù, Viaggi, Impostazioni).
+  Barra in basso bassa: `--tabbar-h: 50px` più 3+2 px (gli scostamenti di FAB, avvisi e mini lettore ne tengono conto).
   Cibo = Spesa | Ricette (`#/cibo/spesa`, `#/cibo/ricette`), Svago = Film | Musica (`#/svago/film`, `#/svago/musica`): pagine a due
   zone (`js/views/zone.js`), schede in cima e una zona per volta anche su iPad; ogni dispositivo ricorda l'ultima (`casa.cibo`,
-  `casa.svago`). Casa = Faccende, Lavori, Rifiuti. Pagine interne: `#/ricette/<id>`, `#/musica/<…>` (accendono la loro scheda).
-  I vecchi indirizzi (`#/casa/spesa`, `#/ricette`, `#/film`, `#/musica`, `#/noi/…`) si correggono da soli (`canonico()` in `app.js`).
+  `casa.svago`). Casa = Faccende, Lavori; il calendario dei rifiuti è in Impostazioni (`#/impostazioni/rifiuti`, `renderRifiuti()`
+  di `casa.js`). Pagine interne: `#/ricette/<id>`, `#/musica/<…>` (accendono la loro scheda).
+  I vecchi indirizzi (`#/casa/spesa`, `#/casa/rifiuti`, `#/ricette`, `#/film`, `#/musica`, `#/noi/…`) si correggono da soli (`canonico()` in `app.js`).
+- **Home:** Dov'è, Oggi in casa (faccende e rifiuti di stasera), Lavori (i primi tre), Viaggi, Thor e Minù, atmosfera del periodo,
+  conto alla rovescia. Niente riquadri colorati e niente lavagnetta (i biglietti restano nella raccolta `bacheca`).
+- **Viaggi** (`js/views/viaggi.js`, `#/viaggi`, `#/viaggi/<id>`): liste per la valigia (raccolta `viaggi`) e le cose da portare, una per
+  documento (`valigia`, così si spunta in due insieme). Modelli Mare, Montagna, Weekend o copia di un'altra lista; aggiunta veloce
+  anche a virgole (le doppie si saltano); «Ricomincia» toglie le spunte per il viaggio dopo.
+- **Spesa:** sopra solo la linea di avanzamento (i conti sono sulla scheda Cibo e in alto); niente aggiunte rapide (`freq` resta).
+- **Dov'è, mappa:** più alta; un tocco (o il pulsante) la apre a tutto schermo (`ui('dove.grande')`, `.map-card.grande`), X o Esc la chiudono.
 - **Ricette online:** `api/ricette.js` cerca su GialloZafferano (pagina pubblica dei risultati: ordine dall'`ItemList` schema.org,
   foto/voto/difficoltà/tempo dalle schede, solo `ricette.giallozafferano.it`) e importa da link con i dati schema.org (controlli contro
   indirizzi interni; nei passaggi di GZ si tolgono i rimandi alle foto). Fatto in casa da Benedetta è stato tolto: il sito blocca
@@ -54,7 +63,8 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   Redirect URI registrato: `https://comperotto.vercel.app/api/spotify`. I dispositivi chiedono a `/api/spotify?azione=token` un token di un'ora
   e parlano direttamente con api.spotify.com. Pagine in `js/views/spotify.js`: `#/musica` (lettore, cerca, libreria), `#/musica/cerca`,
   `/preferiti`, `/pl/<id>`, `/album/<id>`, `/artista/<id>`, foglio "⋯" del brano (coda, preferiti, playlist). Barra del brano trascinabile
-  (seek), niente volume. Suggerimenti: musica a tema del periodo (`MUSICA_TEMA` in `js/data.js`, periodo da `periodoMusica()` in
+  (seek), niente volume. In "Dove ascoltare?" ogni dispositivo si può nascondere (nomi in `settings.spotifyNascosti`, per tutta la casa;
+  quello che suona si vede sempre). Suggerimenti: musica a tema del periodo (`MUSICA_TEMA` in `js/data.js`, periodo da `periodoMusica()` in
   `season.js`, trovata con la ricerca e tenuta una settimana) e "Scelti per te" (artisti dei brani salvati → loro brani non salvati e
   uscite dell'ultimo anno: le raccomandazioni di Spotify non ci sono più per le app nuove). "La nostra musica" non c'è più (i dati restano).
   Lettore (`js/spotify.js`): dopo un comando lo schermo cambia subito e le "attese" tengono lo stato chiesto finché Spotify non lo

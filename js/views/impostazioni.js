@@ -6,9 +6,10 @@ import { state, store, isSynced, settings, saveSettings, me, setMe, nameOf, open
 import { seasonOverride, setSeasonOverride } from '../season.js';
 import { seedData } from '../seed.js';
 import * as notifiche from '../notifiche.js';
+import { renderRifiuti } from './casa.js';
 import { ui, setUi } from '../core.js';
 
-export const VERSION = '1.8.0';
+export const VERSION = '1.9.0';
 
 const themeMode = () => lsGet('casa.theme', 'auto');
 export function applyTheme() {
@@ -17,7 +18,12 @@ export function applyTheme() {
   else delete document.documentElement.dataset.theme;
 }
 
-export function render() {
+export function render(route = []) {
+  if (route[1] === 'rifiuti') {
+    return html`<a class="back-link" href="#/impostazioni">${icon('left', 'sm')} Impostazioni</a>
+      ${pageHead('Rifiuti', { eyebrow: 'Il calendario della raccolta' })}
+      ${renderRifiuti()}`;
+  }
   const s = settings();
   const n = s.names;
   const ov = seasonOverride();
@@ -54,7 +60,7 @@ export function render() {
       <button class="set-row" data-action="set-names">${icon('users')}<div class="row-main"><b>${n.p1} e ${n.p2}</b><span>${[s.compleanni && s.compleanni.p1 ? `${n.p1} ${fmtDMY(s.compleanni.p1)}` : '', s.compleanni && s.compleanni.p2 ? `${n.p2} ${fmtDMY(s.compleanni.p2)}` : '', s.anniversario ? `insieme dal ${fmtDMY(s.anniversario)}` : ''].filter(Boolean).join(' · ') || 'Nomi e compleanni'}</span></div>${icon('right', 'sm')}</button>
       <button class="set-row" data-action="set-dates">${icon('calendar')}<div class="row-main"><b>Ricorrenze</b><span>${ric.length ? ric.map((r) => `${r.label} (${fmtDMY(r.date)})`).join(', ') : 'Compleanni di amici e parenti…'}</span></div>${icon('right', 'sm')}</button>
       <a class="set-row" href="#/gatti">${icon('cat')}<div class="row-main"><b>Thor e Minù</b><span>Foto, peso, vaccini</span></div>${icon('right', 'sm')}</a>
-      <a class="set-row" href="#/casa/rifiuti">${icon('bin')}<div class="row-main"><b>Calendario rifiuti</b><span>I giorni della raccolta</span></div>${icon('right', 'sm')}</a>
+      <a class="set-row" href="#/impostazioni/rifiuti">${icon('bin')}<div class="row-main"><b>Calendario rifiuti</b><span>I giorni della raccolta</span></div>${icon('right', 'sm')}</a>
       ${isSynced() ? html`<button class="set-row" data-action="share-app">${icon('share')}<div class="row-main"><b>Invia l’app a ${other}</b><span>Il link per installarla sul suo telefono</span></div>${icon('right', 'sm')}</button>` : ''}
       <button class="set-row" data-action="export">${icon('download')}<div class="row-main"><b>Scarica una copia</b><span>Tutti i dati di casa in un file</span></div></button>
     </div>
@@ -84,7 +90,7 @@ function notificheCard() {
           ? html`Per riceverle apri l’app dalla schermata Home: in Safari tocca ${icon('share', 'xs')} Condividi e poi «Aggiungi alla schermata Home».`
           : st === 'bloccate'
             ? 'Su questo dispositivo sono bloccate. Per riaccenderle: Impostazioni dell’iPhone → Notifiche → Comperotto.'
-            : 'Un avviso quando l’altro arriva a casa o esce dal lavoro, la sera per la spazzatura, per i biglietti nuovi e per compleanni e richiami dei gatti.'}</p>
+            : 'Un avviso quando l’altro arriva a casa o esce dal lavoro, la sera per la spazzatura e per compleanni e richiami dei gatti.'}</p>
         ${st === 'spente' ? html`<button class="btn primary block" data-action="push-on" ${ui('push.busy', false) ? raw('disabled') : ''}>${icon('bell', 'sm')} Attiva le notifiche</button>` : ''}
       </div>`;
   return html`<div class="section-title"><span>Notifiche</span></div>${corpo}`;

@@ -3,18 +3,20 @@
 La casa della famiglia Comperotto, in tasca: Patrick, Serena, Thor e Minù.
 Un'app fatta su misura per **iPhone e iPad** (si installa dalla schermata Home e si apre a tutto schermo, come un'app vera) con:
 
-- **Le pagine** (barra in basso): **Home · Cibo · Casa · Svago · Desideri**. *Cibo* ha due schede, **Spesa** e **Ricette**; *Svago* ha **Film** e **Musica**; *Casa* ha **Faccende**, **Lavori** e **Rifiuti**. Su iPad la barra laterale ha anche *Dov'è*, *Thor e Minù* e *Impostazioni*.
+- **Le pagine** (barra in basso): **Home · Cibo · Casa · Svago · Desideri**. *Cibo* ha due schede, **Spesa** e **Ricette**; *Svago* ha **Film** e **Musica**; *Casa* ha **Faccende** e **Lavori**. Su iPad la barra laterale ha anche *Dov'è*, *Thor e Minù*, *Viaggi* e *Impostazioni*.
+- **Home**: dov'è Patrick e Serena, *Oggi in casa* (faccende e cosa si butta stasera), i lavori più urgenti, i **Viaggi**, Thor e Minù, l'atmosfera del periodo e il conto alla rovescia.
+- **Viaggi**: le liste per la valigia (ciabatte, pantaloni…): si parte da un modello (Mare, Montagna, Weekend) o da un'altra lista, si spunta mentre si prepara la valigia e *Ricomincia* la rimette a posto per il viaggio dopo.
 - **Cibo e Casa**
   - **Spesa**: divisa per reparto in automatico, nell'ordine del giro al supermercato (🥬 Freschi, 🧀 Frigo, 🥖 Forno, 🍝 Dispensa, 🍫 Sfizi, 🧹 Casa, 🧴 Cura personale, 🐈 Animali, 🧊 Surgelati, 🥤 Bevande, 🛒 Altro: si vedono solo i reparti con qualcosa dentro), "spesso comprati" con un tocco, carrello e "svuota", e voci aggiunte con **Alexa**. Niente doppioni: ogni cosa ha la maiuscola, se è già da comprare non si ripete e se era nel carrello torna da comprare;
   - **Faccende** che si ripetono (lettiera, lavatrice, lenzuola, bagno…) con scadenze e chi le ha fatte;
   - **Lavori** da fare (tagliare le tende, sistemare i mobili…) per stanza e priorità;
-  - **Rifiuti**: il calendario della raccolta. Ogni sera la Home dice cosa portare fuori.
+  - **Rifiuti**: il calendario della raccolta si imposta in *Impostazioni → Calendario rifiuti*. Ogni sera la Home dice cosa portare fuori.
 - **Ricette** per categoria (**Natale, Halloween, Sempre, Estate, Colazione**): si aggiungono e si modificano dall'app (tasto **+ Ricetta**, e **Modifica ricetta** in fondo a ognuna), con foto. Si spuntano gli ingredienti e finiscono nella spesa; c'è il dado "cosa cuciniamo?" e il tasto **Tieni lo schermo acceso** mentre si cucina. La ricerca guarda prima nel vostro ricettario e poi **anche online** (vedi sezione 8), e una ricetta si può **importare da un link**.
 - **Film e serie** per categoria (**Famiglia, Natale, Halloween, Sempre, Thriller, Azione, Horror, Cartoni**): copertina e **dove vederli in Italia** (abbonamento, noleggio, acquisto) arrivano da soli e si aggiornano ogni giorno, e cercando un titolo la categoria si propone dal genere; in cima un "Stasera guardiamo…".
 - **Desideri**: più **liste** (quella di casa e quelle che create voi) con prezzo, link e totale, e le **liste dei desideri di Amazon** con foto, nome e prezzo di ogni prodotto: un tocco apre il prodotto su Amazon (sezione 9).
 - **Musica** con **Spotify**: di base suona sul dispositivo che state usando, oppure su iPad, **Echo**…; mini lettore sempre in basso, ricerca, preferiti, playlist, musica a tema del periodo e suggerimenti "Scelti per te". Dalla Home o, su iPad, dalla barra laterale.
 - **Thor e Minù**: foto, età, peso, antiparassitari, vaccini e veterinario, con promemoria (dalla Home).
-- **Lavagnetta** in Home per lasciarsi biglietti, **conto alla rovescia** per le feste e i compleanni (Serena il 29/04, Patrick il 20/12, Thor e Minù il 04/10, il vostro anniversario il 18/07): il giorno giusto la Home fa festa.
+- **Conto alla rovescia** per le feste e i compleanni (Serena il 29/04, Patrick il 20/12, Thor e Minù il 04/10, il vostro anniversario il 18/07): il giorno giusto la Home fa festa.
 - **Atmosfere stagionali**: cambiano colori e decorazioni da sole.
 
 | Periodo | Atmosfera |
@@ -136,7 +138,6 @@ Su ogni iPhone/iPad con l'app **installata sulla schermata Home**: **Impostazion
 
 - **Arrivi e partenze**: "Serena è a casa", "Patrick ha lasciato il lavoro" (dalle posizioni di OwnTracks, con un margine contro i falsi allarmi).
 - **Stasera si butta**: una volta al giorno verso le 18–19, se quella sera c'è qualcosa da portare fuori e non è già stato segnato.
-- **Biglietti sulla lavagnetta**: quando l'altro ne attacca uno nuovo.
 - **Compleanni e gatti**: il giorno prima di compleanni, anniversario, ricorrenze e richiami di Thor e Minù.
 
 Ogni tipo si può spegnere dal singolo dispositivo; "Prova" manda una notifica di prova.
@@ -160,7 +161,7 @@ Una volta sola, da un computer:
 3. Sull'iPhone: *Musica* → **Collega** → incolla il Client ID (solo la prima volta) → accedi a Spotify e **Accetta**. Si torna da soli nell'app.
 4. L'account dell'altro si può collegare anche dallo stesso telefono: *Musica → Spotify →* **Collega** accanto al suo nome → nella pagina di Spotify **Non sei tu?** → si entra con i suoi dati → **Accetta**. Ognuno poi vede di base il proprio Spotify (con tutti e due collegati c'è la scelta *Patrick / Serena* sopra le playlist).
 
-Gli Echo compaiono in *Dove ascoltare?* se Spotify è collegato nell'app Alexa (*Altro → Impostazioni → Musica e podcast*): se non si vedono, basta chiedere una volta ad Alexa di mettere qualcosa da Spotify. Il permesso resta sul server (nel database), non sui telefoni; si toglie da *Musica → Spotify → Scollega*.
+Gli Echo compaiono in *Dove ascoltare?* se Spotify è collegato nell'app Alexa (*Altro → Impostazioni → Musica e podcast*): se non si vedono, basta chiedere una volta ad Alexa di mettere qualcosa da Spotify. Un dispositivo che non volete vedere (es. l'Echo di qualcun altro collegato allo stesso account) si nasconde col tasto accanto al suo nome, per tutti e due; in fondo alla lista *Mostrali* lo riporta. Il permesso resta sul server (nel database), non sui telefoni; si toglie da *Musica → Spotify → Scollega*.
 
 ## 8. Ricette anche da internet
 

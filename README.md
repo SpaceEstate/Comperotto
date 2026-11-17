@@ -8,7 +8,7 @@ Un'app fatta su misura per **iPhone e iPad** (si installa dalla schermata Home e
   - **Faccende** che si ripetono (lettiera, lavatrice, lenzuola, bagno…) con scadenze e chi le ha fatte;
   - **Lavori** da fare (tagliare le tende, sistemare i mobili…) per stanza e priorità;
   - **Rifiuti**: il calendario della raccolta. Ogni sera la Home dice cosa portare fuori.
-- **Ricette** per tema (Tutti i giorni, Natale, Capodanno, San Valentino, Pasqua, Estate, Halloween, Compleanni, Parigi e Canarie): si aggiungono e si modificano dall'app (tasto **+ Ricetta**, e **Modifica ricetta** in fondo a ognuna), con foto. Si spuntano gli ingredienti e finiscono nella spesa; c'è il dado "cosa cuciniamo?" e il tasto **Tieni lo schermo acceso** mentre si cucina. La ricerca guarda prima nel vostro ricettario e poi **anche online** (vedi sezione 8), e una ricetta si può **importare da un link**.
+- **Ricette** per categoria (**Natale, Halloween, Sempre, Estate, Colazione**): si aggiungono e si modificano dall'app (tasto **+ Ricetta**, e **Modifica ricetta** in fondo a ognuna), con foto. Si spuntano gli ingredienti e finiscono nella spesa; c'è il dado "cosa cuciniamo?" e il tasto **Tieni lo schermo acceso** mentre si cucina. La ricerca guarda prima nel vostro ricettario e poi **anche online** (vedi sezione 8), e una ricetta si può **importare da un link**.
 - **Film e serie** per categoria (**Famiglia, Natale, Halloween, Sempre, Thriller, Azione, Horror, Cartoni**): copertina e **dove vederli in Italia** (abbonamento, noleggio, acquisto) arrivano da soli e si aggiornano ogni giorno, e cercando un titolo la categoria si propone dal genere; in cima un "Stasera guardiamo…".
 - **Desideri**: più **liste** (quella di casa e quelle che create voi) con prezzo, link e totale, e le **liste dei desideri di Amazon** con foto, nome e prezzo di ogni prodotto: un tocco apre il prodotto su Amazon (sezione 9).
 - **Musica** con **Spotify**: di base suona sul dispositivo che state usando, oppure su iPad, **Echo**…; mini lettore sempre in basso, ricerca, preferiti, playlist, musica a tema del periodo e suggerimenti "Scelti per te". Dalla Home o, su iPad, dalla barra laterale.
@@ -149,7 +149,7 @@ La musica arriva da **Spotify** (serve Premium), come nell'app di Spotify:
 - **Brani che ti piacciono** (il ♥ accanto a ogni brano), album e playlist salvati nella libreria;
 - **playlist vostre**: crearle, rinominarle, eliminarle, aggiungere e togliere brani (⋯ accanto al brano → *Aggiungi a una playlist*), e *Aggiungi in coda*;
 - **Dove ascoltare?**: di base la musica parte **sul dispositivo che state usando** (toccando un brano sull'iPhone suona subito lì, dentro l'app); si può scegliere un altro dispositivo con Spotify aperto o un **Echo**, e finché resta collegato i brani partono lì;
-- il **mini lettore** resta in basso su tutte le pagine (copertina, titolo, dove suona, play/pausa e avanti): un tocco riapre *Musica*.
+- il **mini lettore** resta in basso su tutte le pagine (copertina, titolo, dove suona, play/pausa e avanti): un tocco apre la **finestra del lettore** senza lasciare la pagina (copertina grande, barra del brano, comandi, ♥, dove suona e i prossimi brani); si chiude con la freccia, la X o trascinandola giù.
 
 Una volta sola, da un computer:
 
@@ -163,8 +163,6 @@ Gli Echo compaiono in *Dove ascoltare?* se Spotify è collegato nell'app Alexa (
 ## 8. Ricette anche da internet
 
 Scrivendo nella ricerca delle Ricette (almeno 3 lettere), dopo un attimo compaiono a parte anche le ricette di **GialloZafferano**, con foto, voto, difficoltà e tempo. **Importa** apre la ricetta già compilata (ingredienti, passaggi, foto) da controllare e salvare; in fondo alla ricetta resta la fonte.
-
-**Fatto in casa da Benedetta** non lascia leggere il suo sito ai programmi (ha una verifica anti-robot): il pulsante *Cerca «…» su Fatto in casa da Benedetta* apre la sua ricerca con le stesse parole, nel browser. Le sue ricette si aggiungono con **+ Ricetta**, copiando ingredienti e preparazione.
 
 In **+ Ricetta** c'è anche **"Da un sito di ricette"**: si incolla il link di una ricetta (GialloZafferano, Misya, Cucchiaio d'argento e quasi tutti gli altri) e l'app legge i dati che quei siti pubblicano apposta in formato standard. Niente chiavi né abbonamenti.
 

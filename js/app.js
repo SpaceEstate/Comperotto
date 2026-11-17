@@ -141,13 +141,22 @@ function render() {
   disegnaMini(musica.mini(r));
 }
 
-// il mini lettore di Spotify, fuori dalla pagina: resta in basso cambiando pagina
+// il mini lettore di Spotify e la sua finestra, fuori dalla pagina: restano cambiando pagina
 const miniBox = document.getElementById('mini');
+const npBox = document.getElementById('np');
+const npBody = document.getElementById('np-body');
 function disegnaMini(h) {
   const tpl = document.createElement('template');
   tpl.innerHTML = (h && h.s) || '';
   morphChildren(miniBox, tpl.content);
   document.documentElement.classList.toggle('con-mini', Boolean(miniBox.firstElementChild));
+  const g = musica.grande(); // senza brano si chiude da sola
+  const tpl2 = document.createElement('template');
+  tpl2.innerHTML = (g && g.s) || '';
+  morphChildren(npBody, tpl2.content);
+  const aperto = Boolean(g) && musica.lettoreAperto();
+  npBox.classList.toggle('open', aperto);
+  npBox.inert = !aperto;
 }
 setRenderer(render);
 
@@ -191,7 +200,11 @@ document.addEventListener('input', (ev) => {
   inputTimer = setTimeout(() => run(el.dataset.input, { el, ev }), 150);
 });
 
-document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && sheetOpen()) closeSheet(); });
+document.addEventListener('keydown', (ev) => {
+  if (ev.key !== 'Escape') return;
+  if (sheetOpen()) closeSheet();
+  else if (musica.lettoreAperto()) musica.chiudiLettore();
+});
 
 // la X delle caselle di ricerca: svuota, aggiorna subito i risultati e lascia il cursore lì per scrivere altro
 actions['search-x'] = ({ el }) => {
@@ -219,6 +232,7 @@ initGestures({
 // cambio pagina con una dissolvenza leggera (View Transitions, Safari 18+)
 window.addEventListener('hashchange', () => {
   closeSheet();
+  musica.chiudiLettore();
   ricette.releaseWake();
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const gesto = document.documentElement.dataset.gesto;

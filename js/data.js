@@ -17,6 +17,25 @@ export const THEMES = {
 };
 export const THEME_IDS = Object.keys(THEMES);
 
+// Categorie delle ricette (i filtri della pagina Ricette), nell'ordine in cui compaiono
+export const RICETTE_CATS = {
+  natale: { label: 'Natale', icon: 'tree' },
+  halloween: { label: 'Halloween', icon: 'pumpkin' },
+  sempre: { label: 'Sempre', icon: 'bowl' },
+  estate: { label: 'Estate', icon: 'wave' },
+  colazione: { label: 'Colazione', icon: 'cup' },
+};
+// temi di prima che finiscono in una categoria (Capodanno è nelle feste di Natale)
+const RICETTE_ALIAS = { capodanno: 'natale' };
+/** Le categorie di una ricetta. I temi di prima che non sono categorie (es. Pasqua, "Parigi e Canarie")
+ *  restano salvati ma non si mostrano: se non resta niente, la ricetta è in "Sempre". */
+export const ricetteCats = (r) => {
+  const c = [...new Set(((r && r.themes) || []).map((t) => RICETTE_ALIAS[t] || t).filter((t) => RICETTE_CATS[t]))];
+  return c.length ? c : ['sempre'];
+};
+/** I temi salvati che non sono categorie (si tengono quando si modifica la ricetta: niente dati persi). */
+export const temiVecchi = (r) => ((r && r.themes) || []).filter((t) => !RICETTE_CATS[t] && !RICETTE_ALIAS[t]);
+
 // Categorie dei film (diverse dai temi di ricette e musica), nell'ordine in cui compaiono
 export const FILM_CATS = {
   famiglia: { label: 'Famiglia', icon: 'users' },

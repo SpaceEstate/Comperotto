@@ -89,7 +89,7 @@ const RICETTE = [
     note: 'Con un foro in alto prima di infornare diventano decorazioni per l’albero.',
   },
   {
-    title: 'Cotechino con lenticchie', themes: ['capodanno'], time: 60, servings: 4,
+    title: 'Cotechino con lenticchie', themes: ['natale'], time: 60, servings: 4,
     ingredients: ['1 cotechino precotto', '300 g lenticchie secche', '1 cipolla', '1 carota', '1 costa di sedano', '2 cucchiai concentrato di pomodoro', '1 l brodo vegetale', '3 cucchiai olio extravergine', 'Sale q.b.'],
     steps: [
       'Sciacqua le lenticchie (se non sono decorticate lasciale in ammollo qualche ora).',
@@ -100,7 +100,7 @@ const RICETTE = [
     ],
   },
   {
-    title: 'Tiramisù', themes: ['sanvalentino', 'compleanni'], time: 30, servings: 6, fav: true,
+    title: 'Tiramisù', themes: ['sempre'], time: 30, servings: 6, fav: true,
     ingredients: ['500 g mascarpone', '4 uova freschissime', '100 g zucchero', '300 g savoiardi', '300 ml caffè', 'Cacao amaro q.b.'],
     steps: [
       'Prepara il caffè e lascialo raffreddare.',
@@ -112,7 +112,7 @@ const RICETTE = [
     note: 'Per San Valentino: in due bicchieri con un cuore di cacao fatto con uno stencil di carta.',
   },
   {
-    title: 'Torta pasqualina', themes: ['pasqua'], time: 75, servings: 6,
+    title: 'Torta pasqualina', themes: ['sempre'], time: 75, servings: 6,
     ingredients: ['2 rotoli pasta sfoglia', '500 g spinaci', '250 g ricotta', '50 g parmigiano', '5 uova', '1 spicchio aglio', '2 cucchiai olio extravergine', 'Noce moscata q.b.', 'Sale q.b.'],
     steps: [
       'Salta gli spinaci in padella con olio e aglio, poi strizzali bene e tritali.',
@@ -143,7 +143,7 @@ const RICETTE = [
     ],
   },
   {
-    title: 'Crêpes come a Parigi', themes: ['aprile', 'sempre'], time: 45, servings: 8, fav: true,
+    title: 'Crêpes come a Parigi', themes: ['colazione', 'sempre'], time: 45, servings: 8, fav: true,
     ingredients: ['125 g farina 00', '250 ml latte', '2 uova', '20 g burro fuso', '1 cucchiaio zucchero', '1 pizzico sale', 'Nutella q.b.', 'Fragole q.b.'],
     steps: [
       'Sbatti le uova con lo zucchero e il sale, poi aggiungi il latte.',
@@ -155,7 +155,7 @@ const RICETTE = [
     note: 'Per il compleanno: torre di crêpes alternate a crema e fragole, con le candeline sopra.',
   },
   {
-    title: 'Papas arrugadas con mojo rojo', themes: ['aprile', 'estate'], time: 40, servings: 4,
+    title: 'Papas arrugadas con mojo rojo', themes: ['estate'], time: 40, servings: 4,
     ingredients: ['1 kg patate piccole novelle', '150 g sale grosso', '3 spicchi aglio', '1 cucchiaino cumino', '2 cucchiaini paprika dolce', '1 peperoncino secco', '100 ml olio extravergine', '2 cucchiai aceto di vino'],
     steps: [
       'Lava bene le patate senza sbucciarle e mettile in una pentola con acqua appena a filo e il sale grosso.',

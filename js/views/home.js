@@ -1,7 +1,7 @@
 // Home: buongiorno, gatti, cosa si butta stasera, faccende di oggi, atmosfera del periodo, lavagnetta
 import { html, raw, longDate, todayIso, timeAgo, vibrate, cap, plural, isIOS, isStandalone, lsGet, lsSet } from '../utils.js';
 import { icon } from '../icons.js';
-import { THEMES, upcomingDates, CAT_EVENTS, MUSICA_TEMA, FILM_CATS, filmCats } from '../data.js';
+import { upcomingDates, CAT_EVENTS, MUSICA_TEMA, FILM_CATS, filmCats, RICETTE_CATS, ricetteCats } from '../data.js';
 import { state, store, settings, me, nameOf, myName, openSheet, toast, val, confirmSheet, rerender, ui, isSynced } from '../core.js';
 import { dueChores, choreRow, trashFor, binChips } from './casa.js';
 import { cats, catAvatar, upcomingFor, lastWeight } from './gatti.js';
@@ -29,8 +29,9 @@ function catStatus(c) {
 
 function seasonCard(s) {
   const th = s.theme;
-  const n = (col) => state.data[col].filter((x) => (x.themes || []).includes(th)).length;
-  // i film hanno le loro categorie: nei periodi senza una categoria (mare, aprile) conto quelli da vedere
+  // ricette e film hanno le loro categorie: nei periodi senza una categoria (es. aprile) conto tutte le ricette
+  // e i film da vedere, e il tocco apre la pagina senza filtro
+  const nRicette = RICETTE_CATS[th] ? state.data.ricette.filter((r) => ricetteCats(r).includes(th)).length : state.data.ricette.length;
   const nFilm = FILM_CATS[th] ? state.data.film.filter((f) => filmCats(f).includes(th)).length : state.data.film.filter((f) => !f.watched).length;
   return html`<section class="season-card">
     <div class="sc-top">
@@ -38,7 +39,7 @@ function seasonCard(s) {
       <div><b>${s.title}</b><span>${s.sub}</span></div>
     </div>
     <div class="sc-links">
-      <a href="#/ricette" data-action="ricette-theme" data-theme="${th}">${icon('chef', 'sm')}<span>${n('ricette')}</span>Ricette</a>
+      <a href="#/ricette" data-action="ricette-theme" data-theme="${RICETTE_CATS[th] ? th : 'tutte'}">${icon('chef', 'sm')}<span>${nRicette}</span>Ricette</a>
       <a href="#/musica">${icon('music', 'sm')}<span>${(MUSICA_TEMA[th] || { brani: [] }).brani.length}</span>Musica</a>
       <a href="#/film" data-action="film-theme-go" data-v="${FILM_CATS[th] ? th : 'tutti'}">${icon('film', 'sm')}<span>${nFilm}</span>Film</a>
     </div>
@@ -111,8 +112,8 @@ function countdowns(dates) {
     <div class="section-title"><span>Conto alla rovescia</span></div>
     <div class="cd-scroll">${list.map((d) => {
       const kind = d.cats ? 'gatti' : d.anniversary ? 'amore' : d.who ? 'festa' : d.theme;
-      const go = !d.personal && THEMES[d.theme];
-      return html`<a class="cd-tile cd-${kind}" href="${go ? '#/ricette' : '#/'}" ${go ? raw(`data-action="ricette-theme" data-theme="${d.theme}"`) : raw('data-action="noop"')}>
+      const go = !d.personal && RICETTE_CATS[d.theme === 'capodanno' ? 'natale' : d.theme];
+      return html`<a class="cd-tile cd-${kind}" href="${go ? '#/ricette' : '#/'}" ${go ? raw(`data-action="ricette-theme" data-theme="${d.theme === 'capodanno' ? 'natale' : d.theme}"`) : raw('data-action="noop"')}>
         <span class="cd-ico">${icon(d.cats ? 'paw' : d.icon || 'calendar')}</span>
         <span class="cd-big">${d.days === 0 ? 'Oggi!' : d.days}</span>
         ${d.days ? html`<span class="cd-unit">${d.days === 1 ? 'giorno' : 'giorni'}</span>` : ''}

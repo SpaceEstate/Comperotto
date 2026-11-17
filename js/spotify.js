@@ -381,6 +381,15 @@ export async function vaiA(ms) {
   ripassa();
 }
 
+/** Il nome di una playlist (per il lettore grande, quando suona una playlist che non è tra le nostre). */
+export const nomePlaylist = (id) => leggi(chiave('plnome', id), () => call(`playlists/${encodeURIComponent(id)}?fields=name`).then((j) => (j && j.name) || ''), { maxAge: 7 * 86400000, conserva: true });
+
+/** I prossimi brani in coda (per il lettore grande). */
+export async function coda() {
+  const j = await call('me/player/queue');
+  return registra(((j && j.queue) || []).map((t) => brano(t)).filter(Boolean).slice(0, 5));
+}
+
 /** Cerca su Spotify (es. un brano della nostra lista senza link) e restituisce il primo risultato. */
 export async function cerca(q, tipo = 'track') {
   const j = await call(`search?type=${tipo}&limit=1&market=from_token&q=${encodeURIComponent(q)}`);

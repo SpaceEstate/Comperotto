@@ -139,10 +139,11 @@ function mostraPosizione(ms, dito = false) {
 }
 document.addEventListener('input', (ev) => {
   const el = ev.target;
-  if (!el || !el.matches || !el.matches('.sp-seek input')) return;
+  if (!el || !el.matches || !el.matches('.sp-seek input, .np-seek input')) return;
   el._busy = true; // il ridisegno non mi sposta il pallino sotto il dito
   sp.trascino = Number(el.value);
   mostraPosizione(sp.trascino, true);
+  mostraNp(sp.trascino);
 }, true);
 // l'orologio delle barre: 4 volte al secondo, solo con un lettore sullo schermo e la musica che va
 const quanto = (ms, dur) => `${Math.min(100, (ms / dur) * 100).toFixed(2)}%`;
@@ -151,16 +152,18 @@ setInterval(() => {
   if (document.hidden || sp.trascino != null || !p || !p.item || !p.is_playing) return;
   const grande = document.getElementById('sp-now');
   const piccolo = document.querySelector('#sp-mini .sp-mini-bar > i');
-  if (!grande && !piccolo) return;
+  const finestra = npAperto && document.getElementById('np-seek');
+  if (!grande && !piccolo && !finestra) return;
   const ms = S.progresso();
   if (grande) mostraPosizione(ms);
+  if (finestra) mostraNp(ms);
   if (piccolo && p.item.duration_ms) piccolo.style.width = quanto(ms, p.item.duration_ms);
   if (p.item.duration_ms && ms >= p.item.duration_ms - 250) S.fineBrano(); // finito: chiedo subito il prossimo
 }, 250);
 
 /**
  * Il mini lettore in basso, su tutte le pagine tranne Musica (lì c'è quello grande): copertina, titolo,
- * artista e dove suona; play/pausa e avanti; un tocco apre Musica.
+ * artista e dove suona; play/pausa e avanti; un tocco apre la finestra del lettore (senza cambiare pagina).
  */
 export function miniLettore(r = []) {
   if (!isSynced() || !S.chi() || (r[0] === 'musica' && !SOTTO.includes(r[1]))) return '';
@@ -171,11 +174,161 @@ export function miniLettore(r = []) {
   const dur = it.duration_ms || 0;
   const dove = p.device ? devNome(p.device) : '';
   return html`<div class="sp-mini ${p.is_playing ? 'playing' : ''}" id="sp-mini">
-    <a class="sp-mini-main" href="#/musica" aria-label="Apri il lettore: ${it.name}">${cover(img, 'music', 'sp-tcover')}<span class="row-main"><b>${it.name}</b><span>${nomiArtisti(it) || (it.show && it.show.name) || ''}${dove ? html` · <em>${icon(devIcon(p.device), 'xs')}${dove}</em>` : ''}</span></span></a>
+    <button class="sp-mini-main" type="button" data-action="np-apri" aria-label="Apri il lettore: ${it.name}">${cover(img, 'music', 'sp-tcover')}<span class="row-main"><b>${it.name}</b><span>${nomiArtisti(it) || (it.show && it.show.name) || ''}${dove ? html` · <em>${icon(devIcon(p.device), 'xs')}${dove}</em>` : ''}</span></span></button>
     <button class="sp-btn" data-action="sp-playpausa" aria-label="${p.is_playing ? 'Pausa' : 'Riproduci'}">${icon(p.is_playing ? 'pause' : 'play', 'filled')}</button>
     <button class="sp-btn" data-action="sp-avanti" aria-label="Successivo">${icon('next', 'filled')}</button>
     <span class="sp-mini-bar" aria-hidden="true"><i style="width:${dur ? quanto(S.progresso(), dur) : '0%'}"></i></span>
   </div>`;
+}
+
+// ---------------------------------------------------------------------------
+// La finestra del lettore: si apre toccando il mini lettore, senza lasciare la pagina. Sul telefono sale
+// dal basso (si chiude anche trascinandola giù), su iPad è una finestra al centro.
+// ---------------------------------------------------------------------------
+let npAperto = false;
+let npUltimo = '';
+export const lettoreAperto = () => npAperto;
+export function apriLettore() {
+  if (!sp.player || !sp.player.item) return;
+  npAperto = true;
+  document.documentElement.classList.add('np-open');
+  rerender();
+  // un attimo dopo (la finestra è disegnata): il dito può trascinarla giù, la tastiera ha dove fermarsi
+  requestAnimationFrame(() => {
+    trascinaGiu();
+    if (matchMedia('(hover: hover)').matches) { const b = document.querySelector('#np .np-head .np-icon'); if (b) b.focus(); }
+  });
+}
+export function chiudiLettore() {
+  if (!npAperto) return;
+  npAperto = false;
+  document.documentElement.classList.remove('np-open');
+  const f = document.querySelector('#np .np-full');
+  if (f) f.style.transform = '';
+  rerender();
+}
+/** Minuti e barra del lettore grande (anche mentre il dito trascina). */
+function mostraNp(ms) {
+  const it = sp.player && sp.player.item;
+  const dur = (it && it.duration_ms) || 0;
+  const box = document.getElementById('np-seek');
+  if (!box || !dur) return;
+  const r = box.querySelector('input');
+  if (r && !r._busy) r.value = Math.round(ms);
+  if (r) r.style.setProperty('--p', `${Math.min(100, (ms / dur) * 100).toFixed(2)}%`);
+  const testo = `${tempo(ms)}|${tempo(dur - ms)}`;
+  if (testo === npUltimo) return;
+  npUltimo = testo;
+  const t1 = document.getElementById('np-t1'), t2 = document.getElementById('np-t2');
+  if (t1) t1.textContent = tempo(ms);
+  if (t2) t2.textContent = `-${tempo(dur - ms)}`;
+}
+/** Da dove arriva quello che suona: playlist, album, artista, preferiti (con il link alla sua pagina). */
+function contesto(p) {
+  const uri = (p.context && p.context.uri) || '';
+  const [, tipo, id] = uri.split(':');
+  if (tipo === 'playlist' && id) {
+    const nota = ((sp.playlists[S.chi()] || {}).list || []).find((x) => x.id === id);
+    const letta = S.letto(S.chiave('pl', id, 0));
+    const nome = (nota && nota.name) || (letta && letta.info && letta.info.name) || S.letto(S.chiave('plnome', id));
+    // una playlist che non conosco ancora: chiedo il nome a Spotify (una volta, poi resta)
+    if (!nome && npAperto && !S.fallito(S.chiave('plnome', id))) queueMicrotask(() => S.nomePlaylist(id).catch(() => {}));
+    return { nome: nome || 'Playlist', href: `#/musica/pl/${id}` };
+  }
+  if (tipo === 'album' && id) return { nome: (p.item.album && p.item.album.name) || 'Album', href: `#/musica/album/${id}` };
+  if (tipo === 'artist' && id) {
+    const a = (p.item.artists || []).find((x) => x.id === id);
+    return { nome: a ? a.name : 'Artista', href: `#/musica/artista/${id}` };
+  }
+  if (/:collection/.test(uri)) return { nome: 'Brani che ti piacciono', href: '#/musica/preferiti' };
+  return { nome: p.device ? devNome(p.device) : 'Spotify', href: '' };
+}
+/** Il contenuto della finestra (sempre disegnato quando c'è un brano: così si apre e si chiude scorrendo). */
+export function grandeLettore() {
+  const p = sp.player;
+  const it = p && p.item;
+  if (!isSynced() || !S.chi() || !it) {
+    if (npAperto) { npAperto = false; document.documentElement.classList.remove('np-open'); }
+    return '';
+  }
+  const playing = Boolean(p.is_playing);
+  const img = S.bestImage((it.album && it.album.images) || it.images || (it.show && it.show.images), 600);
+  const dur = it.duration_ms || 0;
+  const pos = sp.trascino != null ? sp.trascino : S.progresso();
+  const pct = dur ? Math.min(100, (pos / dur) * 100) : 0;
+  npUltimo = '';
+  const saved = S.salvato(it.uri);
+  if (npAperto && it.uri && saved === undefined) queueMicrotask(() => S.controllaSalvati([it.uri]));
+  const ctx = contesto(p);
+  const dev = p.device || sceltoOAttivo();
+  const a0 = (it.artists || [])[0];
+  const al = it.album;
+  // i prossimi brani: letti all'apertura e a ogni cambio di brano
+  const kq = S.chiave('coda', it.uri);
+  const dopo = S.letto(kq);
+  if (npAperto && !dopo && !S.fallito(kq)) queueMicrotask(() => S.leggi(kq, () => S.coda(), { maxAge: 60000 }).catch(() => {}));
+  return html`
+    <div class="np-bg" aria-hidden="true" ${img ? raw(`style="background-image:url('${img}')"`) : ''}></div>
+    <header class="np-head np-drag">
+      <button class="np-icon" type="button" data-action="np-chiudi" aria-label="Riduci il lettore">${icon('down')}</button>
+      <div class="np-head-t"><small>In riproduzione</small>${ctx.href ? html`<a href="${ctx.href}">${ctx.nome}</a>` : html`<b>${ctx.nome}</b>`}</div>
+      <button class="np-icon" type="button" data-action="np-chiudi" aria-label="Chiudi">${icon('x')}</button>
+    </header>
+    <div class="np-scroll">
+      <div class="np-art np-drag ${playing ? '' : 'ferma'}">${icon('music', 'lg')}${img ? html`<img src="${img}" alt="" decoding="async">` : ''}</div>
+      <div class="np-info">
+        <div class="np-info-t">
+          <h2>${al && al.id ? html`<a href="#/musica/album/${al.id}">${it.name}</a>` : it.name}</h2>
+          <p>${a0 && a0.id ? html`<a href="#/musica/artista/${a0.id}">${nomiArtisti(it)}</a>` : nomiArtisti(it) || (it.show && it.show.name) || ''}</p>
+        </div>
+        ${it.type !== 'episode' ? html`<button class="np-icon ${saved ? 'on' : ''}" type="button" data-action="sp-cuore" data-uri="${it.uri}" aria-label="${saved ? 'Togli dai preferiti' : 'Aggiungi ai preferiti'}">${icon('heart', saved ? 'filled' : '')}</button>` : ''}
+        ${it.id ? html`<a class="np-icon" href="https://open.spotify.com/${it.type === 'episode' ? 'episode' : 'track'}/${it.id}" target="_blank" rel="noopener" aria-label="Apri nell’app Spotify">${icon('link')}</a>` : ''}
+      </div>
+      <div class="np-seek no-gesture" id="np-seek">
+        <input type="range" min="0" max="${dur}" step="1000" value="${Math.round(pos)}" data-change="sp-seek" aria-label="Posizione nel brano" style="--p:${pct.toFixed(2)}%">
+        <div class="np-times"><span id="np-t1">${tempo(pos)}</span><span id="np-t2">-${tempo(dur - pos)}</span></div>
+      </div>
+      <div class="np-ctrl">
+        <button class="np-icon np-side ${p.shuffle_state ? 'on' : ''}" type="button" data-action="sp-casuale" aria-label="Ordine casuale" aria-pressed="${p.shuffle_state ? 'true' : 'false'}">${icon('shuffle')}</button>
+        <button class="np-icon np-skip" type="button" data-action="sp-indietro" aria-label="Precedente">${icon('prev', 'filled')}</button>
+        <button class="np-big" type="button" data-action="sp-playpausa" aria-label="${playing ? 'Pausa' : 'Riproduci'}">${icon(playing ? 'pause' : 'play', 'filled')}</button>
+        <button class="np-icon np-skip" type="button" data-action="sp-avanti" aria-label="Successivo">${icon('next', 'filled')}</button>
+        <button class="np-icon np-side" type="button" data-action="sp-dispositivi" aria-label="Dove ascoltare">${icon(dev ? devIcon(dev) : 'speaker')}</button>
+      </div>
+      <button class="np-dev" type="button" data-action="sp-dispositivi">${icon(dev ? devIcon(dev) : 'speaker', 'xs')}<span>${dev ? `Su ${devNome(dev)}` : 'Scegli dove ascoltare'}</span>${icon('down', 'xs')}</button>
+      ${dopo && dopo.length ? html`<div class="np-queue"><div class="np-qt">${icon('queue', 'xs')} Dopo</div>
+        ${dopo.map((t) => html`<div class="np-q">${cover(t.img, 'music', 'sp-tcover')}<span class="row-main"><b>${t.name}</b><span>${nomiArtisti(t)}</span></span></div>`)}</div>` : ''}
+    </div>`;
+}
+// sul telefono la finestra si chiude anche trascinandola giù, come gli altri fogli
+let trascinaPronto = false;
+function trascinaGiu() {
+  const f = document.querySelector('#np .np-full');
+  if (!f || trascinaPronto) return;
+  trascinaPronto = true;
+  let y0 = null, dy = 0, t0 = 0;
+  f.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1 || !e.target.closest('.np-drag') || e.target.closest('button, a, input')) return;
+    if (matchMedia('(min-width: 700px) and (min-height: 560px)').matches) return;
+    if (f.querySelector('.np-scroll').scrollTop > 0) return; // prima si torna in cima scorrendo
+    y0 = e.touches[0].clientY; dy = 0; t0 = e.timeStamp;
+    f.style.transition = 'none';
+  }, { passive: true });
+  f.addEventListener('touchmove', (e) => {
+    if (y0 == null) return;
+    dy = Math.max(0, e.touches[0].clientY - y0);
+    f.style.transform = `translateY(${dy}px)`;
+    if (e.cancelable) e.preventDefault();
+  }, { passive: false });
+  const fine = (e) => {
+    if (y0 == null) return;
+    const v = dy / Math.max(1, e.timeStamp - t0);
+    y0 = null;
+    f.style.transition = '';
+    if (dy > 120 || (v > 0.5 && dy > 30)) chiudiLettore(); else f.style.transform = '';
+  };
+  f.addEventListener('touchend', fine);
+  f.addEventListener('touchcancel', fine);
 }
 
 // ---------------------------------------------------------------------------
@@ -793,6 +946,9 @@ export const actions = {
   'sp-perte-tutti': () => setUi('sp.perte.tutti', !ui('sp.perte.tutti', false)),
   'sp-riprova': () => { S.dimentica(S.chiave('')); rerender(); },
 
+  // la finestra del lettore
+  'np-apri': () => { vibrate(8); apriLettore(); },
+  'np-chiudi': () => chiudiLettore(),
   // lettore
   'sp-playpausa': prova(async () => { vibrate(); await S.playPausa(); }),
   'sp-avanti': prova(async () => { vibrate(); await S.salta(true); }),

@@ -3,8 +3,6 @@
 //                                       voto, difficoltà, tempo): la pagina dei risultati è pubblica
 //   GET /api/ricette?url=https://…     → importa da una pagina di ricetta che pubblica i dati standard
 //                                       schema.org (GialloZafferano e quasi tutti i siti di cucina)
-// Fatto in casa da Benedetta non si lascia leggere dai programmi (verifica anti-robot di Cloudflare):
-// l'app apre la sua ricerca nel browser, dove passa la persona.
 // Protetto dal codice di famiglia: non è un passa-richieste aperto a tutti.
 import dns from 'node:dns/promises';
 import net from 'node:net';
@@ -202,7 +200,7 @@ const immagineDi = (img) => {
 };
 
 // i siti più usati con il loro nome (gli altri con l'indirizzo)
-const NOMI = { 'giallozafferano.it': 'GialloZafferano', 'fattoincasadabenedetta.it': 'Fatto in casa da Benedetta', 'misya.info': 'Misya', 'cucchiaio.it': 'Il Cucchiaio d’Argento', 'cookist.it': 'Cookist', 'lacucinaitaliana.it': 'La Cucina Italiana', 'salepepe.it': 'Sale&Pepe', 'ricetteperbimby.it': 'Ricette per Bimby' };
+const NOMI = { 'giallozafferano.it': 'GialloZafferano', 'misya.info': 'Misya', 'cucchiaio.it': 'Il Cucchiaio d’Argento', 'cookist.it': 'Cookist', 'lacucinaitaliana.it': 'La Cucina Italiana', 'salepepe.it': 'Sale&Pepe', 'ricetteperbimby.it': 'Ricette per Bimby' };
 const nomeSito = (host) => { const h = host.replace(/^www\./, ''); const k = Object.keys(NOMI).find((d) => h === d || h.endsWith(`.${d}`)); return k ? NOMI[k] : h; };
 // GialloZafferano nei passaggi richiama le sue foto con i numeri ("…la crema 5 ; tenetela", "(16)"): qui le foto non ci sono
 const senzaRimandi = (p) => p.replace(/\s*\(\s*\d{1,2}\s*\)(?=\s*[.,;:!?]|\s|$)/g, '').replace(/(?:\s\d{1,2})+\s+(?=[.,;:!?])/g, '').replace(/\s+([.,;:!?])/g, '$1').trim();

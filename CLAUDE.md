@@ -25,9 +25,12 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   o con un tocco; "Chiedi a…" manda una notifica all'altro (`#/dove/condividi`).
 - **Ricette online:** `api/ricette.js` cerca su GialloZafferano (pagina pubblica dei risultati: ordine dall'`ItemList` schema.org,
   foto/voto/difficoltà/tempo dalle schede, solo `ricette.giallozafferano.it`) e importa da link con i dati schema.org (controlli contro
-  indirizzi interni; nei passaggi di GZ si tolgono i rimandi alle foto). Fatto in casa da Benedetta blocca i programmi (verifica
-  Cloudflare, anche da qui): l'app apre la sua ricerca (`/?s=`) nel browser e, se si incolla un suo link, spiega di copiare a mano.
-  Non aggirare quelle verifiche.
+  indirizzi interni; nei passaggi di GZ si tolgono i rimandi alle foto). Fatto in casa da Benedetta è stato tolto: il sito blocca
+  i programmi (verifica Cloudflare) e non va aggirato; un link di un sito così all'importazione dà un messaggio chiaro.
+- **Ricette, categorie:** `RICETTE_CATS` (`js/data.js`): Natale, Halloween, Sempre, Estate, Colazione (i filtri della pagina e il
+  campo "Categoria"). `ricetteCats(r)`: Capodanno conta come Natale; i temi di prima che non sono categorie (Pasqua, San Valentino,
+  "Parigi e Canarie"…) restano salvati ma non si mostrano (`temiVecchi()` si conservano salvando) e la ricetta va in Sempre.
+  Esempi aggiornati una volta (`settings.ricetteCats`). "Parigi e Canarie" resta solo come atmosfera e musica di aprile.
 - **Desideri e liste:** raccolta `liste` (`tipo: 'nostra' | 'amazon'`); "Desideri di casa" è la lista di sempre (desideri senza
   `lista`). Eliminare una lista riporta i suoi desideri a casa. Le liste Amazon: `GET /api/link?lista=` legge la pagina pubblica della
   lista (Amazon non ha un'API; pagine successive da `showMoreUrl` fino a `endOfListMarker`, una al secondo, niente insistenze se
@@ -56,7 +59,9 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   vuole i permessi `streaming user-read-email user-read-private`, altrimenti "Invalid token scopes").
   Di base la musica parte qui (`doveSuonare()` → `QUI`): un altro dispositivo solo se scelto in "Dove ascoltare?" e ancora collegato
   (è quello attivo o scelto da meno di 30 min; `casa.spotify.dev` = `{ id, at }`). Mini lettore fisso (`miniLettore()`, nel
-  `#mini` fuori dalla pagina, su tutte le pagine tranne `#/musica`): il giro di aggiornamento continua anche fuori da Musica
+  `#mini` fuori dalla pagina, su tutte le pagine tranne `#/musica`); un tocco apre la finestra del lettore (`grandeLettore()` nel
+  `#np`, fuori dalla pagina: sul telefono sale dal basso e si chiude trascinandola giù, su iPad è al centro; "Dopo" da
+  `me/player/queue`, nome delle playlist altrui da `playlists/{id}?fields=name`): il giro di aggiornamento continua anche fuori da Musica
   (10 s se suona, 30 s in pausa, 60 s senza niente; mai con l'app in secondo piano) e parte all'avvio (`avviaSpotify()`).
   Regole 2026 (modalità sviluppo, max 5 utenti, proprietario Premium): ricerca max 10 per tipo, `tracks`→`items` nelle playlist,
   preferiti con `PUT/DELETE me/library?uris=`, brani solo delle playlist proprie (`/playlists/{id}/items`, altrimenti 403).

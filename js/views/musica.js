@@ -15,7 +15,10 @@ export function render(r = []) {
 }
 
 export const after = (r = []) => SPV.after(r);
-/** Il mini lettore in basso (su tutte le pagine tranne Musica). */
+/** Il mini lettore in basso (su tutte le pagine tranne Musica) e la finestra del lettore che apre. */
 export const mini = (r = []) => SPV.miniLettore(r);
+export const grande = () => SPV.grandeLettore();
+export const lettoreAperto = () => SPV.lettoreAperto();
+export const chiudiLettore = () => SPV.chiudiLettore();
 export const refresh = () => SPV.refresh();
 export const actions = { ...SPV.actions };

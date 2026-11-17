@@ -1,16 +1,17 @@
 // Ricette, divise per tema (Natale, Halloween, Pasqua, …)
 import { html, raw, norm, cap, parseQty, resizeImage, safeImg, safeUrl, hostOf, vibrate } from '../utils.js';
 import { icon, catFace } from '../icons.js';
-import { THEMES, themeLabel } from '../data.js';
-import { state, store, openSheet, closeSheet, toast, val, lines, pageHead, emptyState, ui, setUi, navigate, themeChoices, confirmSheet, rerender, isSynced, sheetError, cancella } from '../core.js';
+import { RICETTE_CATS, ricetteCats, temiVecchi } from '../data.js';
+import { state, store, openSheet, closeSheet, toast, val, lines, pageHead, emptyState, ui, setUi, navigate, themeChoices, confirmSheet, rerender, isSynced, sheetError, cancella, settings, saveSettings } from '../core.js';
 import { addShopping } from './spesa.js';
 import { currentTheme, seasonInfo } from '../season.js';
 
-const mainTheme = (r) => (r.themes && r.themes[0]) || 'sempre';
+const mainTheme = (r) => ricetteCats(r)[0];
+const catLabel = (c) => (RICETTE_CATS[c] || RICETTE_CATS.sempre).label;
 
 export function placeholder(theme, cls = '') {
-  const t = THEMES[theme] || THEMES.sempre;
-  return html`<div class="r-ph th-${THEMES[theme] ? theme : 'sempre'} ${cls}">${icon(t.icon)}</div>`;
+  const c = RICETTE_CATS[theme] ? theme : 'sempre';
+  return html`<div class="r-ph th-${c} ${cls}">${icon(RICETTE_CATS[c].icon)}</div>`;
 }
 
 function card(r) {
@@ -19,29 +20,30 @@ function card(r) {
     <div class="r-img">${img ? html`<div class="r-ph r-ph-cover" style="background-image:url('${img}')"></div>` : placeholder(mainTheme(r))}
       ${r.fav ? html`<span class="r-fav">${icon('heart')}</span>` : ''}</div>
     <div class="r-body"><h3 class="r-title">${r.title}</h3>
-      <div class="r-meta">${r.time ? html`${icon('clock', 'xs')} ${r.time} min · ` : ''}${themeLabel(mainTheme(r), true)}</div></div>
+      <div class="r-meta">${r.time ? html`${icon('clock', 'xs')} ${r.time} min · ` : ''}${catLabel(mainTheme(r))}</div></div>
   </a>`;
 }
 
 export function render(route) {
   if (route[1]) return detail(route[1]);
-  const theme = ui('ricette.theme', 'tutte');
+  const t0 = ui('ricette.theme', 'tutte');
+  const theme = t0 === 'preferite' || RICETTE_CATS[t0] ? t0 : 'tutte';
   const q = norm(ui('ricette.q', ''));
   const all = [...state.data.ricette].sort((a, b) => a.title.localeCompare(b.title, 'it'));
   const filtered = all.filter((r) =>
-    (theme === 'tutte' || (theme === 'preferite' ? r.fav : (r.themes || []).includes(theme))) &&
+    (theme === 'tutte' || (theme === 'preferite' ? r.fav : ricetteCats(r).includes(theme))) &&
     (!q || norm(r.title).includes(q) || (r.ingredients || []).some((i) => norm(i).includes(q))));
-  const used = Object.keys(THEMES).filter((t) => all.some((r) => (r.themes || []).includes(t)));
   const season = seasonInfo();
-  const sTheme = currentTheme();
-  const seasonCount = sTheme ? all.filter((r) => (r.themes || []).includes(sTheme.id)).length : 0;
+  // il periodo dell'anno, se è una delle categorie (Natale, Halloween, Estate)
+  const sTheme = currentTheme() && RICETTE_CATS[currentTheme().id] ? currentTheme() : null;
+  const seasonCount = sTheme ? all.filter((r) => ricetteCats(r).includes(sTheme.id)).length : 0;
 
   return html`
     ${pageHead('Ricette', { eyebrow: `${all.length} nel ricettario`, actions: all.length ? html`<button class="icon-btn" data-action="ricetta-random" aria-label="Cosa cuciniamo?">${icon('dice')}</button>` : '' })}
 
     ${sTheme && theme === 'tutte' && !q ? html`<a class="season-banner" href="#/ricette" data-action="ricette-theme" data-theme="${sTheme.id}">
-      <span class="s-ico tone-oak dot-ico">${icon(THEMES[sTheme.id].icon, 'lg')}</span>
-      <div><b>${season ? season.title : sTheme.label}</b><span>${seasonCount ? `${seasonCount} ricette di ${THEMES[sTheme.id].label}` : `Aggiungi le vostre ricette di ${THEMES[sTheme.id].label}`}${sTheme.days != null ? ` · mancano ${sTheme.days} giorni` : ''}</span></div>
+      <span class="s-ico tone-oak dot-ico">${icon(RICETTE_CATS[sTheme.id].icon, 'lg')}</span>
+      <div><b>${season ? season.title : sTheme.label}</b><span>${seasonCount ? `${seasonCount} ${seasonCount === 1 ? 'ricetta' : 'ricette'} di ${catLabel(sTheme.id)}` : `Aggiungi le vostre ricette di ${catLabel(sTheme.id)}`}${sTheme.days != null ? ` · mancano ${sTheme.days} giorni` : ''}</span></div>
     </a>` : ''}
 
     <div class="search">${icon('search', 'sm')}<input id="ricette-q" type="search" placeholder="Cerca per nome o ingrediente" value="${ui('ricette.q', '')}" data-input="ricette-q" aria-label="Cerca ricette">${cancella('ricette-q')}</div>
@@ -49,12 +51,14 @@ export function render(route) {
     <div class="chips" style="margin-top:0">
       <button class="chip ${theme === 'tutte' ? 'on' : ''}" data-action="ricette-theme" data-theme="tutte">Tutte</button>
       <button class="chip ${theme === 'preferite' ? 'on' : ''}" data-action="ricette-theme" data-theme="preferite">${icon('heart', 'xs')} Preferite</button>
-      ${Object.entries(THEMES).filter(([id]) => used.includes(id) || id === theme).map(([id, t]) => html`<button class="chip ${theme === id ? 'on' : ''}" data-action="ricette-theme" data-theme="${id}">${icon(t.icon, 'xs')} ${t.short || t.label}</button>`)}
+      ${Object.entries(RICETTE_CATS).map(([id, t]) => html`<button class="chip ${theme === id ? 'on' : ''}" data-action="ricette-theme" data-theme="${id}">${icon(t.icon, 'xs')} ${t.label}</button>`)}
     </div>
 
     ${q && filtered.length ? html`<div class="section-title"><span>Nel nostro ricettario · ${filtered.length}</span></div>` : ''}
     ${filtered.length ? html`<div class="recipes" style="margin-top:8px">${filtered.map(card)}</div>`
       : q ? html`<p class="muted small web-none">Nel nostro ricettario non c’è niente con «${ui('ricette.q', '')}».</p>`
+      : RICETTE_CATS[theme] && all.length ? emptyState(`Nessuna ricetta di ${catLabel(theme)}`, 'Aggiungila con + Ricetta, scegliendo la categoria.', catFace('b'))
+      : theme === 'preferite' && all.length ? emptyState('Nessuna preferita', 'Tocca il cuore in una ricetta per ritrovarla qui.', catFace('b'))
       : emptyState('Ricettario vuoto', 'Aggiungi la prima ricetta di casa.', catFace('b'))}
 
     ${q ? online(q, all) : ''}
@@ -64,13 +68,11 @@ export function render(route) {
 
 // ---------------------------------------------------------------------------
 // Ricerca anche online: le ricette di GialloZafferano (foto, voto, difficoltà, tempo; importabili con un
-// tocco) e la ricerca di Fatto in casa da Benedetta, che si apre sul suo sito (non si lascia leggere dalle
-// app). Parte solo quando si smette di scrivere, con almeno 3 lettere; le richieste vecchie si annullano
+// tocco). Parte solo quando si smette di scrivere, con almeno 3 lettere; le richieste vecchie si annullano
 // e i risultati restano in memoria.
 // ---------------------------------------------------------------------------
 const FONTI = { giallozafferano: 'GialloZafferano' };
 const suGz = (t) => `https://www.giallozafferano.it/ricerca-ricette/${encodeURIComponent(t).replace(/%20/g, '+')}/`;
-const suBenedetta = (t) => `https://www.fattoincasadabenedetta.it/?s=${encodeURIComponent(t).replace(/%20/g, '+')}`;
 const webCache = new Map();
 let webT = 0;
 let webCtrl = null;
@@ -104,14 +106,9 @@ async function cercaWeb(k, testo) {
 
 function online(q, all) {
   const testo = ui('ricette.q', '').trim();
-  // Benedetta: la sua ricerca si apre sul suo sito, con le stesse parole
-  const benedetta = html`<a class="web-card web-link" href="${suBenedetta(testo)}" target="_blank" rel="noopener">
-    <span class="wc-logo bene" aria-hidden="true">${icon('chef')}</span>
-    <span class="wc-body"><b>Cerca «${testo}» su Fatto in casa da Benedetta</b><span class="wc-src">Si apre il suo sito</span></span>
-    ${icon('right', 'sm')}</a>`;
   const altrove = html`<p class="web-more">${icon('search', 'xs')} Tutti i risultati su
     <a href="${suGz(testo)}" target="_blank" rel="noopener">GialloZafferano</a></p>`;
-  if (!isSynced()) return html`${benedetta}${altrove}`;
+  if (!isSynced()) return altrove;
   const w = ui('ricette.web', null);
   if (q.length < 3) return html`<p class="muted small web-none">Con almeno 3 lettere cerco anche online.</p>`;
   if (!w || w.k !== q) return '';
@@ -143,7 +140,7 @@ function online(q, all) {
     })}</div>
     ${w.errori && w.errori.length ? html`<p class="muted small web-none">${w.errori.map((x) => FONTI[x] || x).join(', ')} non ha risposto: i risultati potrebbero essere incompleti.</p>` : ''}`;
   }
-  return html`<div class="section-title"><span>${icon('search', 'xs')} Anche online</span>${w.stato === 'carico' ? html`<span class="web-spin" aria-label="Cerco"></span>` : ''}</div>${benedetta}${corpo}${altrove}`;
+  return html`<div class="section-title"><span>${icon('search', 'xs')} Anche online</span>${w.stato === 'carico' ? html`<span class="web-spin" aria-label="Cerco"></span>` : ''}</div>${corpo}${altrove}`;
 }
 
 /** Una foto arrivata come data URL dal server: la riduco come quelle scattate (meno spazio nel database). */
@@ -176,7 +173,7 @@ function detail(id) {
       <div class="facts">
         ${r.time ? html`<span class="fact">${icon('clock', 'sm')} ${r.time} min</span>` : ''}
         ${r.servings ? html`<span class="fact">${icon('users', 'sm')} ${r.servings} ${r.servings > 12 ? 'pezzi' : 'porzioni'}</span>` : ''}
-        ${(r.themes || []).map((t) => html`<span class="fact">${icon((THEMES[t] || THEMES.sempre).icon, 'sm')} ${themeLabel(t, true)}</span>`)}
+        ${ricetteCats(r).map((t) => html`<span class="fact">${icon(RICETTE_CATS[t].icon, 'sm')} ${RICETTE_CATS[t].label}</span>`)}
         <button class="fact wake ${ui('wake', false) ? 'on' : ''}" data-action="wake">${icon('bulb', 'sm')} ${ui('wake', false) ? 'Schermo sempre acceso' : 'Tieni lo schermo acceso'}</button>
       </div>
       <div class="recipe-cols"><div class="col-ingr">
@@ -210,7 +207,7 @@ function recipeSheet(r = null, preset = null) {
         <div class="il-row"><input name="url" type="url" inputmode="url" autocomplete="off" placeholder="Incolla il link della ricetta"><button class="btn" type="button" id="r-import">${icon('download', 'sm')} Importa</button></div>
         <p class="help" id="r-import-help">${preset ? html`Controlla e salva: fonte ${fonte && fonte.nome ? fonte.nome : ''}.` : 'Funziona con quasi tutti i siti di cucina (GialloZafferano, Misya, Cucchiaio d’argento…).'}</p></div>` : ''}
       <label class="field"><span>Nome</span><input name="title" value="${d.title || ''}" placeholder="es. Lasagne della nonna" required ${r || preset ? '' : raw('autofocus')}></label>
-      <div class="field"><span>Tema</span>${themeChoices('themes', d.themes || ['sempre'], THEMES)}</div>
+      <div class="field"><span>Categoria</span>${themeChoices('themes', d.themes ? ricetteCats(d) : ['sempre'], RICETTE_CATS)}</div>
       <div class="field-row">
         <label class="field"><span>Tempo (min)</span><input name="time" type="number" inputmode="numeric" min="0" value="${d.time || ''}"></label>
         <label class="field"><span>Porzioni</span><input name="servings" type="number" inputmode="numeric" min="0" value="${d.servings || ''}"></label>
@@ -263,7 +260,8 @@ function recipeSheet(r = null, preset = null) {
       const title = cap(val(fd, 'title'));
       if (!title) return false;
       const data = {
-        title, themes: fd.getAll('themes').length ? fd.getAll('themes') : ['sempre'],
+        // i temi di prima che non sono categorie restano salvati (niente dati persi)
+        title, themes: [...(fd.getAll('themes').length ? fd.getAll('themes') : ['sempre']), ...temiVecchi(r)],
         time: Number(val(fd, 'time')) || null, servings: Number(val(fd, 'servings')) || null,
         ingredients: lines(val(fd, 'ingredients')), steps: lines(val(fd, 'steps')), note: val(fd, 'note'), photo,
       };
@@ -286,6 +284,20 @@ document.addEventListener('visibilitychange', async () => {
   }
 });
 
+// Una volta sola: gli esempi iniziali entrano nelle categorie nuove (solo se non li avete cambiati)
+const ESEMPI = { 'Crêpes come a Parigi': [['aprile', 'sempre'], ['colazione', 'sempre', 'aprile']] };
+function aggiornaEsempi() {
+  if (settings().ricetteCats || !state.loaded.has('ricette') || !state.loaded.has('settings')) return;
+  // con il database condiviso aspetto i dati veri del server
+  if (store.mode === 'sync' && !(store.synced && store.synced.has('ricette') && store.synced.has('settings'))) return;
+  state.data.ricette.forEach((r) => {
+    const e = ESEMPI[r.title];
+    if (e && JSON.stringify(r.themes || []) === JSON.stringify(e[0])) store.update('ricette', r.id, { themes: e[1] });
+  });
+  saveSettings({ ricetteCats: 1 });
+}
+export function after() { aggiornaEsempi(); }
+
 export const actions = {
   wake: async () => {
     if (state.ui.wake) { releaseWake(); setUi('wake', false); return; }
@@ -298,7 +310,13 @@ export const actions = {
       toast('Lo schermo resta acceso finché sei sulla ricetta');
     } catch { toast('Non riesco a tenere acceso lo schermo'); }
   },
-  'ricette-theme': ({ el, ev }) => { ev.preventDefault(); setUi('ricette.theme', el.dataset.theme); if (location.hash !== '#/ricette') navigate('#/ricette'); },
+  'ricette-theme': ({ el, ev }) => {
+    ev.preventDefault();
+    const t = el.dataset.theme;
+    // Home e conto alla rovescia: solo i periodi che sono anche categorie aprono il filtro
+    setUi('ricette.theme', t === 'preferite' || RICETTE_CATS[t] ? (ui('ricette.theme') === t && location.hash === '#/ricette' ? 'tutte' : t) : 'tutte');
+    if (location.hash !== '#/ricette') navigate('#/ricette');
+  },
   'ricette-q': ({ el }) => { programmaWeb(el.value); setUi('ricette.q', el.value); },
   'ricette-web-riprova': () => { const t = ui('ricette.q', ''); webCache.delete(norm(t)); programmaWeb(t); rerender(); },
   'ricetta-importa': async ({ el }) => {
@@ -326,7 +344,7 @@ export const actions = {
   'ricetta-random': () => {
     const theme = currentTheme();
     let pool = state.data.ricette;
-    const themed = theme ? pool.filter((r) => (r.themes || []).includes(theme.id)) : [];
+    const themed = theme && RICETTE_CATS[theme.id] ? pool.filter((r) => ricetteCats(r).includes(theme.id)) : [];
     if (themed.length && Math.random() < 0.6) pool = themed;
     if (!pool.length) return;
     const r = pool[Math.floor(Math.random() * pool.length)];

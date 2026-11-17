@@ -8,7 +8,7 @@
 import { html, raw, cap, safeUrl, hostOf, money, vibrate, timeAgo, uid, lsGet, lsSet } from '../utils.js';
 import { icon, catFace } from '../icons.js';
 import { WISH_CATS } from '../data.js';
-import { state, store, me, whoBadge, whoChoices, openSheet, closeSheet, toast, val, emptyState, ui, setUi, pageHead, swipe, settings, saveSettings, nameOf, sheetError, isSynced, confirmSheet, rerender } from '../core.js';
+import { state, store, me, whoBadge, whoChoices, openSheet, closeSheet, toast, val, emptyState, ui, setUi, pageHead, swipe, settings, saveSettings, sheetError, isSynced, confirmSheet, rerender } from '../core.js';
 
 // ---------------------------------------------------------------------------
 // Link di Amazon
@@ -209,10 +209,11 @@ function listaAmazon(l) {
   const no = rifiuti.get(l.id);
   const url = safeUrl(l.url);
   const conPrezzo = articoli.filter((a) => a.prezzo != null);
+  // il nome c'è già nella scheda della lista, in alto: qui solo quanti articoli e quanto costano
+  const euro = conPrezzo.length && (!l.valuta || l.valuta === 'EUR');
   const testa = html`<div class="card amz-head">
-    <span class="amz-logo" aria-hidden="true">${icon('basket')}</span>
-    <div class="row-main"><b>${nomeLista(l)}</b>
-      <span>${l.aggiornata ? html`${articoli.length} ${articoli.length === 1 ? 'articolo' : 'articoli'}${conPrezzo.length && (!l.valuta || l.valuta === 'EUR') ? ` · ${money(totale(conPrezzo.map((a) => a.prezzo)))}` : ''} · ${carico ? 'aggiorno…' : `letta ${timeAgo(l.aggiornata)}`}` : carico ? 'Leggo la lista da Amazon…' : 'Lista Amazon'}${l.chi && l.chi !== 'both' ? ` · di ${nameOf(l.chi)}` : ''}</span></div>
+    <div class="row-main"><b>${l.aggiornata ? html`${articoli.length} ${articoli.length === 1 ? 'articolo' : 'articoli'}${euro ? html` <i>·</i> ${money(totale(conPrezzo.map((a) => a.prezzo)))}` : ''}` : carico ? 'Leggo la lista da Amazon…' : 'Lista Amazon'}</b>
+      ${l.aggiornata ? html`<span>${carico ? 'aggiorno…' : `aggiornata ${timeAgo(l.aggiornata)}`}</span>` : ''}</div>
     <button class="icon-btn ghost" data-action="amz-aggiorna" data-id="${l.id}" aria-label="Aggiorna da Amazon" ${carico ? raw('disabled') : ''}>${icon('refresh', carico ? 'spin' : '')}</button>
     <button class="icon-btn ghost" data-action="amz-list-edit" data-id="${l.id}" aria-label="Modifica la lista">${icon('dots')}</button>
   </div>`;

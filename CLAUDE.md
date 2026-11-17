@@ -26,7 +26,8 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   Redirect URI registrato: `https://comperotto.vercel.app/api/spotify`. I dispositivi chiedono a `/api/spotify?azione=token` un token di un'ora
   e parlano direttamente con api.spotify.com. Pagine in `js/views/spotify.js`: `#/musica` (lettore, cerca, libreria), `#/musica/cerca`,
   `/preferiti`, `/pl/<id>`, `/album/<id>`, `/artista/<id>`, foglio "⋯" del brano (coda, preferiti, playlist, nostra musica).
-  "Questo iPhone/iPad" = Web Playback SDK (`sdk.scdn.co`, caricato solo quando serve; `activateElement()` dentro il tocco).
+  "Questo iPhone/iPad" = Web Playback SDK (`sdk.scdn.co`, caricato solo quando serve; `activateElement()` dentro il tocco;
+  vuole i permessi `streaming user-read-email user-read-private`, altrimenti "Invalid token scopes").
   Regole 2026 (modalità sviluppo, max 5 utenti, proprietario Premium): ricerca max 10 per tipo, `tracks`→`items` nelle playlist,
   preferiti con `PUT/DELETE me/library?uris=`, brani solo delle playlist proprie (`/playlists/{id}/items`, altrimenti 403).
   Collegamenti senza i permessi nuovi → `completo: false` e la pagina chiede "Ricollega".

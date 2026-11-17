@@ -20,10 +20,11 @@ const SCOPE = [
   'user-read-playback-state', 'user-modify-playback-state', 'user-read-currently-playing',
   'playlist-read-private', 'playlist-read-collaborative', 'playlist-modify-private', 'playlist-modify-public',
   'user-library-read', 'user-library-modify', 'user-follow-read', 'user-follow-modify',
-  'streaming', 'user-read-private',
+  // il lettore dentro l'app (Web Playback SDK) rifiuta il token senza questi tre: "Invalid token scopes"
+  'streaming', 'user-read-private', 'user-read-email',
 ].join(' ');
 // senza questi va ricollegato (collegamenti fatti prima che l'app sapesse salvare brani e creare playlist)
-const NECESSARI = ['user-library-modify', 'playlist-modify-private', 'streaming'];
+const NECESSARI = ['user-library-modify', 'playlist-modify-private', 'streaming', 'user-read-email', 'user-read-private'];
 const completo = (a) => Boolean(a && a.scope && NECESSARI.every((x) => a.scope.split(' ').includes(x)));
 const CHI = ['p1', 'p2'];
 const CLIENT_ID = /^[0-9a-f]{32}$/i;

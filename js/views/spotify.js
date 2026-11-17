@@ -17,8 +17,14 @@ export const SOTTO = ['cerca', 'preferiti', 'pl', 'album', 'artista'];
 const DEV_ICON = { Speaker: 'speaker', Smartphone: 'phone', Tablet: 'tablet', Computer: 'laptop', TV: 'tv', CastVideo: 'tv', CastAudio: 'speaker', AVR: 'speaker', STB: 'tv', Automobile: 'music', GameConsole: 'tv' };
 const DEV_LABEL = { Speaker: 'Altoparlante', Smartphone: 'Telefono', Tablet: 'Tablet', Computer: 'Computer', TV: 'TV', CastVideo: 'TV', CastAudio: 'Altoparlante', AVR: 'Amplificatore', STB: 'TV', Automobile: 'Auto', GameConsole: 'Console' };
 const questo = () => (isIPad() ? 'questo iPad' : /iPhone/.test(navigator.userAgent) ? 'questo iPhone' : 'questo dispositivo');
-const devIcon = (d) => (d && S.eQui(d.id) ? (isIPad() ? 'tablet' : 'phone') : DEV_ICON[d && d.type] || 'speaker');
-const devNome = (d) => (d && S.eQui(d.id) ? cap(questo()) : d ? d.name : '');
+// i lettori dentro l'app (questo dispositivo o quelli dell'altro) si chiamano "Comperotto · iPad di …"
+const comperotto = (d) => Boolean(d && /^Comperotto · /.test(d.name || ''));
+const devIcon = (d) => {
+  if (d && S.eQui(d.id)) return isIPad() ? 'tablet' : /iPhone/.test(navigator.userAgent) ? 'phone' : 'laptop';
+  if (comperotto(d)) return /iPad/.test(d.name) ? 'tablet' : /iPhone/.test(d.name) ? 'phone' : 'laptop';
+  return DEV_ICON[d && d.type] || 'speaker';
+};
+const devNome = (d) => (d && S.eQui(d.id) ? cap(questo()) : comperotto(d) ? d.name.replace(/^Comperotto · /, '') : d ? d.name : '');
 const nomiArtisti = (t) => (t.artists || []).map((a) => a.name).filter(Boolean).join(', ');
 const sceltoOAttivo = () => S.attivo() || (sp.devices || []).find((d) => d.id === S.dispositivoScelto()) || null;
 const suonaOra = () => (sp.player && sp.player.item && sp.player.item.uri) || '';
@@ -439,12 +445,13 @@ function devList() {
   const list = sp.devices;
   const cur = sceltoOAttivo();
   const quiAcceso = list && S.qui.id && list.find((d) => d.id === S.qui.id);
-  const altri = (list || []).filter((d) => !S.eQui(d.id));
+  // un vecchio lettore di questo stesso dispositivo (tentativo precedente) non va mostrato due volte
+  const altri = (list || []).filter((d) => !S.eQui(d.id) && !(comperotto(d) && d.name === S.nomeQui()));
   const tocco = matchMedia('(pointer: coarse)').matches;
   const riga = (d) => html`
     <button class="set-row sp-devrow ${d.is_restricted || !d.id ? 'off' : ''}" data-action="sp-dispositivo" data-id="${d.id || ''}" ${d.is_restricted || !d.id ? raw('disabled') : ''}>
       ${icon(devIcon(d))}
-      <div class="row-main"><b>${devNome(d)}</b><span>${d.is_active ? (sp.player && sp.player.is_playing ? 'Sta suonando' : 'In pausa') : S.eQui(d.id) ? 'Dentro l’app' : d.is_restricted ? 'Non si comanda da qui' : DEV_LABEL[d.type] || 'Dispositivo'}</span></div>
+      <div class="row-main"><b>${devNome(d)}</b><span>${d.is_active ? (sp.player && sp.player.is_playing ? 'Sta suonando' : 'In pausa') : S.eQui(d.id) || comperotto(d) ? 'Dentro l’app' : d.is_restricted ? 'Non si comanda da qui' : DEV_LABEL[d.type] || 'Dispositivo'}</span></div>
       ${cur && cur.id === d.id ? html`<span class="sp-check">${icon('check', 'sm')}</span>` : ''}
     </button>`;
   return html`<div class="list">
@@ -500,7 +507,7 @@ export function errore(e) {
   const r = e.reason;
   if (r === 'PREMIUM_REQUIRED' || r === 'account_error') toast('Per questo serve Spotify Premium');
   else if (r === 'initialization_error' || r === 'SDK') toast(`Su ${questo()} Spotify non suona dentro l’app: usa l’app Spotify o un Echo`);
-  else if (r === 'authentication_error' || (e.status === 403 && /scope/i.test(e.message))) toast('Va ricollegato Spotify: tocca «Ricollega» in Musica');
+  else if (r === 'authentication_error' || (e.status === 403 && /scope/i.test(e.message))) { toast('Va ricollegato Spotify: tocca «Ricollega» in Musica'); S.caricaInfo(); }
   else if (e.status === 429) toast('Spotify chiede una pausa: riprova tra poco');
   else if (e.status === 403) toast('Adesso Spotify non permette questo comando');
   else if (e.status === 404) toast('Il dispositivo non risponde');
@@ -695,6 +702,8 @@ export const actions = {
   // questo iPhone/iPad come altoparlante: il lettore va acceso dentro il tocco
   'sp-qui': prova(async () => {
     vibrate();
+    const acc = sp.info && sp.info.account && sp.info.account[S.chi()];
+    if (acc && acc.completo === false) { toast('Prima va ricollegato Spotify: tocca «Ricollega» in Musica'); return; }
     const pronto = S.attivaQui();
     sp.busy = 'qui';
     ridisegnaDev();

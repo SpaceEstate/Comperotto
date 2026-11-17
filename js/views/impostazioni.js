@@ -106,6 +106,12 @@ function notificheCard() {
 // e se le notifiche arrivano davvero. Serve a capire al volo se un telefono "non sente" la casa.
 // ---------------------------------------------------------------------------
 const NOI = ['p1', 'p2'];
+const PERCHE = {
+  senza: 'non manda la password: in OwnTracks accendi «Authentication» e come password scrivi il codice di famiglia',
+  codice: 'la password non è il codice di famiglia: riscrivila in OwnTracks',
+  caratteri: 'la password ha un carattere che OwnTracks non sa mandare (lettere accentate o apostrofi «curvi»): riscrivila',
+  bloccato: 'troppi codici sbagliati di fila: aspetta un quarto d’ora e riprova',
+};
 const recente = (at, ms) => Boolean(at) && Date.now() - at < ms;
 const pallino = (at) => html`<span class="coll-dot ${recente(at, 15 * 60000) ? 'on' : recente(at, 2 * 86400000) ? 'mezzo' : ''}" aria-hidden="true"></span>`;
 
@@ -134,6 +140,9 @@ function persona(k, c) {
   const posizione = ot
     ? `Posizione da OwnTracks ${timeAgo(ot)}${batt != null ? ` · batteria ${batt}%` : ''}`
     : p && p.at ? `Posizione solo dall’app (${timeAgo(p.at)}): OwnTracks non la manda` : 'OwnTracks non ha mai mandato la posizione';
+  // OwnTracks ci prova ma il codice non passa (dopo l'ultima posizione arrivata)
+  const rif = c && c.owntracks ? c.owntracks[k] : null;
+  const rifiutato = rif && rif.at > (ot || 0) && Date.now() - rif.at < 7 * 86400000 ? rif : null;
   // notifiche: su quanti dispositivi sono accese e com'è andata l'ultima
   const subs = c && c.notifiche ? c.notifiche.filter((n) => n.chi === k) : null;
   const ultima = subs ? subs.map((n) => n.esito).filter(Boolean).sort((a, b) => b.at - a.at)[0] : null;
@@ -143,6 +152,7 @@ function persona(k, c) {
   return html`<div class="set-row coll-row"><div class="row-main"><b>${nameOf(k)}</b>
     ${righe}
     <div class="coll-line">${icon('pin', 'xs')}<span>${posizione}</span></div>
+    ${rifiutato ? html`<div class="coll-line">${icon('info', 'xs')}<span><em class="coll-warn">OwnTracks ci prova (${timeAgo(rifiutato.at)}) ma ${PERCHE[rifiutato.motivo] || PERCHE.codice}</em></span></div>` : ''}
     ${notifiche ? html`<div class="coll-line">${icon('bell', 'xs')}<span>${notifiche}</span></div>` : ''}
   </div></div>`;
 }

@@ -116,6 +116,31 @@ function basic(req) {
   }
 }
 
+// OwnTracks ci prova ma il codice non passa: ricordo quando e perché (mai il codice), per "Collegamento" in
+// Impostazioni. OwnTracks per iPhone manda la password solo con "Authentication" acceso, e solo se è fatta di
+// caratteri semplici: con una lettera accentata o un apostrofo "curvo" manda "Basic (null)".
+const tentativi = new Map(); // in memoria: utente → ultimo motivo scritto (lo stesso al massimo una volta al minuto)
+async function segnaRifiuto(db, req, b, stato) {
+  if (req.headers['x-famiglia']) return; // dall'app, non da OwnTracks
+  const h = String(req.headers.authorization || '');
+  const nulla = /^Basic \(null\)$/.test(h);
+  const auth = nulla ? {} : basic(req);
+  const dalTopic = typeof b.topic === 'string' ? b.topic.split('/')[1] : '';
+  const utente = norm(auth.user || req.headers['x-limit-u'] || dalTopic || '').slice(0, 40);
+  if (!utente) return;
+  const motivo = stato === 429 ? 'bloccato' : nulla ? 'caratteri' : !auth.pass ? 'senza' : 'codice';
+  const adesso = Date.now();
+  const prima = tentativi.get(utente);
+  if (prima && prima.motivo === motivo && adesso - prima.at < 60000) return; // stesso motivo da poco: già scritto
+  tentativi.set(utente, { motivo, at: adesso });
+  try {
+    const { items } = await db.collection('settings');
+    const names = { p1: 'Patrick', p2: 'Serena', ...((items.main || {}).names || {}) };
+    const who = ['p1', 'p2'].includes(utente) ? utente : Object.keys(names).find((k) => norm(names[k]) === utente);
+    if (who) await db.metaSet(`ot:rifiuto:${who}`, JSON.stringify({ at: adesso, motivo }));
+  } catch {}
+}
+
 // ---------------------------------------------------------------------------
 // Zone per OwnTracks (setWaypoints). Su iPhone ogni zona si riconosce dal nome.
 // ---------------------------------------------------------------------------
@@ -137,7 +162,7 @@ export default async function handler(req, res) {
   const q = new URL(req.url, 'http://x').searchParams;
   // il codice arriva solo nell'intestazione (app) o nell'autenticazione di OwnTracks: mai nell'indirizzo, che finisce nei log
   const code = req.headers['x-famiglia'] || auth.pass;
-  if (await respingi(req, res, code)) return;
+  if (await respingi(req, res, code)) { await segnaRifiuto(db, req, b, res.statusCode); return; }
 
   try {
     const [{ items: sett }, { items: pos }] = await Promise.all([db.collection('settings'), db.collection('posizioni')]);

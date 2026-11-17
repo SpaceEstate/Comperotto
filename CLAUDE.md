@@ -113,6 +113,9 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   `x-app: versione;home|web;iPhone|iPad|…` (l'iPad si presenta come Mac: il tipo lo dice l'app); il server salva in `fam_meta` `visti`
   (al massimo una volta al minuto per dispositivo) e gli esiti delle notifiche in `push:esiti` (impronta dell'iscrizione, mai l'indirizzo).
   `GET /api/dati?visti=1`. La batteria ha `battAt`: si mostra solo se è di meno di 3 ore (la posizione dall'app non la porta).
+  OwnTracks rifiutato (401/429): `api/posizione.js` ricorda quando e perché in `fam_meta` `ot:rifiuto:<p1|p2>` (mai il codice;
+  utente da Basic, `X-Limit-U` o `topic`) e Collegamento lo dice finché non arriva una posizione buona. OwnTracks per iPhone manda
+  la password solo con "Authentication" acceso e in ASCII: con lettere accentate o apostrofi "curvi" manda `Basic (null)`.
 - **Precaricamento** (`js/precarica.js`, 2,5 s dopo l'avvio, un passo alla volta, non in secondo piano né con "Risparmio dati"):
   Spotify (stato, dispositivi, libreria, suggerimenti, copertine con `scaldaCopertine()`, lettore dentro l'app), locandine e loghi dei
   film, foto di Amazon (senza referrer), e la mappa di Dov'è preparata fuori dallo schermo (`.mappa-pronta`) e poi tenuta in memoria

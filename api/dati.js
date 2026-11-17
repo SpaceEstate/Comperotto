@@ -36,7 +36,10 @@ async function collegamento(db) {
   const visti = Object.values(JSON.parse((await db.metaGet('visti')) || '{}') || {});
   const [subs, esiti] = await Promise.all([iscritti().catch(() => []), esitiPush().catch(() => ({}))]);
   const notifiche = subs.map((s) => ({ chi: s.chi, at: s.at || 0, apple: /\.push\.apple\.com$/.test(new URL(s.endpoint).hostname), esito: esiti[cortoPush(s.endpoint)] || null }));
-  return { visti, notifiche };
+  // OwnTracks che ci prova ma il codice non passa (quando e perché)
+  const owntracks = {};
+  for (const k of ['p1', 'p2']) { try { owntracks[k] = JSON.parse((await db.metaGet(`ot:rifiuto:${k}`)) || 'null'); } catch { owntracks[k] = null; } }
+  return { visti, notifiche, owntracks };
 }
 const prendi = (req, k) => (req.query && req.query[k]) || new URL(req.url, 'http://x').searchParams.get(k);
 

@@ -134,6 +134,7 @@ class SyncStore extends LocalStore {
     this.erroreInvio = null; // l'ultima volta che le mie modifiche non sono riuscite a partire
     this.idb = null;
     this.nonSalvate = new Set(); // raccolte la cui copia qui non si è salvata: al prossimo avvio si riscaricano
+    this.copia = new Set(); // raccolte di cui qui c'è la copia intera (salvata o appena scaricata): bastano i pezzi
   }
 
   /**
@@ -153,8 +154,8 @@ class SyncStore extends LocalStore {
       COLLECTIONS.forEach((c, i) => {
         let vecchia = null;
         if (daLs || !valori[i]) { try { vecchia = JSON.parse(localStorage.getItem(this.prefix + c) || 'null'); } catch {} }
-        if (vecchia && typeof vecchia === 'object') { this.memory[c] = vecchia; spostate.push(c); }
-        else if (valori[i] && typeof valori[i] === 'object') this.memory[c] = valori[i];
+        if (vecchia && typeof vecchia === 'object') { this.memory[c] = vecchia; spostate.push(c); this.copia.add(c); }
+        else if (valori[i] && typeof valori[i] === 'object') { this.memory[c] = valori[i]; this.copia.add(c); }
       });
       // spostate in IndexedDB: tolgo la copia di localStorage solo quando quella nuova è salvata davvero
       spostate.forEach((c) => this.salva(c).then((ok) => { if (ok) try { localStorage.removeItem(this.prefix + c); } catch {} }));
@@ -293,18 +294,34 @@ class SyncStore extends LocalStore {
     this.onScarto(op, status);
   }
 
-  /** Una raccolta dal server, a pagine se è grande (ogni risposta del server porta al massimo qualche MB). */
+  /**
+   * Una raccolta dal server. Se qui c'è già la copia intera chiedo solo i pezzi cambiati dopo la mia versione
+   * (e quelli tolti); altrimenti, o se il server non può, tutta. A pagine se è grande (al massimo qualche MB l'una).
+   */
   async scarica(c) {
-    const base = `dati?col=${encodeURIComponent(c)}&pagine=1`;
-    let r = await this.call(base);
-    const map = r.items || {};
-    // se cambia mentre la scarico, tengo la versione della prima pagina: al prossimo giro la riscarico
-    const v = r.v;
-    for (let i = 0; r.prossimo && i < 100; i++) {
-      r = await this.call(`${base}&da=${encodeURIComponent(r.prossimo)}`);
-      Object.assign(map, r.items || {});
-    }
-    return { map, v };
+    const dal = this.copia.has(c) && this.versions[c] > 0 && !this.queue.some((op) => op.op === 'wipe') ? this.versions[c] : 0;
+    const prova = async (dal) => {
+      const base = `dati?col=${encodeURIComponent(c)}&pagine=1${dal ? `&dal=${dal}` : ''}`;
+      let r = await this.call(base);
+      const pezzi = Boolean(dal && r.pezzi);
+      const arrivati = {};
+      const tolti = new Set();
+      const raccogli = (x) => { Object.assign(arrivati, x.items || {}); (x.tolti || []).forEach((id) => tolti.add(id)); };
+      raccogli(r);
+      // se cambia mentre la scarico, tengo la versione della prima pagina: al prossimo giro la riscarico
+      const v = r.v;
+      for (let i = 0; r.prossimo && i < 100; i++) {
+        r = await this.call(`${base}&da=${encodeURIComponent(r.prossimo)}`);
+        if (Boolean(r.pezzi) !== pezzi) return null; // il server ha cambiato idea a metà: riparto con tutto
+        raccogli(r);
+      }
+      // i pezzi si uniscono alla mia copia di adesso (con anche quello che ho cambiato mentre arrivavano)
+      const map = pezzi ? { ...(this.memory[c] || {}) } : {};
+      Object.assign(map, arrivati);
+      tolti.forEach((id) => { delete map[id]; });
+      return { map, v, pezzi, toccati: new Set([...Object.keys(arrivati), ...tolti]) };
+    };
+    return (await prova(dal)) || prova(0);
   }
 
   async pull() {
@@ -315,12 +332,17 @@ class SyncStore extends LocalStore {
       if (sv !== (this.versions[c] || 0)) {
         const r = await this.scarica(c);
         const map = r.map;
-        // le mie modifiche non ancora spedite restano visibili
-        this.queue.forEach((op) => { if (op.op === 'wipe') Object.keys(map).forEach((k) => delete map[k]); else if (op.col === c) applyOp(map, op); });
+        // le mie modifiche non ancora spedite restano visibili (con i pezzi: solo sui documenti appena arrivati,
+        // sugli altri ci sono già; così un "+1" non si conta due volte)
+        this.queue.forEach((op) => {
+          if (op.op === 'wipe') Object.keys(map).forEach((k) => delete map[k]);
+          else if (op.col === c && (!r.pezzi || r.toccati.has(op.id))) applyOp(map, op);
+        });
         this.versions[c] = r.v;
         if (this.synced.has(c)) this.attivo = Date.now(); // l'altro sta cambiando qualcosa: resto sveglio
         this.synced.add(c);
         salvate.push(this.write(c, map));
+        this.copia.add(c);
       } else if (!this.synced.has(c)) {
         this.synced.add(c);
         this.emit(c);
@@ -405,6 +427,7 @@ class SyncStore extends LocalStore {
     ['casa.sync.code', 'casa.sync.v', 'casa.sync.at', ...(tieniCoda ? [] : ['casa.sync.q'])].forEach((k) => lsSet(k, null));
     COLLECTIONS.forEach((c) => { try { localStorage.removeItem(this.prefix + c); } catch {} });
     this.memory = {};
+    this.copia.clear();
     if (this.idb) { try { this.idb.transaction('raccolte', 'readwrite').objectStore('raccolte').clear(); } catch {} }
   }
 }

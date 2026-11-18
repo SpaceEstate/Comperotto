@@ -190,7 +190,7 @@ manifest.webmanifest    installazione come app (icona, colori)
 sw.js                   funzionamento offline
 css/style.css           stile: palette di casa e atmosfere stagionali
 js/config.js            versione dell'app e frase della skill Alexa
-js/store.js             dati: condivisi via Vercel (con coda offline; copia sul dispositivo in IndexedDB) o solo sul dispositivo
+js/store.js             dati: condivisi via Vercel (con coda offline; copia sul dispositivo in IndexedDB; scarica solo ciò che cambia) o solo sul dispositivo
 js/precarica.js         all'apertura prepara musica, copertine, locandine, foto e mappa
 js/core.js              stato, fogli dal basso, avvisi
 js/data.js              reparti, temi, stagioni, rifiuti, faccende

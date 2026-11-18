@@ -3,6 +3,8 @@
 //   GET  /api/dati?col=spesa  → { v, items: { id: {…} } }
 //        &pagine=1[&da=<id>]  → a pagine di qualche MB al massimo (Vercel non manda risposte oltre 4,5 MB):
 //                               { v, items, prossimo } finché c'è "prossimo"
+//        &dal=<versione>      → solo i documenti cambiati dopo quella versione: { v, items, tolti, pezzi: true }
+//                               (se è troppo vecchia, o il database non lo sa fare, arriva tutto come prima)
 //   GET  /api/dati?visti=1    → { visti, notifiche } chi ha usato l'app e quando, notifiche di ogni dispositivo
 //   POST /api/dati { ops: [{ op: set|update|remove|bump|wipe, col, id, data }] }
 //        una modifica non valida → 400 { error, indice } (l'app toglie solo quella)
@@ -56,8 +58,10 @@ export default async function handler(req, res) {
         return send(res, 200, { v: await db.versions() });
       }
       if (!COLLECTIONS.includes(col)) return send(res, 400, { error: 'Raccolta sconosciuta' });
-      const { v, items } = await db.collection(col);
-      if (!prendi(req, 'pagine')) return send(res, 200, { col, v, items });
+      if (!prendi(req, 'pagine')) { const { v, items } = await db.collection(col); return send(res, 200, { col, v, items }); }
+      const dal = Number(prendi(req, 'dal')) || 0;
+      const pezzi = dal > 0 && db.cambiati ? await db.cambiati(col, dal) : null;
+      const { v, items } = pezzi || (await db.collection(col));
       const da = String(prendi(req, 'da') || '');
       const out = {};
       let peso = 0, ultimo = null, prossimo = null;
@@ -69,7 +73,7 @@ export default async function handler(req, res) {
         peso += n;
         ultimo = id;
       }
-      return send(res, 200, { col, v, items: out, ...(prossimo ? { prossimo } : {}) });
+      return send(res, 200, { col, v, items: out, ...(pezzi ? { pezzi: true, tolti: da ? [] : pezzi.tolti } : {}), ...(prossimo ? { prossimo } : {}) });
     }
 
     if (req.method === 'POST') {

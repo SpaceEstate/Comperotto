@@ -110,6 +110,14 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   Una modifica rifiutata per sempre si toglie solo lei: 400 con `indice` dal server, 413 (troppo grande per Vercel, 4,5 MB) → pacchetti
   più piccoli fino a quella sola; avviso con `onScarto`. Raccolte grandi a pagine: `GET /api/dati?col=…&pagine=1[&da=<id>]`
   (al massimo 2,5 milioni di caratteri per risposta, `prossimo`). Postgres non accetta il carattere nullo: si toglie dai testi.
+- **Sincronizzazione a pezzi** (Postgres, cioè Neon): ogni documento ha la versione della raccolta in cui è cambiato (`fam_docs.v`),
+  i tolti lasciano un segno (`fam_tolti`, al massimo 500 per raccolta) e `fam_ver.base` dice da quale versione bastano i pezzi.
+  Lo schema si aggiorna da solo una volta (`fam_meta` `schema` = 2, sotto `pg_advisory_xact_lock`; al primo giro base = versione).
+  `GET /api/dati?col=…&pagine=1&dal=<v>` → `{ v, items, tolti, pezzi: true }` con solo i cambiati; se `dal` < base o > v (database
+  ripristinato) arriva tutto. L'app chiede i pezzi solo se ha la copia intera (`copia`: caricata da IndexedDB o appena scaricata),
+  li unisce alla sua copia e riapplica la coda solo sui documenti arrivati (così un "+1" non si conta due volte). Redis: sempre tutto.
+  Letture: prima la versione, poi i documenti (mai versione nuova con documenti vecchi). Scritture: la versione si prende all'inizio
+  della transazione (riga bloccata fino alla fine), raccolte in ordine alfabetico (niente blocchi reciproci).
 - **Collegamento** (Impostazioni): per Patrick e Serena, quando ogni dispositivo ha usato l'app, versione, se è installata sulla schermata
   Home, posizione (OwnTracks o app, batteria) e notifiche (accese, ultima arrivata o no). L'app manda `x-chi` e
   `x-app: versione;home|web;iPhone|iPad|…` (l'iPad si presenta come Mac: il tipo lo dice l'app); il server salva in `fam_meta` `visti`

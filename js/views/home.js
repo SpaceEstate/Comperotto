@@ -7,7 +7,7 @@ import { state, settings, me, nameOf, myName, rerender, ui, isSynced } from '../
 import { dueChores, choreRow, trashFor, binChips, lavoroRow, lavoriAperti } from './casa.js';
 import { cats, catAvatar, upcomingFor, lastWeight } from './gatti.js';
 import { seasonInfo, seasonDeco } from '../season.js';
-import { statusOf, personBadge, pillOf, iconOf } from './dove.js';
+import { statusOf, personBadge, pillOf, iconOf, macchina, autoBadge, durata, trovaIndirizzo } from './dove.js';
 import { sezioneHome as viaggiHome } from './viaggi.js';
 
 function greeting() {
@@ -86,16 +86,23 @@ function pushHint() {
 }
 
 function doveCard() {
-  return html`<a class="card dove-home" href="#/dove">
-    <div class="dh-head"><span class="dot-ico tone-sky">${icon('pin', 'sm')}</span><b>Dov’è</b>${icon('right', 'xs')}</div>
-    ${['p1', 'p2'].map((k) => {
-      const st = statusOf(k);
-      return html`<div class="dh-row">${personBadge(k)}<span class="dh-name">${nameOf(k)}</span>
-        ${st.p ? html`<span class="pill ${pillOf(st)}">${icon(st.old ? 'clock' : iconOf(st), 'xs')} ${st.cls || st.old ? st.label : 'Posizione'}</span>
-          <span class="dh-sub ${st.old ? 'old' : ''}">${st.old ? timeAgo(st.p.at) : [st.since, st.place].filter(Boolean).join(' · ') || timeAgo(st.p.at)}</span>` : html`<span class="dh-sub">non ancora condivisa</span>`}
-      </div>`;
-    })}
-  </a>`;
+  // l'auto (se è stata segnata con il comando rapido «Ho parcheggiato»): toccandola, la mappa parte da lei
+  const a = macchina();
+  return html`<section class="card dove-home ${a ? 'con-auto' : ''}">
+    <a class="dh-link" href="#/dove">
+      <div class="dh-head"><span class="dot-ico tone-sky">${icon('pin', 'sm')}</span><b>Dov’è</b>${icon('right', 'xs')}</div>
+      ${['p1', 'p2'].map((k) => {
+        const st = statusOf(k);
+        return html`<div class="dh-row">${personBadge(k)}<span class="dh-name">${nameOf(k)}</span>
+          ${st.p ? html`<span class="pill ${pillOf(st)}">${icon(st.old ? 'clock' : iconOf(st), 'xs')} ${st.cls || st.old ? st.label : 'Posizione'}</span>
+            <span class="dh-sub ${st.old ? 'old' : ''}">${st.old ? timeAgo(st.p.at) : [st.since, st.place].filter(Boolean).join(' · ') || timeAgo(st.p.at)}</span>` : html`<span class="dh-sub">non ancora condivisa</span>`}
+        </div>`;
+      })}
+    </a>
+    ${a ? html`<a class="dh-link dh-auto" href="#/dove/auto"><div class="dh-row">${autoBadge('sm')}<span class="dh-name">Auto</span>
+      <span class="pill soon">${icon('parking', 'xs')} ${durata(a.at)}</span>
+      <span class="dh-sub">${a.place || 'Segnata sulla mappa'}</span></div></a>` : ''}
+  </section>`;
 }
 
 const WD = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
@@ -208,6 +215,11 @@ export function render() {
       </div>
     </div>
   `;
+}
+
+/** Dopo il disegno: se all'auto manca l'indirizzo (non è arrivato in tempo al comando rapido), lo cerco. */
+export function after() {
+  trovaIndirizzo();
 }
 
 export const actions = {

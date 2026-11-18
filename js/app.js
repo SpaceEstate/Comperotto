@@ -133,7 +133,8 @@ function render() {
   const key = r.join('/');
   const tpl = document.createElement('template');
   tpl.innerHTML = mod.render(r).s;
-  if (key !== lastRoute) {
+  const nuova = key !== lastRoute;
+  if (nuova) {
     view.replaceChildren(tpl.content);
     window.scrollTo(0, 0);
     lastRoute = key;
@@ -142,7 +143,7 @@ function render() {
   } else {
     morphChildren(view, tpl.content);
   }
-  if (mod.after) mod.after(r);
+  if (mod.after) mod.after(r, nuova);
 
   tabbar.hidden = false;
   const tabsTpl = document.createElement('template');

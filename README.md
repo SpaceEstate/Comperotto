@@ -133,6 +133,25 @@ Si salva solo l'ultima posizione di ciascuno, protetta dal codice di famiglia.
 
 La mappa mostra sempre Patrick e Serena; **Casa, Lavoro e le attività** (bar, negozi, farmacie…) compaiono ingrandendo, come in Dov'è di Apple. C'è l'interruttore **Mappa / Satellite** e, con l'app in modalità scura, la mappa diventa scura.
 
+### L'auto: il pulsante «Ho parcheggiato»
+
+Il pulsante è un **comando rapido sulla schermata Home dell'iPhone**: quando lasciate la macchina lo premete e basta. Senza aprire l'app manda la posizione e risponde con una notifica: **«Posizione inviata»**. Nell'app l'auto compare sulla mappa di Dov'è (il segnaposto azzurro con l'auto) e in Home, nel riquadro Dov'è, con l'indirizzo e da quanto è lì: toccandola, la mappa si apre sull'auto. Dalla sua scheda: **Portami all'auto** (Mappe, a piedi), una **nota** («Piano -2, posto 14») e il cestino. A ogni pressione l'auto si sposta lì (e la nota vecchia si cancella).
+
+Da fare una volta su ogni iPhone, nell'app **Comandi** → **+**:
+
+1. Aggiungi l'azione **Ottieni posizione attuale**.
+2. Aggiungi **Ottieni contenuti dell'URL**, con l'URL `https://comperotto.vercel.app/api/posizione?auto`, e apri le opzioni (la freccia):
+   - **Metodo**: `POST`;
+   - **Corpo della richiesta**: **JSON**, con quattro campi (*Aggiungi nuovo campo*):
+     - *Testo* `codice` → il vostro codice di famiglia;
+     - *Testo* `chi` → il tuo nome (`patrick` o `serena`);
+     - *Numero* `lat` → la variabile **Posizione attuale**, poi toccala e scegli **Latitudine**;
+     - *Numero* `lon` → **Posizione attuale** → **Longitudine**.
+3. Aggiungi **Mostra notifica** e al posto del testo metti **Contenuti dell'URL**: dirà «Posizione inviata» (oppure cosa non va, es. «Codice di famiglia sbagliato»).
+4. Chiamalo **Ho parcheggiato**, scegli l'icona dell'auto e poi **Aggiungi alla schermata Home**.
+
+La prima volta l'iPhone chiede i permessi (posizione, invio a comperotto.vercel.app, notifiche): rispondete **Consenti sempre**, così dalle volte dopo basta un tocco. Se il segnaposto risulta lontano: Impostazioni → Privacy e sicurezza → Localizzazione → **Comandi** → *Posizione esatta* attiva. Lo stesso comando si può mettere anche sul tasto Azione o nel Centro di Controllo. Il codice resta solo sul telefono, mai nel repository.
+
 ## 6. Notifiche
 
 Su ogni iPhone/iPad con l'app **installata sulla schermata Home**: **Impostazioni → Notifiche → Attiva le notifiche** (c'è anche un invito in Home). Non serve configurare niente: le chiavi si creano da sole e restano nel database.
@@ -208,7 +227,7 @@ js/spotify.js           Spotify: lettore, dispositivi, playlist (parla con Spoti
 js/views/*.js           le schermate
 assets/fonts/           i caratteri (dentro l'app: niente richieste esterne)
 api/                    funzioni Vercel: stato, setup del codice, dati (Neon/Postgres o Upstash Redis), film,
-                        posizione, notifiche (push, promemoria della sera), spotify (collegamento e token),
+                        posizione (anche l'auto: «Ho parcheggiato» dal comando rapido), notifiche (push, promemoria della sera), spotify (collegamento e token),
                         ricette online, link brevi (Amazon, Spotify)
 alexa-skill/            skill Alexa (modello italiano + codice)
 ```

@@ -99,6 +99,9 @@ const P = {
   expand: '<path d="M14.5 3.5h6v6M9.5 20.5h-6v-6M20.5 3.5l-7 7M3.5 20.5l7-7"/>',
   cup: '<path d="M4.5 9.5h12v4.5a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5z"/><path d="M16.5 11h1.3a2.2 2.2 0 0 1 0 4.4h-1.6"/><path d="M8.5 3.5c-.8 1 .8 2-.1 3.2M12.5 3.5c-.8 1 .8 2-.1 3.2"/><path d="M4 21h14"/>',
   balloon: '<path d="M12 15.5c-3.3 0-6-3.1-6-6.6a6 6 0 0 1 12 0c0 3.5-2.7 6.6-6 6.6z"/><path d="M11 15.5h2l-.4 1.4h-1.2z"/><path d="M12 16.9c0 1.6-1.6 2-1.6 3.3 0 .8.5 1.3 1.1 1.3"/><path d="M9.2 7.4a3 3 0 0 1 1.9-1.8"/>',
+  car: '<path d="M5.2 11.5 6.8 7.3a2.6 2.6 0 0 1 2.4-1.8h5.6a2.6 2.6 0 0 1 2.4 1.8l1.6 4.2"/><rect x="3" y="11.5" width="18" height="6" rx="2"/><path d="M5.5 17.5v2M18.5 17.5v2M6.5 14.5h1.5M16 14.5h1.5"/>',
+  parking: '<rect x="4" y="4" width="16" height="16" rx="4.5"/><path d="M10 16.5v-9h2.8a2.75 2.75 0 0 1 0 5.5H10"/>',
+  nav: '<path d="M19.5 4.5 4 11.3l7.1 1.6 1.6 7.1z"/>',
 };
 
 /** Il disegno "nudo" di un'icona (per ridisegnarla altrove, es. sulla mappa). */

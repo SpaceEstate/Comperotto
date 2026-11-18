@@ -1,7 +1,11 @@
 // GET /api/geocodifica?q=Via Roma 12[&lat=..&lon=..] → { lat, lon, nome }
 // Trova le coordinate di un indirizzo (OpenStreetMap). Se si passa una posizione vicina,
 // cerca prima nei dintorni (in Italia ci sono mille "Via Roma").
+//
+// GET /api/geocodifica?lat=..&lon=.. (senza q) → { lat, lon, nome } al contrario: l'indirizzo di quel punto,
+// con il civico (per l'auto, quando al comando rapido non è arrivato in tempo).
 import { respingi, send } from './_lib.js';
+import { indirizzo } from './_luogo.js';
 
 const UA = { 'User-Agent': 'FamComperotto/1.0 (app di casa per uso familiare)', Accept: 'application/json' };
 
@@ -27,8 +31,13 @@ export default async function handler(req, res) {
   if (await respingi(req, res)) return;
   const p = new URL(req.url, 'http://x').searchParams;
   const q = String(p.get('q') || '').trim().slice(0, 160);
-  if (!q) return send(res, 400, { error: 'Manca l’indirizzo' });
   const lat = Number(p.get('lat')), lon = Number(p.get('lon'));
+  if (!q) {
+    const punto = p.has('lat') && p.has('lon') && Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+    if (!punto) return send(res, 400, { error: 'Manca l’indirizzo' });
+    const nome = await indirizzo(lat, lon, { preciso: true, attesa: 4000 });
+    return nome ? send(res, 200, { lat, lon, nome }) : send(res, 404, { error: 'Indirizzo non trovato' });
+  }
   let hit = null;
   if (Number.isFinite(lat) && Number.isFinite(lon) && (lat || lon)) {
     const d = 0.35; // circa 35 km intorno

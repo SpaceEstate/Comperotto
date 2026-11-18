@@ -37,6 +37,14 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   anche a virgole (le doppie si saltano); «Ricomincia» toglie le spunte per il viaggio dopo.
 - **Spesa:** sopra solo la linea di avanzamento (i conti sono sulla scheda Cibo e in alto); niente aggiunte rapide (`freq` resta).
 - **Dov'è, mappa:** più alta; un tocco (o il pulsante) la apre a tutto schermo (`ui('dove.grande')`, `.map-card.grande`), X o Esc la chiudono.
+- **Auto ("Ho parcheggiato"):** il pulsante è un comando rapido sulla schermata Home dell'iPhone (istruzioni nel README), non un tasto
+  dell'app: si preme e basta. Manda `POST /api/posizione?auto` con JSON `{ codice, chi, lat, lon }` (il codice nel corpo, mai nell'indirizzo;
+  vanno bene anche x-famiglia o Basic; numeri anche "45,07" con la virgola) e riceve in testo semplice «Posizione inviata», che il comando
+  mostra come notifica (gli errori sono frasi brevi). Si salva in `posizioni/auto` (`{ lat, lon, acc, at, chi, place, nota, src }`: non è una
+  persona, niente avvisi né zone); indirizzo con civico e nome del parcheggio da `api/_luogo.js` (se non arriva in 1,5 s lo cerca l'app con
+  `/api/geocodifica?lat&lon`). Nell'app si vede e basta: riga Auto nel riquadro Dov'è della Home (→ `#/dove/auto`, la mappa parte
+  dall'auto), sezione Auto in Dov'è con la scheda (Portami all'auto a piedi, nota, togli con Annulla), segnaposto azzurro sempre visibile
+  sotto le persone (toccandolo si apre la scheda, non la mappa grande). Nessuna funzione nuova in `api/`.
 - **Ricette online:** `api/ricette.js` cerca su GialloZafferano (pagina pubblica dei risultati: ordine dall'`ItemList` schema.org,
   foto/voto/difficoltà/tempo dalle schede, solo `ricette.giallozafferano.it`) e importa da link con i dati schema.org (controlli contro
   indirizzi interni; nei passaggi di GZ si tolgono i rimandi alle foto). Fatto in casa da Benedetta è stato tolto: il sito blocca

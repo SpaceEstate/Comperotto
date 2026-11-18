@@ -2,6 +2,7 @@
 // Le posizioni arrivano da OwnTracks (in automatico, anche ad app chiusa) e, se lo si sceglie,
 // dall'app stessa mentre è aperta. Regola d'oro: una posizione vecchia non si mostra mai come se fosse
 // di adesso. Oltre le 2 ore si dice "era a casa · 5 h fa", in grigio.
+// C'è anche l'auto: la segna il comando rapido «Ho parcheggiato» dell'iPhone; qui si vede e basta.
 import { html, raw, timeAgo, vibrate, uid, cap, isIPad, lsGet, lsSet } from '../utils.js';
 import { icon } from '../icons.js';
 import { state, store, settings, saveSettings, me, nameOf, toast, pageHead, isSynced, openSheet, closeSheet, sheetError, val, confirmSheet, ui, setUi, rerender } from '../core.js';
@@ -116,6 +117,104 @@ const mapsUrl = (p, name) => `https://maps.apple.com/?ll=${p.lat},${p.lon}&q=${e
 // solo gli iPhone mandano la posizione (sull'iPad non ha senso: resta a casa)
 const possoMandare = () => isSynced() && Boolean(me()) && !isIPad() && 'geolocation' in navigator;
 
+// ---------------------------------------------------------------------------
+// L'auto: dove l'abbiamo lasciata (posizioni/auto). La manda il comando rapido «Ho parcheggiato» sulla
+// schermata Home dell'iPhone (POST /api/posizione?auto): nell'app non c'è niente da premere, si vede e basta.
+// ---------------------------------------------------------------------------
+/** { lat, lon, acc, at, chi, place, nota, src } oppure undefined */
+export const macchina = () => state.data.posizioni.find((p) => p.id === 'auto' && hasXY(p));
+/** A piedi fino all'auto, con Mappe */
+const percorso = (a) => `https://maps.apple.com/?daddr=${a.lat},${a.lon}&dirflg=w`;
+const chiAuto = (a) => (a.chi === 'p1' || a.chi === 'p2' ? nameOf(a.chi) : '');
+/** "alle 14:32", "ieri alle 9:05", "il 12 nov" */
+const quandoAuto = (a) => { const q = quando(a.at); return /^\d/.test(q) ? `il ${q}` : q; };
+/** "Parcheggiata da Serena alle 14:32 · posizione approssimativa (±60 m)" */
+function parcheggiata(a) {
+  const chi = chiAuto(a);
+  return `Parcheggiata${chi ? ` da ${chi}` : ''} ${quandoAuto(a)}${a.acc > 30 ? ` · posizione approssimativa (±${metri(a.acc)})` : ''}`;
+}
+export function autoBadge(cls = '') {
+  return html`<span class="auto-pin ${cls}">${icon('car', cls === 'sm' ? 'sm' : '')}</span>`;
+}
+
+function autoCard() {
+  const a = macchina();
+  if (!a) return '';
+  return html`
+    <div class="section-title"><span>Auto</span></div>
+    <section class="card dove-card auto-card">
+      <div class="dove-row">
+        <button class="dove-hit" data-action="auto-info" aria-label="L’auto: ${a.place || 'sulla mappa'}">
+          ${autoBadge()}
+          <span class="dove-main">
+            <b>Auto</b>
+            <span class="dove-status"><span class="pill soon">${icon('parking', 'xs')} <span class="auto-parola">Parcheggiata</span> ${durata(a.at)}</span></span>
+            ${a.place ? html`<span class="dove-place">${a.place}</span>` : ''}
+            ${a.nota ? html`<span class="dove-place auto-nota">${icon('note', 'xs')} ${a.nota}</span>` : ''}
+            <span class="dove-sub">${[chiAuto(a), quandoAuto(a), a.acc > 30 ? `±${metri(a.acc)}` : ''].filter(Boolean).join(' · ')}</span>
+          </span>
+        </button>
+        <a class="icon-btn" href="${percorso(a)}" target="_blank" rel="noopener" aria-label="Portami all’auto">${icon('nav', 'sm')}</a>
+      </div>
+    </section>`;
+}
+
+/** Rimette l'auto com'era (per "Annulla") */
+function rimetti(prima) {
+  if (!prima) { store.remove('posizioni', 'auto'); return; }
+  const { id, ...resto } = prima;
+  store.set('posizioni', 'auto', resto);
+}
+
+/** L'indirizzo dell'auto, se al comando rapido non è arrivato in tempo: lo cerco io (una volta al minuto al massimo). */
+const cercati = new Map();
+export async function trovaIndirizzo() {
+  const a = macchina();
+  if (!a || a.place || !isSynced() || Date.now() - (cercati.get(a.at) || 0) < MIN) return;
+  cercati.set(a.at, Date.now());
+  try {
+    const r = await store.call(`geocodifica?lat=${a.lat}&lon=${a.lon}`);
+    const ora = macchina();
+    if (r.nome && ora && ora.at === a.at && !ora.place) store.update('posizioni', 'auto', { place: r.nome });
+  } catch (e) {
+    if (e instanceof TypeError) cercati.delete(a.at); // senza rete: riprovo appena torna
+    else if (/non trovato/i.test((e && e.message) || '')) cercati.set(a.at, Infinity); // lì non c'è un indirizzo: non insisto
+  }
+}
+
+/** La mappa (se c'è) va sull'auto */
+function vaiAllAuto(anima = true) {
+  const a = macchina(), m = document.getElementById('mappa');
+  if (!a || !m || !m._map) return false;
+  const zoom = Math.max(m._map.getZoom(), 17);
+  if (anima) m._map.flyTo({ center: [a.lon, a.lat], zoom, duration: 900 });
+  else m._map.jumpTo({ center: [a.lon, a.lat], zoom });
+  return true;
+}
+
+/** La scheda dell'auto: portami lì, una nota (piano, posto…), togli. */
+function autoSheet() {
+  const a = macchina();
+  if (!a) return;
+  vaiAllAuto();
+  openSheet({
+    title: 'Auto',
+    body: html`
+      <div class="auto-head">
+        ${autoBadge()}
+        <div><b>${a.place || 'Segnata sulla mappa'}</b><span>${parcheggiata(a)}</span></div>
+      </div>
+      <a class="btn block auto-go" href="${percorso(a)}" target="_blank" rel="noopener">${icon('nav', 'sm')} Portami all’auto</a>
+      <label class="field"><span>Nota</span><input name="nota" value="${a.nota || ''}" maxlength="80" placeholder="es. Piano -2, posto 14"></label>`,
+    extra: html`<button class="btn danger" type="button" data-action="auto-togli" aria-label="Togli l’auto dalla mappa">${icon('trash', 'sm')}</button>`,
+    onSubmit: (fd) => {
+      const ora = macchina();
+      const nota = cap(val(fd, 'nota'));
+      if (ora && nota !== (ora.nota || '')) store.update('posizioni', 'auto', { nota });
+    },
+  });
+}
+
 /** Da dove arrivano le posizioni di questa persona (per capire subito se qualcosa non va). */
 /** La batteria (la manda OwnTracks): solo se è di poco fa, mai un numero vecchio accanto a una posizione nuova. */
 export const batteria = (p) => (p && p.batt != null && (!p.battAt || Date.now() - p.battAt < 3 * 60 * MIN) ? p.batt : null);
@@ -146,7 +245,7 @@ function consiglio(k, st) {
 }
 
 export function render(route) {
-  const any = PEOPLE.some((k) => pos(k)) || luoghi().some(hasXY);
+  const any = PEOPLE.some((k) => pos(k)) || luoghi().some(hasXY) || Boolean(macchina());
   const posti = luoghi();
   if (route && route[1] === 'condividi') setTimeout(() => chiestaCondivisione(), 350);
   const auto = lsGet('casa.dove.app') === '1';
@@ -190,6 +289,8 @@ export function render(route) {
       <button class="btn" data-action="dove-aggiorna" ${ui('dove.busy', false) ? raw('disabled') : ''}>${icon('refresh', ui('dove.busy', false) ? 'sm spin' : 'sm')} ${ui('dove.busy', false) ? 'Aggiorno…' : 'Aggiorna'}</button>
       <a class="btn primary" href="findmy://">${icon('search', 'sm')} Apri Dov’è</a>
     </div>
+
+    ${autoCard()}
 
     ${possoMandare() ? html`<div class="section-title"><span>Questo iPhone</span></div>
       <div class="list">
@@ -235,8 +336,15 @@ function loadMapLibre() {
   return mlgl;
 }
 
-/** Dove sono Patrick e Serena (segnaposti sempre visibili; grigi se la posizione è vecchia) */
-const persone = () => PEOPLE.flatMap((k) => { const p = pos(k); if (!p) return []; const f = freschezza(p.at); return [{ k, ll: [p.lon, p.lat], old: f === 'vecchia' || f === 'scaduta', age: timeAgo(p.at) }]; });
+/**
+ * Segnaposti sempre visibili: l'auto (sotto, così Patrick e Serena le stanno sopra quando sono lì) e poi
+ * Patrick e Serena (grigi se la posizione è vecchia; l'auto invece resta dov'è finché non si riparcheggia).
+ */
+const persone = () => {
+  const a = macchina();
+  const auto = a ? [{ k: 'auto', ll: [a.lon, a.lat] }] : [];
+  return [...auto, ...PEOPLE.flatMap((k) => { const p = pos(k); if (!p) return []; const f = freschezza(p.at); return [{ k, ll: [p.lon, p.lat], old: f === 'vecchia' || f === 'scaduta', age: timeAgo(p.at) }]; })];
+};
 /** I nostri posti, nel formato che vuole la mappa */
 const postiGeo = () => ({
   type: 'FeatureCollection',
@@ -247,7 +355,7 @@ const postiGeo = () => ({
   })),
 });
 
-/** Inquadra le persone; se nessuno ha ancora una posizione, casa (o il primo posto) */
+/** Inquadra le persone e l'auto; se non c'è ancora nessuna posizione, casa (o il primo posto) */
 function inquadra(map, animate = true) {
   const pts = persone().map((x) => x.ll);
   if (!pts.length) {
@@ -255,16 +363,26 @@ function inquadra(map, animate = true) {
     if (l) map.jumpTo({ center: [l.lon, l.lat], zoom: 15 });
     return;
   }
-  if (pts.length === 1 || distanza({ lon: pts[0][0], lat: pts[0][1] }, { lon: pts[1][0], lat: pts[1][1] }) < 60) {
-    map[animate ? 'easeTo' : 'jumpTo']({ center: pts[0], zoom: 15.5 });
+  const lons = pts.map((x) => x[0]), lats = pts.map((x) => x[1]);
+  const sw = [Math.min(...lons), Math.min(...lats)], ne = [Math.max(...lons), Math.max(...lats)];
+  // tutti nello stesso punto (o quasi): niente riquadro, solo un po' di zoom
+  if (distanza({ lon: sw[0], lat: sw[1] }, { lon: ne[0], lat: ne[1] }) < 60) {
+    map[animate ? 'easeTo' : 'jumpTo']({ center: [(sw[0] + ne[0]) / 2, (sw[1] + ne[1]) / 2], zoom: 15.5 });
     return;
   }
-  const lons = pts.map((x) => x[0]), lats = pts.map((x) => x[1]);
-  map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: { top: 76, bottom: 44, left: 56, right: 56 }, maxZoom: 16, animate });
+  map.fitBounds([sw, ne], { padding: { top: 76, bottom: 44, left: 56, right: 56 }, maxZoom: 16, animate });
 }
 
 function markerEl(x) {
   const el = document.createElement('div');
+  if (x.k === 'auto') {
+    el.className = 'pin-wrap';
+    el.innerHTML = `<span class="pin-auto">${icon('car').s}</span>`;
+    el.title = 'Auto';
+    // toccando l'auto si apre la sua scheda (e non la mappa a tutto schermo)
+    el.addEventListener('click', (e) => { e.stopPropagation(); autoSheet(); });
+    return el;
+  }
   el.className = `pin-wrap${x.old ? ' old' : ''}`;
   el.innerHTML = `<span class="pin-person ${x.k}">${initialOf(x.k)}</span>${x.old ? `<span class="pin-age">${x.age}</span>` : ''}`;
   el.title = x.old ? `${nameOf(x.k)} · ultima posizione ${x.age}` : nameOf(x.k);
@@ -346,8 +464,14 @@ export function preparaMappa() {
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (document.getElementById('mappa')) after(); });
 
-export async function after() {
+// Da "Auto" in Home (#/dove/auto) la mappa parte dall'auto: appena ci sono sia la mappa sia l'auto.
+let sullAuto = false;
+
+/** r = la rotta (es. ['dove', 'auto']), nuova = appena arrivati su questa pagina */
+export async function after(r = [], nuova = false) {
+  if (nuova) sullAuto = r[1] === 'auto';
   ensureCoords();
+  trovaIndirizzo();
   // mentre si guarda Dov'è il controllo del server resta veloce (ogni 6 secondi)
   if (isSynced() && !document.hidden) store.attivo = Date.now();
   automatica();
@@ -371,6 +495,8 @@ export async function after() {
     el._grande = grande;
     requestAnimationFrame(() => { map.resize(); inquadra(map, false); });
   }
+  // dopo l'inquadratura qui sopra (stesso fotogramma, in ordine): la mappa va sull'auto
+  if (sullAuto && macchina()) { sullAuto = false; requestAnimationFrame(() => vaiAllAuto(false)); }
   const posti = postiGeo(), pk = JSON.stringify(posti);
   // Mappa/Satellite o chiaro/scuro sono cambiati
   const chiave = chiaveStile();
@@ -380,7 +506,7 @@ export async function after() {
     const st = await stile(tipoMappa(), posti, scuro());
     if (el._stile === chiave) map.setStyle(st, { diff: false });
   }
-  // segnaposti delle persone (grigi con l'età se la posizione è vecchia)
+  // segnaposti delle persone (grigi con l'età se la posizione è vecchia) e dell'auto
   const pp = persone();
   const key = JSON.stringify(pp);
   if (key !== el._key) {
@@ -621,6 +747,15 @@ export const actions = {
     if (!p || !m || !m._map) return;
     m._map.flyTo({ center: [p.lon, p.lat], zoom: Math.max(m._map.getZoom(), 16.5), duration: 900 });
     m.closest('.map-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  },
+  // l'auto: la sua scheda (dalla riga Auto o toccando l'auto sulla mappa), e "togli" con Annulla
+  'auto-info': () => autoSheet(),
+  'auto-togli': () => {
+    const prima = macchina();
+    closeSheet();
+    if (!prima) return;
+    store.remove('posizioni', 'auto');
+    toast('Auto tolta dalla mappa', { undo: () => rimetti(prima) });
   },
   'luogo-new': () => luogoSheet(),
   'luogo-edit': ({ id }) => { const l = (settings().luoghi || []).find((x) => x.id === id); if (l) luogoSheet(luoghi().find((x) => x.id === id)); },

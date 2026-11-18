@@ -9,9 +9,12 @@
 //   acc   = precisione in metri                               home/luogo = dove si trova rispetto ai nostri posti
 // Se "Remote Commands" è attivo in OwnTracks, nella risposta gli mando i nostri posti come zone
 // (setWaypoints): così l'iPhone avvisa da solo appena si entra o si esce da casa, anche in modalità Significant.
+//
+// POST /api/posizione?auto — l'auto: «Ho parcheggiato», il comando rapido sulla schermata Home dell'iPhone (più sotto).
 import crypto from 'node:crypto';
-import { backend, body, respingi, send } from './_lib.js';
+import { autorizza, backend, body, respingi, send, sleep } from './_lib.js';
 import { avvisa, origineDi } from './_push.js';
+import { indirizzo } from './_luogo.js';
 
 const R = 6371000;
 const toRad = (d) => (d * Math.PI) / 180;
@@ -84,27 +87,6 @@ export function decidi({ posti, lat, lon, acc, regioni, evento, prev }) {
   return { luogo: null, incerto: stati.some((x) => x.s === null), uscito };
 }
 
-/** "Via Roma, Torino" dalle coordinate (OpenStreetMap), con un limite di tempo. */
-async function indirizzo(lat, lon) {
-  try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 2500);
-    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=17&accept-language=it&lat=${lat}&lon=${lon}`, {
-      headers: { 'User-Agent': 'FamComperotto/1.0 (app di casa per uso familiare)', Accept: 'application/json' },
-      signal: ctrl.signal,
-    });
-    clearTimeout(t);
-    if (!r.ok) return '';
-    const j = await r.json();
-    const a = j.address || {};
-    const via = a.road || a.pedestrian || a.square || a.neighbourhood || a.suburb || '';
-    const citta = a.city || a.town || a.village || a.municipality || a.county || '';
-    return [via, citta].filter(Boolean).join(', ') || (j.display_name || '').split(',').slice(0, 2).join(',').trim();
-  } catch {
-    return '';
-  }
-}
-
 function basic(req) {
   const h = req.headers.authorization || '';
   if (!h.startsWith('Basic ')) return {};
@@ -152,7 +134,59 @@ export function zone(posti) {
 export const chiavePosti = (posti) => posti.map((l) => `${l.id}:${Number(l.lat).toFixed(5)}:${Number(l.lon).toFixed(5)}:${Math.round(l.r)}`).join('|');
 const firmaZone = (z) => crypto.createHash('sha1').update(JSON.stringify(z.map((x) => [x.desc, x.lat, x.lon, x.rad]))).digest('hex').slice(0, 16);
 
+// ---------------------------------------------------------------------------
+// L'auto: «Ho parcheggiato», il comando rapido sulla schermata Home dell'iPhone. Si preme e basta:
+//   POST /api/posizione?auto   corpo JSON { codice, chi, lat, lon }   (il codice va bene anche come x-famiglia o Basic,
+//   mai nell'indirizzo). Risponde con una frase sola, che il comando mostra come notifica: «Posizione inviata».
+// Si salva in "posizioni" con id "auto" (non è una persona: niente avvisi né zone); la nota vecchia si cancella.
+// ---------------------------------------------------------------------------
+function testo(res, status, msg) {
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
+  res.end(msg);
+}
+// l'iPhone in italiano può mandare i numeri come testo, con la virgola: "45,0703"
+const numero = (x) => num(typeof x === 'string' ? x.trim().replace(',', '.') : x);
+
+async function parcheggio(req, res) {
+  if (req.method !== 'POST') return testo(res, 405, 'Nel comando il metodo deve essere POST');
+  const db = backend();
+  if (!db) return testo(res, 503, 'Database non collegato');
+  const b = body(req);
+  const auth = basic(req);
+  const esito = await autorizza(req, req.headers['x-famiglia'] || b.codice || auth.pass);
+  if (esito !== 'ok') {
+    await sleep(400);
+    return esito === 'bloccato' ? testo(res, 429, 'Troppi tentativi con un codice sbagliato: riprova tra un quarto d’ora') : testo(res, 401, 'Codice di famiglia sbagliato');
+  }
+  const lat = numero(b.lat), lon = numero(b.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180 || (!lat && !lon)) {
+    return testo(res, 400, 'Posizione mancante: nel comando servono Latitudine e Longitudine');
+  }
+  try {
+    // chi ha parcheggiato: "p1"/"p2" oppure il nome (es. "serena"); se manca o non torna, pazienza
+    const raw = String(b.chi || auth.user || '').trim();
+    let chi = ['p1', 'p2'].includes(raw) ? raw : null;
+    if (!chi && raw) {
+      const { items } = await db.collection('settings');
+      const names = { p1: 'Patrick', p2: 'Serena', ...((items.main || {}).names || {}) };
+      chi = ['p1', 'p2'].find((k) => norm(names[k]) === norm(raw)) || null;
+    }
+    const acc = numero(b.acc);
+    // l'indirizzo con poca attesa (la risposta deve essere svelta): se non arriva lo cerca poi l'app
+    const place = await indirizzo(lat, lon, { preciso: true, attesa: 1500 });
+    await db.apply([{ op: 'set', col: 'posizioni', id: 'auto', data: { lat, lon, acc: acc > 0 ? Math.round(acc) : null, at: Date.now(), chi, place, nota: '', src: 'comando' } }]);
+    testo(res, 200, 'Posizione inviata');
+  } catch (e) {
+    console.error(e);
+    testo(res, 500, 'Database non raggiungibile: riprova tra poco');
+  }
+}
+
 export default async function handler(req, res) {
+  // l'auto ha la sua strada, con risposte in testo semplice per il comando rapido
+  if (new URL(req.url, 'http://x').searchParams.has('auto')) return parcheggio(req, res);
   if (req.method !== 'POST') return send(res, 405, { error: 'Metodo non permesso' });
   const db = backend();
   if (!db) return send(res, 503, { error: 'Database non collegato' });

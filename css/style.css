@@ -1706,6 +1706,32 @@ label.set-row { cursor: pointer; }
 .dove-warn-act { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .dove-warn .mini-btn[disabled] { opacity: .5; }
 .pin-wrap { display: flex; flex-direction: column; align-items: center; }
+
+/* ---------- l'auto («Ho parcheggiato», dal comando rapido dell'iPhone) ---------- */
+.auto-pin { width: 46px; height: 46px; border-radius: 15px; display: grid; place-items: center; flex: none; background: #DCECF8; color: #3F6C8C; box-shadow: inset 0 0 0 2px #A9C8E0; }
+.auto-pin svg.i { width: 24px; height: 24px; }
+.auto-pin.sm { width: 32px; height: 32px; border-radius: 11px; }
+.auto-pin.sm svg.i { width: 18px; height: 18px; }
+.auto-nota { display: flex; align-items: center; gap: 5px; }
+@media (max-width: 359px) { .auto-parola { display: none; } } /* iPhone piccolo: basta il cartello P */
+/* sulla mappa: quadrotto azzurro con l'auto, sotto Patrick e Serena; si tocca e si apre la scheda */
+.pin-auto {
+  position: relative; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 13px; cursor: pointer;
+  background: #5E93BE; color: #fff; border: 3px solid #fff; box-shadow: 0 6px 14px rgba(40, 28, 16, .3);
+}
+.pin-auto svg.i { width: 21px; height: 21px; stroke-width: 2; }
+.pin-auto::after { content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: #fff; }
+/* Home: nel riquadro Dov'è la riga dell'auto porta alla mappa sull'auto; tutto il riquadro resta toccabile */
+section.dove-home { padding: 0; }
+.dh-link { display: block; padding: 12px 14px 8px; color: inherit; text-decoration: none; }
+.dove-home.con-auto .dh-link:first-child { padding-bottom: 0; }
+.dh-link.dh-auto { padding-top: 0; }
+/* foglio dell'auto */
+.auto-head { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; }
+.auto-head > div { min-width: 0; }
+.auto-head > div > b { display: block; font-size: 17px; line-height: 1.3; }
+.auto-head > div > span { display: block; font-size: 13px; color: var(--text-3); margin-top: 3px; line-height: 1.4; }
+.auto-go { margin-bottom: 16px; }
 .pin-wrap.old .pin-person { filter: grayscale(1); opacity: .7; }
 .pin-age { margin-top: 12px; padding: 1px 7px; border-radius: 999px; font: 700 11px var(--font-sans); background: rgba(255,255,255,.92); color: #6b5e55; box-shadow: 0 1px 4px rgba(0,0,0,.18); white-space: nowrap; }
 

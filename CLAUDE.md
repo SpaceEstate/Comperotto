@@ -151,6 +151,12 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   ("togli…"): va reincollata nella console per averla.
 - **Avvio e aggiornamenti:** un dispositivo già collegato parte subito dai dati salvati (non aspetta `/api/stato`). A ogni pubblicazione
   cambiare `CACHE` in `sw.js` e `VERSIONE` in `js/config.js`: l'app aperta si ricarica da sola (non mentre si scrive). I caratteri sono in `assets/fonts/`.
+  Avviso «App da aggiornare» (`js/aggiorna.js`): `/api/stato` dice la `versione` pubblicata (importa `VERSIONE` da `js/config.js`);
+  l'app la confronta con la sua all'avvio (stessa risposta che usa per partire), al ritorno in primo piano (max ogni 15 s) e ogni
+  10 min. Se è più vecchia: banner in alto (z-index 43, sotto fogli, lettore e mappa grande) con «Aggiorna» e × (torna dopo 30 min o
+  con una versione ancora più nuova); intanto `reg.update()` scarica il service worker nuovo, che ricarica l'app da solo se non si sta
+  scrivendo. «Aggiorna»: aspetta il service worker nuovo (max 8 s), altrimenti toglie le copie `casa-v*` e ricarica dalla rete.
+  Dopo un aggiornamento una volta il toast «App aggiornata ✓» (`casa.versione` in localStorage).
 - **Copia dei dati sul dispositivo:** IndexedDB (database `comperotto`, archivio `raccolte`, una voce per raccolta), caricata prima del
   primo disegno (`SyncStore.carica()`, `await` in `startSync`); la prima volta vi passa da sola la copia di localStorage (poi tolta).
   Coda (`casa.sync.q`) e versioni (`casa.sync.v`) restano in localStorage; la versione di una raccolta si salva solo quando la sua copia

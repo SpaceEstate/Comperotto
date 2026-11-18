@@ -216,6 +216,7 @@ css/style.css           stile: palette di casa e atmosfere stagionali
 js/config.js            versione dell'app e frase della skill Alexa
 js/store.js             dati: condivisi via Vercel (con coda offline; copia sul dispositivo in IndexedDB; scarica solo ciò che cambia) o solo sul dispositivo
 js/precarica.js         all'apertura prepara musica, copertine, locandine, foto e mappa
+js/aggiorna.js          avviso «App da aggiornare» se sul dispositivo c'è una versione vecchia
 js/core.js              stato, fogli dal basso, avvisi
 js/data.js              reparti, temi, stagioni, rifiuti, faccende
 js/season.js            atmosfere stagionali e decorazioni
@@ -232,7 +233,7 @@ api/                    funzioni Vercel: stato, setup del codice, dati (Neon/Pos
 alexa-skill/            skill Alexa (modello italiano + codice)
 ```
 
-Niente framework e niente build: HTML, CSS e JavaScript moderni, più alcune piccole funzioni in `api/`. Per modificarla basta cambiare i file e fare push su `main`: Vercel la ripubblica da solo e l'app, alla prima apertura, si ricarica da sola con la versione nuova (a ogni pubblicazione va cambiato il numero di `CACHE` in `sw.js` e `VERSIONE` in `js/config.js`).
+Niente framework e niente build: HTML, CSS e JavaScript moderni, più alcune piccole funzioni in `api/`. Per modificarla basta cambiare i file e fare push su `main`: Vercel la ripubblica da solo e l'app, alla prima apertura, si ricarica da sola con la versione nuova (a ogni pubblicazione va cambiato il numero di `CACHE` in `sw.js` e `VERSIONE` in `js/config.js`). Se un iPhone o un iPad apre una versione vecchia, in alto compare **«App da aggiornare»** con il tasto **Aggiorna**.
 
 Per provarla sul computer con le funzioni e il database:
 

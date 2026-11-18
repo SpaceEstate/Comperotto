@@ -1,8 +1,8 @@
 // Service worker: l'app si apre anche senza rete e si aggiorna da sola in sottofondo.
-const CACHE = 'casa-v1.26.2';
+const CACHE = 'casa-v1.27.0';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css',
-  'js/app.js', 'js/precarica.js', 'js/gestures.js', 'js/mappa.js', 'js/notifiche.js', 'js/spotify.js', 'js/core.js', 'js/store.js', 'js/config.js', 'js/utils.js', 'js/icons.js', 'js/data.js', 'js/seed.js', 'js/season.js',
+  'js/app.js', 'js/aggiorna.js', 'js/precarica.js', 'js/gestures.js', 'js/mappa.js', 'js/notifiche.js', 'js/spotify.js', 'js/core.js', 'js/store.js', 'js/config.js', 'js/utils.js', 'js/icons.js', 'js/data.js', 'js/seed.js', 'js/season.js',
   'js/views/home.js', 'js/views/zone.js', 'js/views/cibo.js', 'js/views/svago.js', 'js/views/viaggi.js', 'js/views/spesa.js', 'js/views/casa.js', 'js/views/ricette.js', 'js/views/film.js',
   'js/views/musica.js', 'js/views/spotify.js', 'js/views/desideri.js', 'js/views/gatti.js', 'js/views/dove.js', 'js/vendor/maplibre/maplibre-gl.js', 'js/vendor/maplibre/maplibre-gl.css', 'js/views/impostazioni.js', 'js/views/login.js',
   'assets/icons/icon.svg', 'assets/icons/icon-192.png', 'assets/icons/apple-touch-icon.png',

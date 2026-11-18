@@ -9,6 +9,7 @@ import { initGestures } from './gestures.js';
 import { rinfresca as rinfrescaNotifiche, stato as statoNotifiche } from './notifiche.js';
 import { sp as spotifyStato, eQui, avviaSpotify, quiInUso } from './spotify.js';
 import { precaricaTutto } from './precarica.js';
+import { segnala as segnalaVersione } from './aggiorna.js';
 import * as home from './views/home.js';
 import * as cibo from './views/cibo.js';
 import * as svago from './views/svago.js';
@@ -405,11 +406,13 @@ async function boot() {
   if (code && lsGet('casa.sync.seen')) {
     state.backend = { app: 'comperotto', storage: true, claimed: true };
     startSync(code);
-    detectBackend().then((info) => { if (info && info.storage) state.backend = info; });
+    // la stessa risposta dice anche qual è l'ultima versione dell'app: se questa è vecchia compare l'avviso
+    detectBackend().then((info) => { if (info && info.storage) state.backend = info; segnalaVersione(info && info.versione); });
     return;
   }
   const info = await detectBackend();
   state.backend = info;
+  segnalaVersione(info && info.versione);
   if (info && info.storage) {
     const code = savedCode();
     if (code) startSync(code);

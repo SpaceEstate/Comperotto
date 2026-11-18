@@ -949,6 +949,9 @@ button.back-link { background: none; border: 0; cursor: pointer; font-family: in
 .sp-album-foot span { font-size: 12px; }
 .sp-chips { margin-top: 0; margin-bottom: 10px; }
 .chip .sp-n { font-weight: 600; opacity: .6; }
+.sp-consiglio .sp-eyebrow { display: block; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); margin-bottom: 2px; }
+.sp-cons-ctrl { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.sp-cons-ctrl .btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .sp-rep { position: relative; }
 .sp-rep.uno::after { content: '1'; position: absolute; top: 6px; right: 5px; min-width: 13px; height: 13px; border-radius: 7px; background: var(--sage); color: #fff; font-size: 9px; font-weight: 800; line-height: 13px; text-align: center; }
 .sp-sheet-head .row-main { display: flex; flex-direction: column; gap: 2px; color: var(--text-2); }

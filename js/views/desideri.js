@@ -245,12 +245,14 @@ export function render() {
 
 /** All'apertura dell'app: le foto che si vedono entrando in Desideri (copertine delle liste e la lista aperta). */
 export function foto() {
+  // prima le copertine delle liste e la lista aperta, poi tutte le altre
   const out = diAmazon().flatMap((l) => (l.articoli || []).map((a) => fotoAmz(a.foto)).filter(Boolean).slice(0, 4));
   const cur = aperta();
   const l = cur === CASA ? null : trova(cur);
-  if (l && l.tipo === 'amazon') out.push(...(l.articoli || []).slice(0, 30).map((a) => fotoAmz(a.foto)));
-  else out.push(...state.data.desideri.filter((w) => !w.bought && listaDi(w) === cur).slice(0, 30).map((w) => fotoAmz(w.foto)));
-  return out.filter(Boolean);
+  if (l && l.tipo === 'amazon') out.push(...(l.articoli || []).map((a) => fotoAmz(a.foto)));
+  out.push(...state.data.desideri.map((w) => fotoAmz(w.foto)));
+  diAmazon().forEach((x) => out.push(...(x.articoli || []).map((a) => fotoAmz(a.foto))));
+  return [...new Set(out.filter(Boolean))].slice(0, 200);
 }
 
 export function after() {

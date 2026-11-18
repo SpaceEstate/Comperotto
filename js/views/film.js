@@ -97,8 +97,8 @@ export function locandine() {
   const all = [...state.data.film].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   const theme = FILM_CATS[ui('film.theme', 'tutti')] ? ui('film.theme', 'tutti') : 'tutti';
   const primo = stasera(all, theme);
-  const daVedere = all.filter((f) => !f.watched).slice(0, 24);
-  const film = primo ? [primo, ...daVedere] : daVedere;
+  // prima quelli da vedere (la pagina parte da lì), poi i già visti
+  const film = [...(primo ? [primo] : []), ...all.filter((f) => !f.watched), ...all.filter((f) => f.watched)].slice(0, 160);
   return [
     ...film.map((f) => safePoster(f.poster)),
     ...film.flatMap((f) => streaming(f).slice(0, 3).map((o) => safeIcon(o.icon))),

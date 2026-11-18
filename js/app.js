@@ -6,7 +6,7 @@ import { state, store, setRenderer, rerender, closeSheet, submitSheet, sheetOpen
 import { applySeason } from './season.js';
 import { initGestures } from './gestures.js';
 import { rinfresca as rinfrescaNotifiche, stato as statoNotifiche } from './notifiche.js';
-import { sp as spotifyStato, eQui, avviaSpotify } from './spotify.js';
+import { sp as spotifyStato, eQui, avviaSpotify, quiInUso } from './spotify.js';
 import { precaricaTutto } from './precarica.js';
 import * as home from './views/home.js';
 import * as cibo from './views/cibo.js';
@@ -387,8 +387,8 @@ export async function startSync(code) {
   setTimeout(rinfrescaNotifiche, 4000);
   // Spotify collegato: cosa suona adesso, per il mini lettore in basso
   setTimeout(avviaSpotify, 1500);
-  // poi, con calma: musica, copertine, locandine, foto e mappa pronte prima di entrare nelle pagine
-  setTimeout(precaricaTutto, 2500);
+  // subito dopo il primo disegno: musica, copertine, locandine, foto e mappa pronte prima di entrare nelle pagine
+  setTimeout(precaricaTutto, 700);
   // la Home propone le notifiche solo dove si possono davvero accendere
   setTimeout(() => statoNotifiche().then((s) => { state.ui['push.stato'] = s; rerender(); }).catch(() => {}), 1200);
 }
@@ -423,7 +423,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || (location
   const aveva = Boolean(sw.controller);
   let inAttesa = false;
   // non si ricarica mentre si scrive, con un foglio aperto o mentre Spotify suona dentro l'app (si fermerebbe la musica)
-  const suonaQui = () => { const p = spotifyStato.player; return Boolean(p && p.is_playing && p.device && eQui(p.device.id)); };
+  const suonaQui = () => { const p = spotifyStato.player; return quiInUso() || Boolean(p && p.is_playing && p.device && eQui(p.device.id)); };
   const occupato = () => sheetOpen() || suonaQui() || /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '');
   const ricarica = () => { if (occupato()) inAttesa = true; else location.reload(); };
   sw.addEventListener('controllerchange', () => { if (aveva) ricarica(); });

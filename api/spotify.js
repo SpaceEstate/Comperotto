@@ -51,11 +51,11 @@ async function chiediToken(params) {
   return j;
 }
 
-/** Token valido per un account: quello salvato se dura ancora, altrimenti rinnovato. */
-async function token(chi) {
+/** Token valido per un account: quello salvato se dura ancora almeno "min" ms, altrimenti rinnovato. */
+async function token(chi, min = 120000) {
   const a = await leggi(`spotify:${chi}`);
   if (!a || !a.refresh) return null;
-  if (a.access && a.scade - Date.now() > 120000) return a;
+  if (a.access && a.scade - Date.now() > min) return a;
   try {
     const j = await chiediToken({ grant_type: 'refresh_token', refresh_token: a.refresh, client_id: a.clientId });
     const nuovo = { ...a, access: j.access_token, scade: Date.now() + (Number(j.expires_in) || 3600) * 1000, refresh: j.refresh_token || a.refresh, scope: j.scope || a.scope };
@@ -128,9 +128,12 @@ export default async function handler(req, res) {
     if (!CHI.includes(chi)) return send(res, 400, { error: 'Di chi è l’account?' });
 
     if (azione === 'token') {
-      const t = await token(chi);
+      // "min" (secondi): il lettore dentro l'app ne chiede uno che duri ancora a lungo (al massimo 50 minuti)
+      const min = Math.min(3000, Math.max(120, Number(p.get('min')) || 120)) * 1000;
+      const t = await token(chi, min);
       if (!t) return send(res, 409, { error: 'Spotify non è collegato', scollegato: true });
-      return send(res, 200, { token: t.access, scade: t.scade });
+      // "resta": quanto dura ancora, così il telefono non deve fidarsi del suo orologio
+      return send(res, 200, { token: t.access, scade: t.scade, resta: Math.max(0, t.scade - Date.now()) });
     }
 
     if (req.method !== 'POST') return send(res, 405, { error: 'Metodo non permesso' });

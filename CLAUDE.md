@@ -106,6 +106,16 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   play a destra). ⋯ di album e artisti: vai all'artista, discografia, condividi, apri in Spotify; ⋯ del brano: anche ogni artista e
   condividi. "Indietro" torna alla pagina di Musica di prima (pila in `segnaStoria()`). Lettore: "Ripeti" (spento → tutto → solo
   il brano, con l'1; `me/player/repeat`, stato confermato come "casuale") al posto dell'icona dei dispositivi (che resta sotto).
+  La musica non si ferma: il lettore dentro l'app chiede un token fresco (`token(k, true)` → `azione=token&min=1200`; la durata si
+  conta da `resta` del server, mai con l'orologio del telefono) e su `authentication_error` a metà ascolto si ricollega (una volta al
+  minuto al massimo); l'app non si ricarica per una versione nuova mentre suona qui (`quiInUso()`, anche nei 15 s tra due brani);
+  schermata di blocco con titolo, copertina e comandi (Media Session). iPhone e iPad fermano l'audio delle app web a schermo spento o
+  in secondo piano (regola di Apple, non aggirabile): uscendo dall'app mentre suona qui la musica passa all'app Spotify dello stesso
+  dispositivo se è tra i dispositivi (`passaAllApp()`, `fetch` con `keepalive`; mai su un Echo), e i dispositivi si rileggono ogni
+  minuto mentre suona qui. "Scelti per te" è per account (`caricaSuggerimenti(k)`, `chiaveDi(k, …)`; cambiando libreria si
+  caricano quelli dell'altro) e, con pochi preferiti, guarda anche le playlist e gli ascolti recenti; le novità leggono singoli e
+  album a parte. Quando non suona niente, in cima "Da ascoltare oggi" (`consiglioCard()`: da "Scelti per te", altrimenti dalla
+  musica del periodo; una al giorno, il dado ne propone un'altra) che parte solo toccando «Ascolta», con dopo le altre.
 - **Film:** categorie in `FILM_CATS` (`js/data.js`): Famiglia, Natale, Halloween, Sempre, Thriller, Azione, Horror, Cartoni; dai generi
   di JustWatch (`ani` → cartoni) e di Apple si propongono da sole. Gli esempi si aggiornano una volta (`settings.filmCats`, ora 2).
   «Stasera guardiamo…» (`stasera()`) è sempre in cima: con una categoria scelta propone un film di quella, altrimenti uno da vedere.
@@ -141,10 +151,12 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   OwnTracks rifiutato (401/429): `api/posizione.js` ricorda quando e perché in `fam_meta` `ot:rifiuto:<p1|p2>` (mai il codice;
   utente da Basic, `X-Limit-U` o `topic`) e Collegamento lo dice finché non arriva una posizione buona. OwnTracks per iPhone manda
   la password solo con "Authentication" acceso e in ASCII: con lettere accentate o apostrofi "curvi" manda `Basic (null)`.
-- **Precaricamento** (`js/precarica.js`, 2,5 s dopo l'avvio, un passo alla volta, non in secondo piano né con "Risparmio dati"):
-  Spotify (stato, dispositivi, libreria, suggerimenti, copertine con `scaldaCopertine()`, lettore dentro l'app), locandine e loghi dei
-  film, foto di Amazon (senza referrer), e la mappa di Dov'è preparata fuori dallo schermo (`.mappa-pronta`) e poi tenuta in memoria
-  come dopo una visita (`preparaMappa()`; se si entra in Dov'è a metà si aspetta quella, mai due mappe).
+- **Precaricamento** (`js/precarica.js`, 0,7 s dopo l'avvio, due file in parallelo, non in secondo piano né con "Risparmio dati"):
+  Spotify di TUTTI E DUE gli account (prima chi usa il telefono: playlist, suggerimenti, recenti, i tuoi artisti, copertine con
+  `scaldaCopertine()`) e il lettore dentro l'app pronto; tutte le locandine (anche dei già visti, max 160) e i loghi, tutte le foto di
+  Amazon (senza referrer, max 200), le foto delle ricette decodificate prima (`preparaFoto()`, data URL, max 60). Alla fine la mappa
+  di Dov'è preparata fuori dallo schermo (`.mappa-pronta`) e tenuta in memoria come dopo una visita (`preparaMappa()`; se si entra in
+  Dov'è a metà si aspetta quella, mai due mappe).
 - **Controllo delle pagine:** prima di pubblicare modifiche di aspetto, provarle su iPhone piccolo (320 px), iPhone, iPad verticale
   (colonna unica tra 700 e 999 px) e orizzontale, in chiaro e scuro e con le atmosfere delle feste.
 - **Sito pulito:** è un'app interna di famiglia: niente spiegazioni tecniche, crediti o link "obbligatori" nelle pagine (es. sulla mappa); le spiegazioni vanno date in chat.

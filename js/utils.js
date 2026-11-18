@@ -168,6 +168,17 @@ export function scaldaImmagini(urls, { insieme = 4, ogni = null, referrer = true
   });
 }
 
+/** Prepara (decodifica) delle foto salvate nei dati (data:image…), una alla volta: aprendo la pagina sono pronte. */
+export async function preparaFoto(urls) {
+  for (const u of [...new Set(urls)].filter((x) => typeof x === 'string' && x.startsWith('data:image/'))) {
+    if (document.hidden) return;
+    const im = new Image();
+    im.decoding = 'async';
+    im.src = u;
+    try { await (im.decode ? im.decode() : new Promise((ok, ko) => { im.onload = ok; im.onerror = ko; })); } catch { /* foto rovinata: pazienza */ }
+  }
+}
+
 // Solo foto vere in base64 (finiscono anche dentro style="background-image:url(…)"). Il controllo scorre
 // tutta la stringa: lo ricordo, così ridisegnare la pagina non lo ripete per ogni foto.
 const fotoOk = new Map();

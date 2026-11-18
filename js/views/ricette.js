@@ -24,6 +24,11 @@ function card(r) {
   </a>`;
 }
 
+/** All'apertura dell'app: le foto delle ricette (le più nuove prima), da preparare prima di entrare. */
+export function foto() {
+  return [...state.data.ricette].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).map((r) => safeImg(r.photo)).filter(Boolean).slice(0, 60);
+}
+
 /** Il titolo della zona Ricette: quante ricette e il dado "cosa cuciniamo?". */
 export function testa() {
   const n = state.data.ricette.length;

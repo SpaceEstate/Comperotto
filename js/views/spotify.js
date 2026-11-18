@@ -1,7 +1,7 @@
 // Spotify nella pagina Musica: cosa suona e dove (iPhone, iPad, Echo… o dentro l'app), ricerca,
 // preferiti, playlist (crearle, rinominarle, aggiungere e togliere brani), album, artisti, coda.
 // Sottopagine: #/musica/cerca, #/musica/preferiti, #/musica/pl/<id>, #/musica/album/<id>, #/musica/artista/<id>
-import { html, raw, vibrate, lsGet, lsSet, isIPad, cap, norm, MONTHS } from '../utils.js';
+import { html, raw, vibrate, lsGet, lsSet, isIPad, cap, norm, MONTHS, todayIso } from '../utils.js';
 import { icon } from '../icons.js';
 import { openSheet, closeSheet, toast, val, ui, setUi, me, isSynced, nameOf, sheetError, rerender, confirmSheet, state, cancella, settings, saveSettings } from '../core.js';
 import { periodoMusica } from '../season.js';
@@ -124,8 +124,43 @@ function insieme(vista, it, min) {
   return { it: m.it, img: m.img };
 }
 
+/** La canzone del giorno: dai tuoi «Scelti per te», altrimenti dalla musica del periodo (cambia ogni giorno, o con il dado). */
+function consigliata() {
+  const pt = S.letto(S.chiave('perte'));
+  const pool = ((pt && pt.scelti.length ? pt.scelti : S.letto(chiaveTema())) || []).filter((t) => t && t.ok !== false);
+  if (!pool.length) return null;
+  const seme = [...todayIso()].reduce((a, c) => a + c.charCodeAt(0), 0) + Number(ui('sp.spin', 0));
+  const i = seme % pool.length;
+  // parte quella, e dopo le altre (come una piccola playlist)
+  contesti.set('consiglio', { uris: [...pool.slice(i), ...pool.slice(0, i)].map((t) => t.uri) });
+  return pool[i];
+}
+function consiglioCard() {
+  const t = consigliata();
+  if (!t) return '';
+  const dev = sceltoOAttivo();
+  return html`<div class="card sp-now sp-consiglio" id="sp-now">
+    <div class="sp-top">
+      ${t.album && t.album.id ? html`<a class="sp-cover" href="#/musica/album/${t.album.id}" aria-label="Album">${icon('music', 'lg')}${t.big || t.img ? html`<img src="${t.big || t.img}" alt="" decoding="async">` : ''}</a>`
+        : html`<div class="sp-cover">${icon('music', 'lg')}${t.big || t.img ? html`<img src="${t.big || t.img}" alt="" decoding="async">` : ''}</div>`}
+      <div class="sp-meta">
+        <small class="sp-eyebrow">Da ascoltare oggi</small>
+        <b>${t.name}</b>
+        <span>${t.e ? html`<i class="sp-e">E</i>` : ''}${nomiArtisti(t)}</span>
+        <button class="sp-dev ${dev ? '' : 'none'}" data-action="sp-dispositivi">${icon(dev ? devIcon(dev) : 'speaker', 'xs')}<span>${dev ? devNome(dev) : 'Scegli dove ascoltare'}</span>${icon('down', 'xs')}</button>
+      </div>
+    </div>
+    <div class="sp-cons-ctrl">
+      <button class="btn primary" data-action="sp-brano" data-uri="${t.uri}" data-ctx="consiglio">${icon('play', 'sm filled')} Ascolta</button>
+      <button class="icon-btn" data-action="sp-spin" aria-label="Un’altra canzone">${icon('dice')}</button>
+    </div>
+  </div>`;
+}
+
 function nowCard() {
   const p = sp.player;
+  // niente in riproduzione (e nessun comando in arrivo): una canzone consigliata, che parte solo se la tocchi
+  if ((!p || !p.item) && sp.playerAt && !S.inArrivo()) { const c = consiglioCard(); if (c) return c; }
   const vis = insieme('grande', p && p.item, 200);
   const it = vis.it;
   const dev = sceltoOAttivo();
@@ -917,20 +952,20 @@ function caricaDisco(id, g, offset) {
   return false;
 }
 
-let suggerimenti = false;
-window.addEventListener('hashchange', () => { if (!S.inMusica()) suggerimenti = false; });
+// gli account di cui in questa visita a Musica ho già chiesto i suggerimenti (cambiando account si chiedono quelli nuovi)
+let suggerimenti = new Set();
+window.addEventListener('hashchange', () => { if (!S.inMusica()) suggerimenti = new Set(); });
 /** La lista a tema vale per tutti (una settimana), "per te" è del proprio account (qualche ora). */
-async function caricaSuggerimenti() {
-  if (!S.chi()) return;
-  const acc = (sp.info && sp.info.account && sp.info.account[S.chi()]) || {};
+async function caricaSuggerimenti(k = S.chi()) {
+  if (!k) return;
+  const acc = (sp.info && sp.info.account && sp.info.account[k]) || {};
   if (acc.extra !== false) {
-    try { await S.leggi(S.chiave('recenti'), () => S.ascoltatiDiRecente(), { maxAge: 5 * 60000, conserva: true }); } catch { /* alla prossima */ }
-    try { await S.leggi(S.chiave('topartisti'), () => S.artistiDelMomento(), { maxAge: 12 * 3600000, conserva: true }); } catch { /* idem */ }
+    try { await S.leggi(S.chiaveDi(k, 'recenti'), () => S.ascoltatiDiRecente(k), { maxAge: 5 * 60000, conserva: true }); } catch { /* alla prossima */ }
+    try { await S.leggi(S.chiaveDi(k, 'topartisti'), () => S.artistiDelMomento(k), { maxAge: 12 * 3600000, conserva: true }); } catch { /* idem */ }
   }
-  const kp = S.chiave('perte');
   try {
-    const d = await S.leggi(kp, () => S.perTe(), { maxAge: 6 * 3600000, conserva: { dopo: (x) => S.registra(x.scelti) } });
-    S.controllaSalvati(uriDi(d.scelti));
+    const d = await S.leggi(S.chiaveDi(k, 'perte'), () => S.perTe(k), { maxAge: 6 * 3600000, conserva: { dopo: (x) => S.registra(x.scelti) } });
+    if (k === S.chi()) S.controllaSalvati(uriDi(d.scelti));
   } catch { /* riprovo alla prossima visita */ }
   try { await S.leggi(chiaveTema(), () => S.trovaBrani(periodoMusica().brani), { maxAge: 7 * 86400000, conserva: { dopo: S.registra } }); } catch { /* idem */ }
 }
@@ -942,23 +977,27 @@ async function caricaSuggerimenti() {
 export async function precarica() {
   if (!isSynced()) return;
   await S.caricaInfo();
-  const k = S.chi();
-  if (!k) return;
+  const io = S.chi();
+  if (!io) return;
   await S.aggiorna({ dispositivi: true });
-  await S.caricaPlaylist(k).catch(muto);
-  await caricaSuggerimenti();
-  const ora = sp.player && sp.player.item ? S.brano(sp.player.item) : null;
-  const tema = S.letto(chiaveTema()) || [];
-  const pt = S.letto(S.chiave('perte'));
-  await S.scaldaCopertine([
-    ora && ora.big, ora && ora.xl,
-    ...(S.letto(S.chiave('recenti')) || []).map((x) => x.img),
-    ...(S.letto(S.chiave('topartisti')) || []).map((x) => x.img),
-    ...((sp.playlists[k] || {}).list || []).slice(0, 10).map((p) => p.img),
-    ...tema.map((t) => t.big || t.img),
-    ...(pt ? [...pt.scelti.slice(0, 5).map((t) => t.img), ...pt.novita.map((x) => x.img)] : []),
-  ]);
-  if (S.chi() && !S.qui.player && S.quiPossibile()) S.preparaQui().catch(muto);
+  // il lettore dentro l'app si prepara subito: al primo tocco su un brano parte senza attese
+  if (!S.qui.player && S.quiPossibile()) S.preparaQui().catch(muto);
+  const account = [io, ...S.collegati().filter((x) => x !== io)];
+  const copertine = (k) => {
+    const pt = S.letto(S.chiaveDi(k, 'perte'));
+    return [
+      ...(S.letto(S.chiaveDi(k, 'recenti')) || []).map((x) => x.img),
+      ...(S.letto(S.chiaveDi(k, 'topartisti')) || []).map((x) => x.img),
+      ...((sp.playlists[k] || {}).list || []).slice(0, 12).map((p) => p.img),
+      ...(pt ? [...pt.scelti.map((t) => t.big || t.img), ...pt.novita.map((x) => x.img)] : []),
+    ];
+  };
+  for (const k of account) {
+    await S.caricaPlaylist(k).catch(muto);
+    await caricaSuggerimenti(k);
+    const ora = k === io && sp.player && sp.player.item ? S.brano(sp.player.item) : null;
+    S.scaldaCopertine([ora && ora.big, ora && ora.xl, ...copertine(k), ...(S.letto(chiaveTema()) || []).map((t) => t.big || t.img)]);
+  }
 }
 
 let cercaT;
@@ -969,7 +1008,8 @@ export function after(r) {
   const [, sub, id] = r;
   if (!sub) {
     // suggerimenti: dopo il lettore e uno alla volta (Spotify non ama le raffiche di richieste)
-    if (!suggerimenti && sp.playerAt && sp.playlists[S.chi()]) { suggerimenti = true; setTimeout(caricaSuggerimenti, 600); }
+    const k = S.chi();
+    if (!suggerimenti.has(k) && sp.playerAt && sp.playlists[k]) { suggerimenti.add(k); setTimeout(() => caricaSuggerimenti(k), 600); }
     if (vistaLibreria() === 'album') caricaPagine('mieialbum', (o) => S.albumSalvati(o));
     if (vistaLibreria() === 'artisti') {
       const pagine = ui('sp.pag.seguiti', 1);
@@ -1391,6 +1431,7 @@ export const actions = {
     toast(si ? `Segui ${el.dataset.nome}` : `Non segui più ${el.dataset.nome}`);
   }),
   'sp-ab': ({ el }) => setUi(`sp.ab.${el.dataset.id}`, !ui(`sp.ab.${el.dataset.id}`, false)),
+  'sp-spin': () => { vibrate(10); setUi('sp.spin', Number(ui('sp.spin', 0)) + 1); },
   'sp-disco': ({ el }) => setUi(`sp.disco.${el.dataset.id}`, el.dataset.v),
   // i gruppi della discografia non riempiono la storia: "indietro" torna all'artista
   'sp-disco-vai': ({ el }) => { location.replace(`#/musica/artista/${el.dataset.id}/discografia/${el.dataset.v}`); window.scrollTo(0, 0); },

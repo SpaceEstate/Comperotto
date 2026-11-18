@@ -35,7 +35,7 @@ export function chi() {
   if (c.includes(me())) return me();
   return c[0] || null;
 }
-export const scegliAccount = (k) => { lsSet('casa.spotify.chi', k); sp.player = null; sp.devices = null; rerender(); aggiorna(); };
+export const scegliAccount = (k) => { lsSet('casa.spotify.chi', k); sp.player = null; sp.devices = null; salvatiMap.clear(); rerender(); aggiorna(); };
 
 export async function caricaInfo() {
   if (!isSynced()) return;
@@ -68,11 +68,13 @@ const tokInVolo = {};
 const entro = (pr, ms, msg) => Promise.race([pr, new Promise((_, ko) => setTimeout(() => ko(new SpotifyError(msg, 0, 'RETE')), ms))]);
 async function token(k, nuovo = false) {
   const t = tokens[k];
-  if (!nuovo && t && t.scade - Date.now() > 60000) return t.token;
+  // la durata si conta da quando è arrivato (dal server: "resta"), mai con l'orologio del telefono contro quello del server
+  if (!nuovo && t && t.fino - Date.now() > 5 * 60000) return t.token;
   // una sola richiesta alla volta per account, e mai appesa per sempre
   if (!tokInVolo[k]) {
-    tokInVolo[k] = entro(store.call(`spotify?azione=token&chi=${k}`), 10000, 'Spotify non risponde')
-      .then((r) => { tokens[k] = r; return r.token; })
+    // "nuovo": il lettore dentro l'app ne vuole uno che duri ancora almeno 20 minuti
+    tokInVolo[k] = entro(store.call(`spotify?azione=token&chi=${k}${nuovo ? '&min=1200' : ''}`), 10000, 'Spotify non risponde')
+      .then((r) => { tokens[k] = { token: r.token, fino: Date.now() + (r.resta != null ? Number(r.resta) : Number(r.scade) - Date.now()) }; return r.token; })
       .finally(() => { delete tokInVolo[k]; });
   }
   try { return await tokInVolo[k]; } catch (e) {
@@ -173,7 +175,7 @@ export async function aggiorna({ dispositivi = false } = {}) {
     try {
       const [p, d] = await Promise.all([
         call('me/player?additional_types=track,episode'),
-        dispositivi || !sp.devices ? call('me/player/devices') : null,
+        dispositivi || !sp.devices || (quiSuona() && Date.now() - devAt > 60000) ? call('me/player/devices') : null,
       ]);
       // nel frattempo un comando ha già cambiato lo stato sullo schermo: questa risposta è vecchia
       const nuovo = conAttese(p && p.device ? p : null);
@@ -186,7 +188,7 @@ export async function aggiorna({ dispositivi = false } = {}) {
       if (quasi) { nuovo.progress_ms = stima; }
       sp.player = nuovo;
       sp.playerAt = Date.now();
-      if (d) sp.devices = d.devices || [];
+      if (d) { sp.devices = d.devices || []; devAt = Date.now(); }
       cambia = firma(sp.player) !== prima || firmaDev(sp.devices) !== devPrima;
     } catch {
       // senza rete o troppe richieste: ci riprovo al prossimo giro
@@ -197,6 +199,7 @@ export async function aggiorna({ dispositivi = false } = {}) {
       if (cambia) rerender();
       avviaGiro(); // se ora suona (o si è fermato) il giro cambia passo
       guardaAvanti();
+      aggiornaMediaSession();
     }
   })();
   return inCorso;
@@ -330,6 +333,54 @@ export function prossimo() {
   const c = letto(chiave('coda', it.uri));
   return (c && c[0]) || null;
 }
+// ---------------------------------------------------------------------------
+// iPhone e iPad fermano la musica dentro le app web quando lo schermo si spegne o si passa a un'altra app
+// (è una regola di Apple, non di Spotify). Così:
+//  - sulla schermata di blocco ci sono titolo, copertina e comandi (Media Session);
+//  - se l'app Spotify di questo iPhone/iPad è a disposizione, uscendo dall'app la musica passa lì e continua.
+// ---------------------------------------------------------------------------
+const suIos = () => isIPad() || /iPhone|iPod/.test(navigator.userAgent);
+let mediaFirma = '';
+function aggiornaMediaSession() {
+  if (!('mediaSession' in navigator)) return;
+  const p = sp.player;
+  const it = p && p.item;
+  if (!it || !quiSuona()) return;
+  const f = `${it.uri}|${p.is_playing}`;
+  if (f === mediaFirma) return;
+  mediaFirma = f;
+  try {
+    const imgs = ((it.album && it.album.images) || []).filter((x) => x && x.url);
+    navigator.mediaSession.metadata = new window.MediaMetadata({
+      title: it.name || '', artist: (it.artists || []).map((a) => a.name).join(', '), album: (it.album && it.album.name) || '',
+      artwork: imgs.map((x) => ({ src: x.url, sizes: `${x.width || 300}x${x.height || x.width || 300}`, type: 'image/jpeg' })),
+    });
+    navigator.mediaSession.playbackState = p.is_playing ? 'playing' : 'paused';
+  } catch { /* browser senza Media Session completa */ }
+}
+if ('mediaSession' in navigator) {
+  const comando = (fn) => () => { fn().catch(() => {}); };
+  try {
+    navigator.mediaSession.setActionHandler('play', comando(() => (sp.player && !sp.player.is_playing ? playPausa() : Promise.resolve())));
+    navigator.mediaSession.setActionHandler('pause', comando(() => (sp.player && sp.player.is_playing ? playPausa() : Promise.resolve())));
+    navigator.mediaSession.setActionHandler('nexttrack', comando(() => salta(true)));
+    navigator.mediaSession.setActionHandler('previoustrack', comando(() => salta(false)));
+  } catch { /* azione non disponibile */ }
+}
+let devAt = 0;
+/** L'app Spotify di questo iPhone/iPad (se è aperta o in secondo piano compare tra i dispositivi). */
+const appSpotifyQui = () => (sp.devices || []).find((d) => d.id && !d.is_restricted && d.type === (isIPad() ? 'Tablet' : 'Smartphone') && !/^Comperotto · /.test(d.name || ''));
+function passaAllApp() {
+  if (!suIos() || !quiSuona() || !sp.player || !sp.player.is_playing) return;
+  const app = appSpotifyQui();
+  const t = tokens[chi()];
+  if (!app || !t) return;
+  // "keepalive": la richiesta parte anche se la pagina viene sospesa subito dopo
+  fetch(`${API}me/player`, { method: 'PUT', keepalive: true, headers: { Authorization: `Bearer ${t.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ device_ids: [app.id], play: true }) }).catch(() => {});
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) passaAllApp(); });
+window.addEventListener('pagehide', passaAllApp);
+
 /** Quando cambia brano: leggo la coda (per sapere il prossimo) e preparo le copertine. */
 let codaPer = '';
 function guardaAvanti() {
@@ -593,7 +644,8 @@ export function leggi(key, fn, { maxAge = 5 * 60000, forza = false, conserva = f
 export function dimentica(prefix) {
   for (const m of [cache, errori]) for (const k of [...m.keys()]) if (k.startsWith(prefix)) m.delete(k);
 }
-export const chiave = (...parti) => [chi(), ...parti].join(':');
+export const chiaveDi = (k, ...parti) => [k, ...parti].join(':');
+export const chiave = (...parti) => chiaveDi(chi(), ...parti);
 
 const ids = {};
 /** Il mio id su Spotify (per sapere quali playlist sono nostre e si possono modificare). */
@@ -741,8 +793,8 @@ export async function artistiSeguiti(dopo = '') {
 // In cima a Musica, come su Spotify: ascoltati di recente e i tuoi artisti del momento
 // ---------------------------------------------------------------------------
 /** Le ultime cose ascoltate (album, playlist, artisti, "Brani che ti piacciono"), senza doppioni. */
-export async function ascoltatiDiRecente() {
-  const j = await call('me/player/recently-played?limit=50');
+export async function ascoltatiDiRecente(k = chi()) {
+  const j = (await call('me/player/recently-played?limit=50', {}, k)) || {};
   const out = [];
   const visti = new Set();
   for (const x of tutti(j)) {
@@ -763,18 +815,18 @@ export async function ascoltatiDiRecente() {
   // nomi e foto che il "recente" non porta: playlist e artisti, uno alla volta (sono pochi)
   for (const v of out) {
     if (v.tipo === 'playlist') {
-      const p = await call(`playlists/${encodeURIComponent(v.id)}?fields=name,images,owner(display_name)`).catch(tranneTroppe);
+      const p = await call(`playlists/${encodeURIComponent(v.id)}?fields=name,images,owner(display_name)`, {}, k).catch(tranneTroppe);
       if (p) { v.name = p.name || 'Playlist'; v.img = bestImage(p.images, 300); v.owner = (p.owner && p.owner.display_name) || ''; }
     } else if (v.tipo === 'artist') {
-      const a = await call(`artists/${encodeURIComponent(v.id)}`).catch(tranneTroppe);
+      const a = await call(`artists/${encodeURIComponent(v.id)}`, {}, k).catch(tranneTroppe);
       if (a) { v.name = a.name || v.name; v.img = bestImage(a.images, 300); }
     }
   }
   return out.filter((v) => v.name);
 }
 /** Gli artisti che ascolti di più nelle ultime settimane. */
-export async function artistiDelMomento() {
-  const j = await call('me/top/artists?limit=10&time_range=short_term');
+export async function artistiDelMomento(k = chi()) {
+  const j = (await call('me/top/artists?limit=10&time_range=short_term', {}, k)) || {};
   return tutti(j).map(artistaBreve).filter(Boolean);
 }
 
@@ -886,6 +938,9 @@ function daSdk(tr, dur) {
     album: tr.album ? { id: idDa(tr.album.uri), name: tr.album.name || '', images: (tr.album.images || []).map((x) => ({ url: x.url, width: x.width || 300 })) } : null,
   };
 }
+/** La musica suona (o suonava pochi secondi fa: passaggio tra due brani) dentro l'app, su questo dispositivo. */
+export const quiInUso = () => Boolean(qui.player && (qui.suona || Date.now() - (qui.suonavaAt || 0) < 15000));
+
 /** Sta per partire qualcosa di nuovo (comando mandato, Spotify non l'ha ancora confermato). */
 export const inArrivo = () => Boolean(attese.brano);
 export const nomeQui = () => `Comperotto · ${isIPad() ? 'iPad' : /iPhone/.test(navigator.userAgent) ? 'iPhone' : 'web'}${myName() ? ` di ${myName()}` : ''}`;
@@ -914,7 +969,14 @@ export function preparaQui() {
   }
   if (!qui.player || qui.chi !== k) {
     if (qui.player) qui.player.disconnect();
-    const player = new window.Spotify.Player({ name: nomeQui(), getOAuthToken: (cb) => { token(k).then(cb).catch(() => {}); }, volume: 0.8 });
+    const player = new window.Spotify.Player({ name: nomeQui(), getOAuthToken: (cb) => { token(k, true).then(cb).catch(() => {}); }, volume: 0.8 });
+    // a metà ascolto (es. dopo un'ora) Spotify può rifiutare il permesso: ne prendo uno nuovo e ricollego, una volta al minuto al massimo
+    player.addListener('authentication_error', () => {
+      if (qui.player !== player || !qui.id || Date.now() - (qui.ricollegato || 0) < 60000) return;
+      qui.ricollegato = Date.now();
+      delete tokens[k];
+      player.connect();
+    });
     qui.player = player;
     qui.chi = k;
     qui.id = null;
@@ -928,6 +990,9 @@ export function preparaQui() {
       }
       // suona qui: lo stato arriva dal lettore stesso, subito e preciso (niente attese di Spotify)
       player.addListener('player_state_changed', (st) => {
+        // sta suonando qui? (per non ricaricare l'app nel mezzo, anche tra un brano e l'altro)
+        qui.suona = Boolean(st && !st.paused && st.track_window && st.track_window.current_track);
+        if (qui.suona) qui.suonavaAt = Date.now();
         const p = sp.player;
         if (!st || !p || !eQui(p.device && p.device.id)) { clearTimeout(statoT); statoT = setTimeout(() => aggiorna(), 400); return; }
         const prima = firma(p);
@@ -945,6 +1010,7 @@ export function preparaQui() {
         if (tr && (!p.item || p.item.uri !== tr.uri)) p.item = daSdk(tr, st.duration);
         sp.playerAt = Date.now();
         attese = {};
+        aggiornaMediaSession();
         if (firma(p) !== prima) rerender();
       });
     });
@@ -1000,20 +1066,25 @@ export async function trovaBrani(coppie) {
  * ascoltati che non hai ancora salvato, e le loro uscite dell'ultimo anno.
  * (Spotify non dà più i "brani consigliati" alle app nuove: questo è il modo per avvicinarsi.)
  */
-export async function perTe() {
+export async function perTe(k = chi()) {
   const piace = [];
   for (let o = 0; o < 150; o += 50) {
-    const j = await call(`me/tracks?limit=50&offset=${o}&market=from_token`);
+    const j = (await call(`me/tracks?limit=50&offset=${o}&market=from_token`, {}, k)) || {};
     piace.push(...tutti(j).map((x) => brano(x.item || x.track)).filter(Boolean));
     if (!j.next) break;
   }
-  piace.forEach((t) => salvatiMap.set(t.uri, true));
+  if (k === chi()) piace.forEach((t) => salvatiMap.set(t.uri, true)); // i cuori sono di chi si sta guardando
   if (piace.length < 10) {
-    // pochi preferiti: guardo anche le mie playlist
-    const mie = ((sp.playlists[chi()] || {}).list || []).filter((p) => p.own).slice(0, 3);
+    // pochi preferiti: guardo anche le sue playlist (e, se non bastano, cosa ha ascoltato di recente)
+    const mie = ((sp.playlists[k] || {}).list || []).filter((p) => p.own).slice(0, 3);
     for (const p of mie) {
-      const j = await call(`playlists/${encodeURIComponent(p.id)}/items?limit=50&market=from_token`).catch(() => null);
+      const j = await call(`playlists/${encodeURIComponent(p.id)}/items?limit=50&market=from_token`, {}, k).catch(() => null);
       piace.push(...tutti(j).map((x) => brano(x.item || x.track)).filter(Boolean));
+    }
+    const acc = (sp.info && sp.info.account && sp.info.account[k]) || {};
+    if (piace.length < 10 && acc.extra !== false) { // solo se il collegamento ha il permesso degli ascolti recenti
+      const j = await call('me/player/recently-played?limit=50', {}, k).catch(() => null);
+      piace.push(...tutti(j).map((x) => brano(x.track || x.item)).filter(Boolean));
     }
   }
   const conta = new Map();
@@ -1026,7 +1097,7 @@ export async function perTe() {
   const gia = new Set(piace.map((t) => t.uri));
   const nomi = new Set(piace.map((t) => `${t.name}|${t.artists[0] && t.artists[0].id}`.toLowerCase()));
   const perArtista = await aGruppi(top, 2, async (a) => {
-    const j = await call(`search?type=track&limit=10&market=from_token&q=${encodeURIComponent(`artist:"${a.name}"`)}`).catch(tranneTroppe);
+    const j = await call(`search?type=track&limit=10&market=from_token&q=${encodeURIComponent(`artist:"${a.name}"`)}`, {}, k).catch(tranneTroppe);
     return tutti(j && j.tracks).map((t) => brano(t))
       .filter((t) => t && t.ok && t.artists.some((x) => x.id === a.id) && !gia.has(t.uri) && !nomi.has(`${t.name}|${a.id}`.toLowerCase()))
       .slice(0, 3);
@@ -1036,7 +1107,8 @@ export async function perTe() {
   for (let r = 0; r < 3; r++) perArtista.forEach((l) => { if (l[r] && !scelti.some((x) => x.name === l[r].name)) scelti.push(l[r]); });
   // uscite dell'ultimo anno
   const limite = Date.now() - 365 * 86400000;
-  const nuovi = (await aGruppi(top, 2, (a) => call(`artists/${encodeURIComponent(a.id)}/albums?include_groups=album,single&limit=10&market=from_token`).then((j) => tutti(j).map(albumBreve)).catch((e) => tranneTroppe(e) || [])))
+  const uscite = (a, g) => call(`artists/${encodeURIComponent(a.id)}/albums?include_groups=${g}&limit=5&market=from_token`, {}, k).then((j) => tutti(j).map(albumBreve)).catch((e) => tranneTroppe(e) || []);
+  const nuovi = (await aGruppi(top, 2, async (a) => [...(await uscite(a, 'single')), ...(await uscite(a, 'album'))]))
     .flat()
     .filter((x) => x && Date.parse(x.data.length === 4 ? `${x.data}-01-01` : x.data) >= limite);
   const visti = new Set();

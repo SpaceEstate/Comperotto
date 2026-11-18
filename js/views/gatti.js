@@ -1,5 +1,7 @@
 // Thor e Minù: profili, peso, antiparassitari, vaccini, veterinario
-import { html, raw, cap, todayIso, addDays, daysBetween, shortDate, relDay, ageFrom, resizeImage, safeImg, vibrate } from '../utils.js';
+import { html, raw, cap, todayIso, addDays, daysBetween, shortDate, relDay, ageFrom, resizeImage, safeImg, vibrate, parseIso, MONTHS } from '../utils.js';
+
+const longIt = (iso) => { const x = parseIso(iso); return `${x.getDate()} ${MONTHS[x.getMonth()]} ${x.getFullYear()}`; };
 import { icon, catFace } from '../icons.js';
 import { CAT_EVENTS } from '../data.js';
 import { state, store, openSheet, closeSheet, sheetError, toast, val, emptyState, me, pageHead } from '../core.js';
@@ -48,9 +50,19 @@ function dueLabel(days) {
   return html`<span class="pill">${relDay(addDays(todayIso(), days))}</span>`;
 }
 
+/** Le scadenze da mostrare: un evento "per entrambi" diventa una riga sola con tutti e due i gatti. */
+function scadenze() {
+  const byId = new Map();
+  upcomingFor().filter((e) => e.days <= 45).forEach((e) => {
+    const x = byId.get(e.id);
+    if (x) x.cats.push(e.cat); else byId.set(e.id, { ...e, cats: [e.cat] });
+  });
+  return [...byId.values()].sort((a, b) => a.days - b.days);
+}
+
 export function render() {
   const list = cats();
-  const up = upcomingFor().filter((e) => e.days <= 45);
+  const up = scadenze();
   const log = [...state.data.eventiGatti].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : (b.createdAt || 0) - (a.createdAt || 0))).slice(0, 25);
   return html`
     <a class="back-link phone-only" href="#/">${icon('left', 'sm')} Home</a>
@@ -78,10 +90,10 @@ export function render() {
 
     <div class="section-title"><span>Prossime scadenze</span></div>
     ${up.length ? html`<div class="list">${up.map((e) => html`
-      <div class="row">
-        ${catAvatar(e.cat)}
-        <div class="row-main"><div class="row-title">${CAT_EVENTS[e.type] ? CAT_EVENTS[e.type].label : e.type}</div><div class="row-sub"><span>${e.cat.name} · ${shortDate(e.next)}</span>${dueLabel(e.days)}</div></div>
-        <button class="done-btn ${e.days <= 0 ? 'due' : ''}" data-action="cat-repeat" data-id="${e.id}" data-cat="${e.cat.id}" aria-label="Fatto oggi">${icon('check', 'sm')}</button>
+      <div class="row cat-due">
+        <span class="avatars ${e.cats.length > 1 ? 'two' : ''}">${e.cats.map((c) => catAvatar(c))}</span>
+        <div class="row-main"><div class="row-title">${CAT_EVENTS[e.type] ? CAT_EVENTS[e.type].label : e.type}</div><div class="row-sub"><span>${e.cats.map((c) => c.name).join(' e ')} · ${shortDate(e.next)}</span>${dueLabel(e.days)}</div></div>
+        <button class="done-btn ${e.days <= 0 ? 'due' : ''}" data-action="cat-repeat" data-id="${e.id}" data-cat="${e.cats.length > 1 ? 'both' : e.cats[0].id}" aria-label="${CAT_EVENTS[e.type] ? CAT_EVENTS[e.type].label : 'Fatto'} fatto oggi per ${e.cats.map((c) => c.name).join(' e ')}">${icon('check', 'sm')}</button>
       </div>`)}</div>`
       : html`<div class="card"><p class="muted small" style="margin:0">Nessuna scadenza nelle prossime settimane. Registra antiparassitario e vaccini qui sotto: vi ricordo io quando rifarli.</p></div>`}
 
@@ -135,28 +147,54 @@ function eventSheet(e = null, preset = {}) {
       <label class="field"><span>Quando</span><input name="date" type="date" value="${d.date || todayIso()}"></label>
       <label class="field" id="ev-peso" ${(d.type || 'peso') === 'peso' ? '' : raw('hidden')}><span>Peso (kg)</span>
         <input name="value" type="text" inputmode="decimal" autocomplete="off" value="${d.value ? String(d.value).replace('.', ',') : ''}" placeholder="es. 4,6"></label>
-      <div class="field"><span>Richiamo <em class="opt">facoltativo</em></span>
-        <input name="next" type="date" value="${d.next || ''}" aria-label="Data del richiamo">
-        <div class="chips wrap quick-next">
+      <div class="field richiamo"><span>Richiamo <em class="opt">facoltativo</em></span>
+        <input name="next" type="date" value="${d.next || ''}" aria-label="Data del richiamo" aria-describedby="ev-next-help">
+        <div class="chips wrap quick-next" role="group" aria-label="Scorciatoie per il richiamo">
           <button type="button" class="chip" data-days="30">tra 1 mese</button>
           <button type="button" class="chip" data-days="90">tra 3 mesi</button>
           <button type="button" class="chip" data-days="365">tra 1 anno</button>
           <button type="button" class="chip" data-days="0">nessuno</button>
         </div>
+        <p class="help" id="ev-next-help" aria-live="polite"></p>
       </div>
       <label class="field"><span>Nota</span><input name="note" value="${d.note || ''}" placeholder="es. prodotto usato, cosa ha detto il veterinario"></label>`,
-    extra: e ? html`<button class="btn danger" type="button" data-action="cat-event-del" data-id="${e.id}">${icon('trash', 'sm')}</button>` : '',
+    extra: e ? html`<button class="btn danger" aria-label="Elimina" type="button" data-action="cat-event-del" data-id="${e.id}">${icon('trash', 'sm')}</button>` : '',
     onOpen: (root) => {
       const form = root.querySelector('#sheet-form');
-      // il peso compare solo quando serve
+      const help = root.querySelector('#ev-next-help');
+      // se il richiamo l'ha scelto la persona non lo tocco più; se l'ho proposto io lo aggiorno con il tipo
+      let proposto = !d.next;
+      const giorni = () => (form.next.value && form.date.value ? daysBetween(form.date.value, form.next.value) : null);
+      const segna = () => {
+        const g = giorni();
+        root.querySelectorAll('.quick-next [data-days]').forEach((b) => {
+          const n = Number(b.dataset.days);
+          b.classList.toggle('on', n ? g === n : !form.next.value);
+          b.setAttribute('aria-pressed', String(n ? g === n : !form.next.value));
+        });
+        help.textContent = form.next.value ? `Ve lo ricordo il ${longIt(form.next.value)} (la sera prima arriva la notifica).` : 'Nessun richiamo: solo nel diario.';
+      };
+      const proponi = () => {
+        if (!proposto) return;
+        const ogni = (CAT_EVENTS[form.type.value] || {}).every || 0;
+        form.next.value = ogni ? addDays(form.date.value || todayIso(), ogni) : '';
+        segna();
+      };
+      // il peso compare solo quando serve; il richiamo si propone in base al tipo
       form.querySelectorAll('input[name=type]').forEach((r) => r.addEventListener('change', () => {
         root.querySelector('#ev-peso').hidden = form.type.value !== 'peso';
+        proponi();
       }));
       // scorciatoie per il richiamo (si può anche lasciare vuoto)
       root.querySelectorAll('.quick-next [data-days]').forEach((b) => b.addEventListener('click', () => {
         const n = Number(b.dataset.days);
         form.next.value = n ? addDays(form.date.value || todayIso(), n) : '';
+        proposto = false;
+        segna();
       }));
+      form.next.addEventListener('input', () => { proposto = false; segna(); });
+      form.date.addEventListener('change', () => { if (proposto) proponi(); else segna(); });
+      if (!e) proponi(); else segna();
     },
     onSubmit: (fd) => {
       const type = val(fd, 'type') || 'altro';

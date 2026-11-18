@@ -141,7 +141,57 @@ export function resizeImage(file, max = 720, quality = 0.78) {
   });
 }
 
-export const safeImg = (s) => (typeof s === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(s) ? s : '');
+const scaldate = new Set();
+/**
+ * Scarica in anticipo delle immagini (poche alla volta, senza toccare la pagina): quando la pagina le mostra
+ * arrivano dalla memoria del browser. "ogni" è chiamata per ognuna appena è pronta (anche se non è arrivata).
+ */
+export function scaldaImmagini(urls, { insieme = 4, ogni = null, referrer = true } = {}) {
+  const lista = [...new Set(urls)].filter((u) => typeof u === 'string' && /^https:\/\//.test(u) && !scaldate.has(u));
+  lista.forEach((u) => scaldate.add(u));
+  return new Promise((fine) => {
+    let i = 0, attive = 0;
+    const prossima = () => {
+      if (i >= lista.length) { if (!attive) fine(lista.length); return; }
+      const u = lista[i++];
+      attive++;
+      const im = new Image();
+      im.decoding = 'async';
+      if (!referrer) im.referrerPolicy = 'no-referrer'; // come nella pagina (es. le foto di Amazon)
+      const fatto = () => { attive--; if (ogni) ogni(u); prossima(); };
+      im.onload = fatto;
+      im.onerror = fatto;
+      im.src = u;
+    };
+    if (!lista.length) fine(0);
+    else for (let k = 0; k < insieme; k++) prossima();
+  });
+}
+
+/** Prepara (decodifica) delle foto salvate nei dati (data:image…), una alla volta: aprendo la pagina sono pronte. */
+export async function preparaFoto(urls) {
+  for (const u of [...new Set(urls)].filter((x) => typeof x === 'string' && x.startsWith('data:image/'))) {
+    if (document.hidden) return;
+    const im = new Image();
+    im.decoding = 'async';
+    im.src = u;
+    try { await (im.decode ? im.decode() : new Promise((ok, ko) => { im.onload = ok; im.onerror = ko; })); } catch { /* foto rovinata: pazienza */ }
+  }
+}
+
+// Solo foto vere in base64 (finiscono anche dentro style="background-image:url(…)"). Il controllo scorre
+// tutta la stringa: lo ricordo, così ridisegnare la pagina non lo ripete per ogni foto.
+const fotoOk = new Map();
+export const safeImg = (s) => {
+  if (typeof s !== 'string' || !s.startsWith('data:image/')) return '';
+  let ok = fotoOk.get(s);
+  if (ok === undefined) {
+    ok = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(s);
+    if (fotoOk.size > 400) fotoOk.clear();
+    fotoOk.set(s, ok);
+  }
+  return ok ? s : '';
+};
 
 export const money = (n) => (Number(n) || 0).toLocaleString('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: (Number(n) % 1) ? 2 : 0 });
 

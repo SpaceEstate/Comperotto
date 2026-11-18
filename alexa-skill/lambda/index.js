@@ -94,6 +94,10 @@ const setClient = (c) => { client = c; };
 // Testo
 // ---------------------------------------------------------------------------
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+// stesso prodotto solo se cambiano parole come "medie" o "freschissime": "zucchero a velo" non è "zucchero"
+const RIEMPITIVI = /\b(?:a temperatura ambiente|q\.?\s?b\.?|circa|abbondant[ei]|freschissim[oaie]|medi[oaie]?|grand[ei]|piccol[oaie]|di media grandezza)(?=\s|$)/g;
+const nucleo = (n) => String(n || '').replace(RIEMPITIVI, ' ').replace(/\s+/g, ' ').trim();
+const stessoProdotto = (a, b) => a === b || (nucleo(a) !== '' && nucleo(a) === nucleo(b));
 const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const ARTICLES = /^(?:(?:il|lo|la|i|gli|le|un|uno|una|del|dello|della|dei|degli|delle|di|da|anche|ancora|poi|per favore)\s+|(?:l|un|dell|d)['’]\s*)/i;
 
@@ -237,7 +241,7 @@ const RimuoviIntentHandler = {
     const missing = [];
     for (const name of items) {
       const n = norm(name);
-      const hit = open.find((i) => norm(i.name) === n) || open.find((i) => norm(i.name).startsWith(n) || n.startsWith(norm(i.name)));
+      const hit = open.find((i) => norm(i.name) === n) || open.find((i) => stessoProdotto(norm(i.name), n));
       if (hit) { await db().remove('spesa', hit.id); removed.push(hit.name); } else missing.push(name);
     }
     let text = '';

@@ -9,12 +9,25 @@ const learnedCat = (name) => {
   const f = state.data.freq.find((x) => x.id === freqId(cleanName(name)));
   return f && f.catManual ? normCat(f.category) : null;
 };
-const catOf = (it) => (it.catManual && it.category ? normCat(it.category) : learnedCat(it.name) || classify(cleanName(it.name)));
+// (sempre uno dei reparti in uso: quelli tolti in Impostazioni finiscono in "Altro")
+const catOf = (it) => normCat(it.catManual && it.category ? it.category : learnedCat(it.name) || classify(cleanName(it.name)));
 
 // "il latte" → "Latte": niente articoli, sempre con la maiuscola
 const ART = /^(?:(?:il|lo|la|i|gli|le|un|uno|una|del|dello|della|dei|degli|delle)\s+|(?:l|un|dell|d)['’]\s*)/i;
 export const cleanName = (s) => cap(String(s || '').trim().replace(ART, '').trim());
 const keyOf = (s) => norm(cleanName(s));
+
+/**
+ * Stesso prodotto? Solo se il nome è uguale, oppure cambia per parole che non fanno un prodotto diverso
+ * (misure, "freschissime", "q.b."…): "uova medie" = "uova", ma "zucchero a velo", "zucchero di canna" e
+ * "zucchero" sono tre cose diverse (come "farina 00" e "farina", "latte di soia" e "latte").
+ */
+const RIEMPITIVI = /\b(?:a temperatura ambiente|q\.?\s?b\.?|circa|abbondant[ei]|freschissim[oaie]|medi[oaie]?|grand[ei]|piccol[oaie]|di media grandezza)(?=\s|$)/g;
+const nucleo = (n) => String(n || '').replace(RIEMPITIVI, ' ').replace(/\s+/g, ' ').trim();
+export const stessoProdotto = (a, b) => a === b || (nucleo(a) !== '' && nucleo(a) === nucleo(b));
+// dalle ricette: "burro a temperatura ambiente" in lista diventa "Burro"
+const RIEMPITIVI_TESTO = new RegExp(RIEMPITIVI.source, 'gi');
+const senzaRiempitivi = (s) => String(s).replace(RIEMPITIVI_TESTO, ' ').replace(/\s+/g, ' ').trim() || s;
 const freqId = (name) => norm(name).replace(/[^a-z0-9]+/g, '-').slice(0, 60) || 'x';
 
 /**
@@ -30,15 +43,14 @@ export function addShopping(text, extra = {}) {
   const seen = new Set();
   String(text).split(/\s*[,;\n]\s*/).filter(Boolean).forEach((part) => {
     const { qty, name } = parseQty(part);
-    const clean = cleanName(name);
+    const clean = cleanName(extra.recipe ? senzaRiempitivi(name) : name);
     if (!clean) return;
     const n = norm(clean);
     if (seen.has(n)) return;
     seen.add(n);
     const q = extra.qty || qty;
-    // dalle ricette: "uova freschissime" vale come "uova" se è già in lista
-    const loose = (x) => extra.recipe && (n.startsWith(x + ' ') || x.startsWith(n + ' '));
-    const same = items.filter((i) => keyOf(i.name) === n || loose(keyOf(i.name)));
+    // dalle ricette: "uova freschissime" vale come "uova" se è già in lista (ma "zucchero a velo" non è "zucchero")
+    const same = items.filter((i) => keyOf(i.name) === n || (extra.recipe && stessoProdotto(keyOf(i.name), n)));
     const open = same.filter((i) => !i.done);
     if (open.length) {
       if (q && open[0].qty !== q) store.update('spesa', open[0].id, { qty: q });
@@ -79,36 +91,23 @@ export function render() {
   const items = state.data.spesa;
   const todo = items.filter((i) => !i.done);
   const done = items.filter((i) => i.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
-  const inList = new Set(todo.map((i) => norm(i.name)));
-  const frequent = [...state.data.freq]
-    .filter((f) => f.name && !inList.has(norm(f.name)))
-    .sort((a, b) => (b.count || 0) - (a.count || 0))
-    .slice(0, 14);
 
   const groups = SHOP_CATS.map((c) => ({ ...c, items: todo.filter((i) => catOf(i) === c.id).sort((a, b) => cleanName(a.name).localeCompare(cleanName(b.name), 'it', { sensitivity: 'base' })) })).filter((g) => g.items.length);
 
   const total = todo.length + done.length;
   const pct = total ? Math.round((done.length / total) * 100) : 0;
   return html`
-    ${total ? html`<div class="shop-progress">
-      <div><b>${todo.length ? plural(todo.length, 'cosa da prendere', 'cose da prendere') : 'Tutto nel carrello!'}</b>
-        <span>${done.length ? `${done.length} già nel carrello` : 'Buona spesa'}</span></div>
-      <i class="bar"><i style="width:${pct}%"></i></i>
-    </div>` : ''}
+    ${total ? html`<div class="shop-progress solo" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="${done.length} di ${total} già nel carrello"><i class="bar"><i style="width:${pct}%"></i></i></div>` : ''}
 
     <form class="quick-add" data-form="spesa-add">
       <input id="spesa-input" name="q" placeholder="Aggiungi… (es. 2 latte, uova)" enterkeyhint="done" autocomplete="off" aria-label="Aggiungi alla spesa">
       <button type="submit" aria-label="Aggiungi">${icon('plus')}</button>
     </form>
 
-    ${frequent.length ? html`<div class="chips" aria-label="Spesso comprati">
-      ${frequent.map((f) => html`<button class="chip" data-action="spesa-quick" data-name="${f.name}">${icon('plus', 'xs')} ${f.name}</button>`)}
-    </div>` : ''}
-
     ${!todo.length && !done.length ? emptyState('Frigo pieno, lista vuota', 'Scrivi qui sopra cosa serve.', catFace('a')) : ''}
 
     <div class="shop-groups">${groups.map((g) => html`<section class="shop-group">
-      <div class="cat-head" style="--c:${g.color}"><i></i>${g.label}<span class="cat-n">${g.items.length}</span></div>
+      <div class="cat-head" style="--c:${g.color}"><span class="cat-emo" aria-hidden="true">${g.emoji}</span>${g.label}<span class="cat-n">${g.items.length}</span></div>
       <div class="list">
         ${g.items.map((it) => html`
           <div class="row" id="s-${it.id}"${swipe(it.id, ['spesa-toggle', 'Preso'], ['spesa-del', 'Elimina'])}>
@@ -145,19 +144,26 @@ function editSheet(it) {
       <div class="field-row">
         <label class="field"><span>Quantità</span><input name="qty" value="${it.qty || ''}" placeholder="es. 2, 500 g"></label>
         <label class="field"><span>Reparto</span><select name="category">
-          ${SHOP_CATS.map((c) => html`<option value="${c.id}" ${c.id === catOf(it) ? raw('selected') : ''}>${c.label}</option>`)}
+          ${SHOP_CATS.map((c) => html`<option value="${c.id}" ${c.id === catOf(it) ? raw('selected') : ''}>${c.emoji} ${c.label}</option>`)}
         </select></label>
       </div>
       <label class="field"><span>Nota</span><input name="note" value="${it.note || ''}" placeholder="es. quello senza lattosio"></label>`,
-    extra: html`<button class="btn danger" type="button" data-action="spesa-del" data-id="${it.id}">${icon('trash', 'sm')}</button>`,
+    extra: html`<button class="btn danger" aria-label="Elimina" type="button" data-action="spesa-del" data-id="${it.id}">${icon('trash', 'sm')}</button>`,
     onSubmit: (fd) => {
       const name = cleanName(val(fd, 'name'));
       if (!name) return false;
       const cat = val(fd, 'category');
-      const manual = cat !== classify(name);
-      store.update('spesa', it.id, { name, qty: val(fd, 'qty'), category: cat, catManual: manual, note: val(fd, 'note') });
-      // la prossima volta che si aggiunge questo prodotto va già nel reparto giusto
-      if (cat !== catOf(it) || manual) store.update('freq', freqId(name), { name, category: cat, catManual: manual });
+      const patch = { name, qty: val(fd, 'qty'), note: val(fd, 'note') };
+      if (cat !== catOf(it)) {
+        // reparto cambiato: la prossima volta che si aggiunge questo prodotto va già lì
+        const manual = cat !== classify(name);
+        store.update('spesa', it.id, { ...patch, category: cat, catManual: manual });
+        store.update('freq', freqId(name), { name, category: cat, catManual: manual });
+      } else {
+        // reparto non toccato: resta quello salvato (anche se è un reparto tolto, che intanto si vede in "Altro")
+        store.update('spesa', it.id, patch);
+        if (it.catManual && it.category) store.update('freq', freqId(name), { name, category: it.category, catManual: true });
+      }
     },
   });
 }
@@ -170,7 +176,6 @@ export const actions = {
     if (added.length) vibrate();
     if (added.already.length) toast(`${added.already.join(', ')}: ${added.already.length > 1 ? 'ci sono già' : 'c’è già'} in lista`);
   },
-  'spesa-quick': ({ el }) => { addShopping(el.dataset.name); vibrate(); },
   'spesa-toggle': ({ id, el }) => {
     const it = state.data.spesa.find((i) => i.id === id);
     if (!it) return;

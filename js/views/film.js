@@ -1,11 +1,19 @@
-// Film e serie che ci piacciono, a tema e non: copertina e "dove vederlo" arrivano da soli
+// Film e serie che ci piacciono, per categoria (Famiglia, Natale, Halloween, Sempre, Thriller, Azione, Horror):
+// copertina e "dove vederlo" arrivano da soli, e cercando un titolo la categoria si propone dal genere.
 import { html, raw, norm, cap, vibrate, todayIso } from '../utils.js';
 import { icon, catFace } from '../icons.js';
-import { THEMES, themeLabel } from '../data.js';
-import { state, store, openSheet, closeSheet, toast, val, emptyState, ui, setUi, themeChoices, pageHead, isSynced } from '../core.js';
+import { FILM_CATS, filmCats, filmTemiNascosti, temiDaSalvare, categorieDaGeneri } from '../data.js';
+import { state, store, openSheet, closeSheet, toast, val, emptyState, ui, setUi, themeChoices, pageHead, isSynced, settings, saveSettings, cancella } from '../core.js';
 import { currentTheme } from '../season.js';
 
-const mainTheme = (f) => (f.themes && f.themes[0]) || 'sempre';
+const mainTheme = (f) => filmCats(f)[0];
+/** La categoria del periodo (Natale, Halloween), se il periodo ne ha una */
+const catDelPeriodo = () => { const c = currentTheme(); return c && FILM_CATS[c.id] ? c.id : null; };
+const FILTRI = [['davedere', 'Da vedere'], ['visti', 'Visti'], ['tutti', 'Tutti']];
+// solo i film o solo le serie (si somma alle categorie); toccando di nuovo quello scelto si torna a tutti e due
+const TIPI = [['movie', 'Film', 'film'], ['tv', 'Serie TV', 'tv']];
+const tipoScelto = () => (TIPI.some(([v]) => v === ui('film.tipo', '')) ? ui('film.tipo', '') : '');
+const delTipo = (tipo) => (f) => !tipo || (tipo === 'tv' ? f.kind === 'tv' : f.kind !== 'tv');
 const safePoster = (u) => (typeof u === 'string' && /^https:\/\/(images\.justwatch\.com|is\d+-ssl\.mzstatic\.com|image\.tmdb\.org)\//.test(u) ? u : '');
 const safeIcon = (u) => (typeof u === 'string' && /^https:\/\/images\.justwatch\.com\//.test(u) ? u : '');
 const searchUrl = (title) => `https://www.justwatch.com/it/cerca?q=${encodeURIComponent(title)}`;
@@ -25,7 +33,8 @@ const rotte = new Set(); // copertine che non si sono caricate: al loro posto il
 function poster(f, size = '') {
   const src = safePoster(f.poster);
   if (src && !rotte.has(src)) return html`<img src="${src}" alt="" loading="lazy" decoding="async" data-poster="${f.id || ''}">`;
-  return html`<div class="poster-ph th-${THEMES[mainTheme(f)] ? mainTheme(f) : 'sempre'} ${size}">${icon(f.kind === 'tv' ? 'tv' : 'film')}<span>${f.title}</span></div>`;
+  const th = mainTheme(f);
+  return html`<div class="poster-ph th-${FILM_CATS[th] && FILM_CATS[th].mia ? 'mia' : th} ${size}">${icon(f.kind === 'tv' ? 'tv' : 'film')}<span>${f.title}</span></div>`;
 }
 // un'immagine che non arriva (rete lenta, indirizzo cambiato) non lascia un buco
 document.addEventListener('error', (ev) => {
@@ -47,22 +56,30 @@ function grid(list) {
   return html`<div class="posters">${list.map((f) => html`
     <button class="poster ${f.watched ? 'seen' : ''}" data-action="film-open" data-id="${f.id}" aria-label="${f.title}">
       ${poster(f)}
-      ${f.fav ? html`<span class="p-fav">${icon('heart', 'filled')}</span>` : ''}
       ${f.watched ? html`<span class="p-seen">${icon('check', 'xs')}</span>` : ''}
       ${streaming(f).length ? html`<div class="prov-strip">${providerIcons(streaming(f))}</div>` : ''}
     </button>`)}</div>`;
 }
 
-/** "Stasera guardiamo…": un film scelto per voi (cambia ogni giorno, o con il dado). */
-function featured(all) {
-  const pool = all.filter((f) => !f.watched);
-  if (!pool.length) return '';
-  const cur = currentTheme();
-  const score = (f) => (cur && (f.themes || []).includes(cur.id) ? 2 : 0) + (streaming(f).length ? 1 : 0) + (safePoster(f.poster) && !rotte.has(f.poster) ? 1 : 0);
+/** Il film di «Stasera guardiamo…»: uno da vedere (della categoria scelta, se c'è, e solo film o solo serie se scelto),
+ *  cambia ogni giorno o con il dado. */
+function stasera(all, theme = 'tutti', tipo = '') {
+  const daVedere = all.filter((f) => !f.watched && delTipo(tipo)(f));
+  const nellaCategoria = FILM_CATS[theme] ? daVedere.filter((f) => filmCats(f).includes(theme)) : [];
+  const pool = nellaCategoria.length ? nellaCategoria : daVedere;
+  if (!pool.length) return null;
+  const cur = catDelPeriodo();
+  const score = (f) => (cur && filmCats(f).includes(cur) ? 2 : 0) + (streaming(f).length ? 1 : 0) + (safePoster(f.poster) && !rotte.has(f.poster) ? 1 : 0);
   const best = Math.max(...pool.map(score));
   const top = pool.filter((f) => score(f) === best);
   const seed = [...todayIso()].reduce((a, c) => a + c.charCodeAt(0), 0) + Number(ui('film.spin', 0));
-  const f = top[seed % top.length];
+  return top[seed % top.length];
+}
+
+/** «Stasera guardiamo…»: sempre in cima; con una categoria scelta propone un film di quella categoria. */
+function featured(all, theme = 'tutti', tipo = '') {
+  const f = stasera(all, theme, tipo);
+  if (!f) return '';
   const src = safePoster(f.poster);
   const on = streaming(f);
   return html`<section class="film-hero" style="${src ? `--poster:url('${src}')` : ''}">
@@ -71,7 +88,7 @@ function featured(all) {
     <div class="fh-body">
       <p class="fh-eyebrow">Stasera guardiamo…</p>
       <h2>${f.title}</h2>
-      <p class="fh-meta">${f.kind === 'tv' ? 'Serie' : 'Film'}${f.year ? ` · ${f.year}` : ''}${cur && (f.themes || []).includes(cur.id) ? ` · ${THEMES[cur.id].label}` : ''}</p>
+      <p class="fh-meta">${f.kind === 'tv' ? 'Serie' : 'Film'}${f.year ? ` · ${f.year}` : ''} · ${filmCats(f).map((c) => FILM_CATS[c].label).join(', ')}</p>
       ${on.length ? html`<div class="fh-on">${on.slice(0, 3).map((o) => html`<span>${safeIcon(o.icon) ? html`<img src="${safeIcon(o.icon)}" alt="">` : ''}${o.name}</span>`)}</div>` : ''}
       <div class="fh-actions">
         <button class="btn primary" data-action="film-open" data-id="${f.id}">${icon('play', 'sm')} Dove vederlo</button>
@@ -81,25 +98,40 @@ function featured(all) {
   </section>`;
 }
 
-export function render() {
-  const filter = ui('film.filter', 'davedere');
-  const theme = ui('film.theme', 'tutti');
+/** All'apertura dell'app: le locandine e i loghi che si vedono per primi entrando in Film. */
+export function locandine() {
+  const all = [...state.data.film].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const theme = FILM_CATS[ui('film.theme', 'tutti')] ? ui('film.theme', 'tutti') : 'tutti';
+  const primo = stasera(all, theme, tipoScelto());
+  // prima quelli da vedere (la pagina parte da lì), poi i già visti
+  const film = [...(primo ? [primo] : []), ...all.filter((f) => !f.watched), ...all.filter((f) => f.watched)].slice(0, 160);
+  return [
+    ...film.map((f) => safePoster(f.poster)),
+    ...film.flatMap((f) => streaming(f).slice(0, 3).map((o) => safeIcon(o.icon))),
+  ].filter((u) => u && !rotte.has(u));
+}
+
+/** Il titolo della zona Film. */
+export const testa = () => ({ eyebrow: 'Da vedere sul divano' });
+export const render = () => html`${pageHead('Film', testa())}${corpo()}`;
+
+export function corpo() {
+  const filter = FILTRI.some(([v]) => v === ui('film.filter', 'davedere')) ? ui('film.filter', 'davedere') : 'davedere';
+  const theme = FILM_CATS[ui('film.theme', 'tutti')] ? ui('film.theme', 'tutti') : 'tutti';
+  const tipo = tipoScelto();
   const results = ui('film.results', null);
   const all = [...state.data.film].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   const pass = (f) =>
-    (filter === 'tutti' || (filter === 'davedere' && !f.watched) || (filter === 'visti' && f.watched) || (filter === 'preferiti' && f.fav)) &&
-    (theme === 'tutti' || (f.themes || []).includes(theme));
+    (filter === 'tutti' || (filter === 'davedere' && !f.watched) || (filter === 'visti' && f.watched)) &&
+    (theme === 'tutti' || filmCats(f).includes(theme)) && delTipo(tipo)(f);
   const list = all.filter(pass);
-  const cur = currentTheme();
-  const seasonal = cur && theme === 'tutti' ? list.filter((f) => (f.themes || []).includes(cur.id)) : [];
+  const cur = catDelPeriodo();
+  const seasonal = cur && theme === 'tutti' ? list.filter((f) => filmCats(f).includes(cur)) : [];
   const rest = seasonal.length ? list.filter((f) => !seasonal.includes(f)) : list;
-  const used = Object.keys(THEMES).filter((t) => all.some((f) => (f.themes || []).includes(t)));
 
   return html`
-    ${pageHead('Film', { eyebrow: 'Da vedere sul divano' })}
-
     <form class="quick-add" data-form="film-search">
-      <input id="film-q" name="q" placeholder="Cerca un film o una serie…" enterkeyhint="search" autocomplete="off" aria-label="Cerca film" value="${ui('film.q', '')}">
+      <span class="cerca-box"><input id="film-q" name="q" placeholder="Cerca un film o una serie…" enterkeyhint="search" autocomplete="off" aria-label="Cerca film" value="${ui('film.q', '')}">${cancella('film-q', 'film-results-close')}</span>
       <button type="submit" aria-label="Cerca">${icon('search')}</button>
     </form>
 
@@ -114,16 +146,21 @@ export function render() {
         </button>`)}</div>` : html`<p class="muted small">Nessun risultato. <button class="card-link" data-action="film-manual">Aggiungilo lo stesso</button></p>`}
     </div>` : ''}
 
-    ${!results && filter === 'davedere' && theme === 'tutti' ? featured(all) : ''}
+    ${featured(all, theme, tipo)}
 
-    <div class="chips">
-      ${[['davedere', 'Da vedere'], ['visti', 'Visti'], ['preferiti', 'Preferiti'], ['tutti', 'Tutti']].map(([v, l]) => html`<button class="chip ${filter === v ? 'on' : ''}" data-action="film-filter" data-v="${v}">${l}</button>`)}
-      ${used.length > 1 ? html`<span class="chip-sep"></span>${used.map((t) => html`<button class="chip ${theme === t ? 'on' : ''}" data-action="film-theme" data-v="${theme === t ? 'tutti' : t}">${icon(THEMES[t].icon, 'xs')} ${themeLabel(t, true)}</button>`)}` : ''}
+    <div class="chips" role="group" aria-label="Quali film">
+      ${FILTRI.map(([v, l]) => html`<button class="chip ${filter === v ? 'on' : ''}" data-action="film-filter" data-v="${v}" aria-pressed="${filter === v ? 'true' : 'false'}">${l}</button>`)}
+      <span class="chip-sep" aria-hidden="true"></span>
+      ${TIPI.map(([v, l, ic]) => html`<button class="chip ${tipo === v ? 'on' : ''}" data-action="film-tipo" data-v="${tipo === v ? '' : v}" aria-pressed="${tipo === v ? 'true' : 'false'}">${icon(ic, 'xs')} ${l}</button>`)}
+    </div>
+    <div class="chips film-cats" role="group" aria-label="Categorie">
+      ${Object.entries(FILM_CATS).map(([k, c]) => html`<button class="chip ${theme === k ? 'on' : ''}" data-action="film-theme" data-v="${theme === k ? 'tutti' : k}" aria-pressed="${theme === k ? 'true' : 'false'}">${icon(c.icon, 'xs')} ${c.label}</button>`)}
+      <a class="chip chip-edit" href="#/impostazioni/categorie/film" aria-label="Togli o aggiungi categorie">${icon('pencil', 'xs')}</a>
     </div>
 
-    ${seasonal.length ? html`<div class="section-title"><span>${icon(THEMES[cur.id].icon, 'xs')} Atmosfera ${THEMES[cur.id].label}</span></div>${grid(seasonal)}` : ''}
+    ${seasonal.length ? html`<div class="section-title"><span>${icon(FILM_CATS[cur].icon, 'xs')} Atmosfera ${FILM_CATS[cur].label}</span></div>${grid(seasonal)}` : ''}
     ${rest.length ? html`${seasonal.length ? html`<div class="section-title"><span>Tutti gli altri</span></div>` : html`<div style="height:10px"></div>`}${grid(rest)}` : ''}
-    ${!list.length ? emptyState(filter === 'visti' ? 'Ancora nessun film visto' : 'Nessun film qui', 'Cerca un titolo qui sopra per aggiungerlo.', catFace('a')) : ''}`;
+    ${!list.length ? emptyState(filter === 'visti' ? (tipo === 'tv' ? 'Ancora nessuna serie vista' : 'Ancora nessun film visto') : `${tipo === 'tv' ? 'Nessuna serie' : 'Nessun film'} ${theme !== 'tutti' ? FILM_CATS[theme].label : 'qui'}`, 'Cerca un titolo qui sopra per aggiungerlo.', catFace('a')) : ''}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -162,7 +199,38 @@ async function refresh(f) {
   return { ...f, ...patch };
 }
 
+// Una volta sola: gli esempi iniziali passano alle categorie nuove, ma solo se non li avete cambiati
+// (1: le categorie di adesso; 2: i film d'animazione anche in "Cartoni")
+const ESEMPI = {
+  'Mamma, ho perso l’aereo': [['natale'], ['natale', 'famiglia']],
+  'Il Grinch': [['natale'], ['natale', 'famiglia']],
+  'Hocus Pocus': [['halloween'], ['halloween', 'famiglia']],
+  Luca: [['estate'], ['famiglia']],
+  'Mamma Mia!': [['estate'], ['sempre']],
+  'Il favoloso mondo di Amélie': [['aprile'], ['sempre']],
+  'Midnight in Paris': [['aprile'], ['sempre']],
+  Ratatouille: [['aprile', 'sempre'], ['famiglia']],
+  'Gli Aristogatti': [['sempre'], ['famiglia']],
+};
+const CARTONI = ['Luca', 'Ratatouille', 'Gli Aristogatti'];
+const uguali = (a, b) => JSON.stringify(a || []) === JSON.stringify(b || []);
+function aggiornaEsempi() {
+  const fatto = Number(settings().filmCats) || 0;
+  if (fatto >= 2 || !state.loaded.has('film') || !state.loaded.has('settings')) return;
+  // con il database condiviso aspetto i dati veri del server (all'inizio ci sono solo quelli salvati qui, magari nessuno)
+  if (store.mode === 'sync' && !(store.synced && store.synced.has('film') && store.synced.has('settings'))) return;
+  state.data.film.forEach((f) => {
+    let th = f.themes || [];
+    const e = ESEMPI[f.title];
+    if (fatto < 1 && e && uguali(th, e[0])) th = e[1];
+    if (CARTONI.includes(f.title) && e && uguali(th, e[1])) th = [...th, 'cartoni'];
+    if (!uguali(th, f.themes)) store.update('film', f.id, { themes: th });
+  });
+  saveSettings({ filmCats: 2 });
+}
+
 export async function after() {
+  aggiornaEsempi();
   if (!isSynced() || busy) return;
   const now = Date.now();
   const todo = state.data.film.filter((f) => !tried.has(f.id) && (
@@ -205,10 +273,9 @@ function detailSheet(f) {
         <div class="film-poster">${poster(f)}</div>
         <div>
           <p class="muted small" style="margin:0 0 8px">${f.kind === 'tv' ? 'Serie TV' : 'Film'}${f.year ? ` · ${f.year}` : ''}</p>
-          <div class="chips wrap" style="gap:6px">${(f.themes || []).map((t) => html`<span class="pill">${icon((THEMES[t] || THEMES.sempre).icon, 'xs')} ${themeLabel(t, true)}</span>`)}</div>
+          <div class="chips wrap" style="gap:6px">${filmCats(f).map((c) => html`<span class="pill">${icon(FILM_CATS[c].icon, 'xs')} ${FILM_CATS[c].label}</span>`)}</div>
           <div class="wish-actions" style="flex-wrap:wrap">
             <button class="mini-btn ${f.watched ? 'primary' : ''}" data-action="film-watched" data-id="${f.id}">${icon(f.watched ? 'check' : 'eye', 'xs')} ${f.watched ? 'Visto' : 'Segna visto'}</button>
-            <button class="mini-btn" data-action="film-fav" data-id="${f.id}" style="${f.fav ? 'color:var(--rose)' : ''}">${icon('heart', f.fav ? 'xs filled' : 'xs')} ${f.fav ? 'Preferito' : 'Preferito?'}</button>
           </div>
         </div>
       </div>
@@ -216,7 +283,7 @@ function detailSheet(f) {
       <div class="section-title"><span>Dove vederlo in Italia</span>${isSynced() ? html`<button class="card-link" data-action="film-refresh" data-id="${f.id}">${icon('refresh', 'xs')} Aggiorna</button>` : ''}</div>
       <div id="prov-box" class="card">${offersBlock(f)}</div>
       <div class="btn-row" style="margin-top:16px">
-        <button class="btn danger" type="button" data-action="film-del" data-id="${f.id}">${icon('trash', 'sm')}</button>
+        <button class="btn danger" aria-label="Elimina" type="button" data-action="film-del" data-id="${f.id}">${icon('trash', 'sm')}</button>
         <button class="btn" type="button" data-action="film-edit" data-id="${f.id}">${icon('pencil', 'sm')} Modifica</button>
       </div>`,
     onOpen: async (root) => {
@@ -236,7 +303,9 @@ function detailSheet(f) {
 
 function editSheet(f = null, preset = {}) {
   const d = f || preset;
-  const cur = currentTheme();
+  // categoria proposta: quella già scelta, altrimenti dal genere (ricerca), altrimenti quella del periodo
+  const proposte = f ? filmCats(f) : [...new Set([...(preset.categorie || []), ...categorieDaGeneri(preset.generi)])].filter((c) => FILM_CATS[c]);
+  const scelte = proposte.length ? proposte : [catDelPeriodo() || 'sempre'];
   openSheet({
     title: f ? 'Modifica' : 'Nuovo film o serie',
     body: html`
@@ -247,20 +316,22 @@ function editSheet(f = null, preset = {}) {
         <label class="field"><span>Anno</span><input name="year" inputmode="numeric" value="${d.year || ''}"></label>
         <label class="field"><span>Tipo</span><select name="kind"><option value="movie" ${d.kind !== 'tv' ? raw('selected') : ''}>Film</option><option value="tv" ${d.kind === 'tv' ? raw('selected') : ''}>Serie TV</option></select></label>
       </div>
-      <div class="field"><span>Tema</span>${themeChoices('themes', d.themes || (cur ? [cur.id] : ['sempre']), THEMES)}</div>
+      <div class="field"><span>Categoria</span>${themeChoices('themes', scelte, FILM_CATS)}</div>
       <label class="field"><span>Nota</span><input name="note" value="${d.note || ''}" placeholder="es. da vedere sotto la coperta"></label>`,
     submit: f ? 'Salva' : 'Aggiungi',
     onSubmit: (fd) => {
       const title = cap(val(fd, 'title'));
       if (!title) return false;
-      const data = { title, year: Number(val(fd, 'year')) || null, kind: val(fd, 'kind') || 'movie', themes: fd.getAll('themes').length ? fd.getAll('themes') : ['sempre'], note: val(fd, 'note') };
+      // le categorie tolte (e i temi di prima) restano salvate: riaccendendole il film torna lì
+      const themes = temiDaSalvare(fd.getAll('themes'), f && f.themes, f ? filmTemiNascosti(f) : []);
+      const data = { title, year: Number(val(fd, 'year')) || null, kind: val(fd, 'kind') || 'movie', themes, note: val(fd, 'note') };
       if (f) {
         const changed = f.title !== title || (f.year || null) !== data.year || (f.kind || 'movie') !== data.kind;
         store.update('film', f.id, changed ? { ...data, jw: null, poster: '', offers: [], offersAt: null, lookupMiss: null } : data);
         if (changed) tried.delete(f.id);
       } else {
         store.add('film', {
-          ...data, watched: false, fav: false,
+          ...data, watched: false,
           jw: preset.jw || null, link: preset.link || '', poster: safePoster(preset.poster),
           offers: preset.offers || [], offersAt: preset.offers ? Date.now() : null,
         });
@@ -277,8 +348,10 @@ export const actions = {
     if (!isSynced()) { form.q.value = ''; editSheet(null, { title: cap(q) }); return; }
     state.ui['film.q'] = q;
     setUi('film.results', 'loading');
-    try { setUi('film.results', (await lookup(q)).slice(0, 8)); }
-    catch { setUi('film.results', null); editSheet(null, { title: cap(q) }); }
+    // se intanto la ricerca è stata cancellata (X) o cambiata, questi risultati non servono più
+    const ancora = () => ui('film.q', '') === q && ui('film.results', null) === 'loading';
+    try { const r = await lookup(q); if (ancora()) setUi('film.results', r.slice(0, 8)); }
+    catch { if (ancora()) { setUi('film.results', null); editSheet(null, { title: cap(q) }); } }
   },
   'film-results-close': () => { state.ui['film.q'] = ''; setUi('film.results', null); },
   // i risultati restano aperti finché non si chiudono con la X: se si apre il film sbagliato basta tornare indietro
@@ -292,6 +365,7 @@ export const actions = {
   },
   'film-spin': () => { vibrate(); setUi('film.spin', Number(ui('film.spin', 0)) + 1); },
   'film-filter': ({ el }) => setUi('film.filter', el.dataset.v),
+  'film-tipo': ({ el }) => setUi('film.tipo', el.dataset.v || ''),
   'film-theme': ({ el }) => setUi('film.theme', el.dataset.v),
   'film-open': ({ id }) => { const f = state.data.film.find((x) => x.id === id); if (f) detailSheet(f); },
   'film-watched': ({ id }) => {
@@ -301,13 +375,6 @@ export const actions = {
     store.update('film', id, { watched: !f.watched, watchedAt: f.watched ? null : Date.now() });
     closeSheet();
     toast(f.watched ? 'Rimesso tra i da vedere' : 'Visto! Com’era?');
-  },
-  'film-fav': ({ id }) => {
-    const f = state.data.film.find((x) => x.id === id);
-    if (!f) return;
-    vibrate();
-    store.update('film', id, { fav: !f.fav });
-    closeSheet();
   },
   'film-refresh': ({ id }) => { const f = state.data.film.find((x) => x.id === id); if (f) { state.ui['film.force'] = true; detailSheet(f); } },
   'film-edit': ({ id }) => { const f = state.data.film.find((x) => x.id === id); closeSheet(); if (f) setTimeout(() => editSheet(f), 320); },

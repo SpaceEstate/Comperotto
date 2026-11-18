@@ -1,12 +1,17 @@
 // Fam. Comperotto — avvio, navigazione, aggiornamento dello schermo
-import { html, raw, todayIso, lsGet } from './utils.js';
+import { html, raw, todayIso, lsGet, lsSet } from './utils.js';
 import { icon } from './icons.js';
 import { COLLECTIONS, setErrorHandler, detectBackend, savedCode, useSync } from './store.js';
 import { state, store, setRenderer, rerender, closeSheet, submitSheet, sheetOpen, sheetError, openSheet, toast, settings, saveSettings, me, setMe, val } from './core.js';
 import { applySeason } from './season.js';
+import { usaCategorie } from './data.js';
 import { initGestures } from './gestures.js';
 import { rinfresca as rinfrescaNotifiche, stato as statoNotifiche } from './notifiche.js';
+import { sp as spotifyStato, eQui, avviaSpotify, quiInUso } from './spotify.js';
+import { precaricaTutto } from './precarica.js';
 import * as home from './views/home.js';
+import * as cibo from './views/cibo.js';
+import * as svago from './views/svago.js';
 import * as spesa from './views/spesa.js';
 import * as casa from './views/casa.js';
 import * as ricette from './views/ricette.js';
@@ -15,35 +20,60 @@ import * as musica from './views/musica.js';
 import * as desideri from './views/desideri.js';
 import * as gatti from './views/gatti.js';
 import * as dove from './views/dove.js';
+import * as viaggi from './views/viaggi.js';
 import * as impostazioni from './views/impostazioni.js';
 import * as login from './views/login.js';
 
-const VIEWS = { '': home, casa, ricette, film, desideri, musica, gatti, dove, impostazioni };
+// Cibo = Spesa | Ricette, Svago = Film | Musica (pagine a due zone); #/ricette/<id> e #/musica/<…> sono le loro pagine interne
+const VIEWS = { '': home, cibo, casa, svago, ricette, musica, desideri, gatti, dove, viaggi, impostazioni };
 const actions = {
   ...home.actions, ...spesa.actions, ...casa.actions, ...ricette.actions, ...film.actions,
-  ...musica.actions, ...desideri.actions, ...gatti.actions, ...dove.actions, ...impostazioni.actions, ...login.actions,
+  ...musica.actions, ...desideri.actions, ...gatti.actions, ...dove.actions, ...viaggi.actions, ...impostazioni.actions, ...login.actions,
 };
 
-// sul telefono: le 5 schede in basso; su iPad la barra laterale mostra anche Musica e Gatti
+// sul telefono: le 5 schede in basso; su iPad la barra laterale mostra anche Dov'è, Gatti e Viaggi
 const TABS = [
-  { key: '', label: 'Home', icon: 'home', href: '#/' },
-  { key: 'casa', label: 'Casa', icon: 'basket', href: '#/casa', badge: () => spesa.badge() + casa.badge() },
-  { key: 'ricette', label: 'Ricette', icon: 'chef', href: '#/ricette' },
-  { key: 'film', label: 'Film', icon: 'film', href: '#/film' },
-  { key: 'desideri', label: 'Desideri', icon: 'gift', href: '#/desideri' },
-  { key: 'musica', label: 'Musica', icon: 'music', href: '#/musica', side: true },
-  { key: 'dove', label: 'Dov’è', icon: 'pin', href: '#/dove', side: true },
-  { key: 'gatti', label: 'Thor e Minù', icon: 'cat', href: '#/gatti', side: true },
+  { key: '', label: 'Home', icon: 'home', href: () => '#/' },
+  { key: 'cibo', label: 'Cibo', icon: 'bowl', href: () => `#/cibo/${cibo.zona()}`, badge: () => spesa.badge() },
+  { key: 'casa', label: 'Casa', icon: 'checks', href: () => '#/casa', badge: () => casa.badge() },
+  { key: 'svago', label: 'Svago', icon: 'tv', href: () => `#/svago/${svago.zona()}` },
+  { key: 'desideri', label: 'Desideri', icon: 'gift', href: () => '#/desideri' },
+  { key: 'dove', label: 'Dov’è', icon: 'pin', href: () => '#/dove', side: true },
+  { key: 'gatti', label: 'Thor e Minù', icon: 'cat', href: () => '#/gatti', side: true },
+  { key: 'viaggi', label: 'Viaggi', icon: 'suitcase', href: () => '#/viaggi', side: true },
 ];
+// le pagine interne accendono la scheda della loro pagina
+const TAB_DI = { ricette: 'cibo', musica: 'svago' };
 
-// vecchi indirizzi (link salvati, scorciatoie) → nuovi
-function alias(r) {
-  if (r[0] === 'spesa') return ['casa', 'spesa'];
-  if (r[0] === 'noi') return [r[1] || 'film', ...r.slice(2)];
-  if (r[0] === 'casa' && r[1] === 'routine') return ['casa', 'faccende'];
+// vecchi indirizzi (link salvati, notifiche, scorciatoie) → nuovi; l'indirizzo si corregge da solo
+function canonico(r) {
+  const [a, b] = r;
+  if (a === 'spesa' || (a === 'casa' && b === 'spesa')) return '#/cibo/spesa';
+  if (a === 'casa' && b === 'routine') return '#/casa/faccende';
+  if (a === 'casa' && b === 'rifiuti') return '#/impostazioni/rifiuti';
+  if (a === 'noi') return b === 'musica' ? '#/svago/musica' : '#/svago/film';
+  if (a === 'ricette' && !b) return '#/cibo/ricette';
+  if (a === 'film') return '#/svago/film';
+  if (a === 'musica' && !b) return '#/svago/musica';
+  if (a === 'cibo' && !['spesa', 'ricette'].includes(b)) return `#/cibo/${cibo.zona()}`;
+  if (a === 'svago' && !['film', 'musica'].includes(b)) return `#/svago/${svago.zona()}`;
+  return null;
+}
+// iPad: barra laterale stretta (solo icone) o aperta; ogni dispositivo ricorda la sua scelta
+const sideOpen = () => document.documentElement.dataset.side === 'aperta';
+actions['side-toggle'] = () => {
+  const v = sideOpen() ? 'stretta' : 'aperta';
+  document.documentElement.dataset.side = v;
+  lsSet('casa.side', v);
+  rerender();
+};
+
+function route() {
+  const r = (location.hash.replace(/^#\/?/, '') || '').split('/').map(decodeURIComponent);
+  const c = canonico(r);
+  if (c && c !== location.hash) { history.replaceState(null, '', c); return route(); }
   return r;
 }
-const route = () => alias((location.hash.replace(/^#\/?/, '') || '').split('/').map(decodeURIComponent));
 const wideMq = matchMedia('(min-width: 700px) and (min-height: 560px)');
 const wide = () => wideMq.matches;
 wideMq.addEventListener?.('change', () => rerender());
@@ -58,12 +88,14 @@ function sameNode(a, b) {
 function patch(from, to) {
   if (from.nodeType === 3 || from.nodeType === 8) { if (from.nodeValue !== to.nodeValue) from.nodeValue = to.nodeValue; return; }
   if (from.nodeType === 1 && from.hasAttribute('data-keep')) return; // la mappa gestisce da sola il suo riquadro
-  for (const { name } of [...from.attributes]) if (!to.hasAttribute(name)) from.removeAttribute(name);
+  // lo stile messo da un gesto in corso (es. la copertina che segue il dito) non lo tocca il ridisegno
+  const gesto = from.hasAttribute('data-gesto');
+  for (const { name } of [...from.attributes]) if (!to.hasAttribute(name) && !(gesto && name === 'style')) from.removeAttribute(name);
   for (const { name, value } of [...to.attributes]) if (from.getAttribute(name) !== value) from.setAttribute(name, value);
   if (from.nodeName === 'IFRAME' || from.hasAttribute('data-keep')) return; // lettori e mappe restano come sono
   if (from.nodeName === 'INPUT' || from.nodeName === 'TEXTAREA' || from.nodeName === 'SELECT') {
     if (from.type === 'checkbox' || from.type === 'radio') from.checked = to.hasAttribute('checked');
-    else if (document.activeElement !== from && from.type !== 'file' && from.nodeName !== 'SELECT') from.value = to.getAttribute('value') ?? to.value ?? '';
+    else if (document.activeElement !== from && !from._busy && from.type !== 'file' && from.nodeName !== 'SELECT') from.value = to.getAttribute('value') ?? to.value ?? '';
     if (from.nodeName === 'TEXTAREA') return;
   }
   morphChildren(from, to);
@@ -90,17 +122,18 @@ function render() {
 
   if (state.needCode) {
     tabbar.hidden = true;
+    disegnaMini('');
     if (!view.querySelector('.login')) { view.innerHTML = login.render(state.backend).s; lastRoute = null; }
     return;
   }
   if (!state.loaded.has('settings')) return;
+  usaCategorie(settings()); // filtri e categorie tolti o aggiunti (Impostazioni → Filtri e categorie)
 
   const mod = VIEWS[r[0]] || home;
   const key = r.join('/');
   const tpl = document.createElement('template');
   tpl.innerHTML = mod.render(r).s;
-  const nuova = key !== lastRoute;
-  if (nuova) {
+  if (key !== lastRoute) {
     view.replaceChildren(tpl.content);
     window.scrollTo(0, 0);
     lastRoute = key;
@@ -109,22 +142,44 @@ function render() {
   } else {
     morphChildren(view, tpl.content);
   }
-  if (mod.after) mod.after(r, nuova);
+  if (mod.after) mod.after(r);
 
   tabbar.hidden = false;
   const tabsTpl = document.createElement('template');
-  const cur = VIEWS[r[0]] ? r[0] : '';
+  const cur = TAB_DI[r[0]] || (VIEWS[r[0]] ? r[0] : '');
   tabsTpl.innerHTML = html`<div class="tabbar-inner">
-    <a class="side-brand" href="#/"><span class="mini-logo"></span><span>Fam. Comperotto</span></a>
+    <div class="side-head">
+      <a class="side-brand" href="#/" aria-label="Fam. Comperotto"><span class="mini-logo"></span><span class="side-name">Fam. Comperotto</span></a>
+      <button class="side-toggle" data-action="side-toggle" aria-label="${sideOpen() ? 'Stringi il menu' : 'Allarga il menu'}" aria-expanded="${sideOpen() ? 'true' : 'false'}">${icon('sidebar')}</button>
+    </div>
     ${TABS.map((t) => {
       const n = t.badge ? t.badge() : 0;
-      const on = t.key === cur || (t.key === '' && ['impostazioni', 'musica', 'gatti', 'dove'].includes(cur) && !wide());
-      return html`<a class="tab ${on ? 'on' : ''} ${t.side ? 'side-only side-mid' : ''}" href="${t.href}" ${on ? raw('aria-current="page"') : ''}>
+      const on = t.key === cur || (t.key === '' && ['impostazioni', 'gatti', 'dove', 'viaggi'].includes(cur) && !wide());
+      return html`<a class="tab ${on ? 'on' : ''} ${t.side ? 'side-only side-mid' : ''}" href="${t.href()}" ${on ? raw('aria-current="page"') : ''}>
         <span class="tab-ico">${icon(t.icon)}</span><span class="tab-label">${t.label}</span>${n ? html`<span class="badge">${n > 99 ? '99+' : n}</span>` : ''}</a>`;
     })}
     <a class="tab side-only side-end ${cur === 'impostazioni' ? 'on' : ''}" href="#/impostazioni"><span class="tab-ico">${icon('sliders')}</span><span class="tab-label">Impostazioni</span></a>
   </div>`.s;
   if (tabbar.firstElementChild) morphChildren(tabbar, tabsTpl.content); else tabbar.replaceChildren(tabsTpl.content);
+  disegnaMini(musica.mini(r));
+}
+
+// il mini lettore di Spotify e la sua finestra, fuori dalla pagina: restano cambiando pagina
+const miniBox = document.getElementById('mini');
+const npBox = document.getElementById('np');
+const npBody = document.getElementById('np-body');
+function disegnaMini(h) {
+  const tpl = document.createElement('template');
+  tpl.innerHTML = (h && h.s) || '';
+  morphChildren(miniBox, tpl.content);
+  document.documentElement.classList.toggle('con-mini', Boolean(miniBox.firstElementChild));
+  const g = musica.grande(); // senza brano si chiude da sola
+  const tpl2 = document.createElement('template');
+  tpl2.innerHTML = (g && g.s) || '';
+  morphChildren(npBody, tpl2.content);
+  const aperto = Boolean(g) && musica.lettoreAperto();
+  npBox.classList.toggle('open', aperto);
+  npBox.inert = !aperto;
 }
 setRenderer(render);
 
@@ -168,13 +223,31 @@ document.addEventListener('input', (ev) => {
   inputTimer = setTimeout(() => run(el.dataset.input, { el, ev }), 150);
 });
 
-document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && sheetOpen()) closeSheet(); });
+document.addEventListener('keydown', (ev) => {
+  if (ev.key !== 'Escape') return;
+  if (sheetOpen()) closeSheet();
+  else if (musica.lettoreAperto()) musica.chiudiLettore();
+});
+
+// la X delle caselle di ricerca: svuota, aggiorna subito i risultati e lascia il cursore lì per scrivere altro
+actions['search-x'] = ({ el }) => {
+  const input = document.getElementById(el.dataset.for);
+  if (!input) return;
+  clearTimeout(inputTimer);
+  input.value = '';
+  input.focus();
+  if (input.dataset.input) run(input.dataset.input, { el: input });
+  if (el.dataset.poi) run(el.dataset.poi, { el });
+};
 
 // gesti dell'iPhone: fogli da trascinare giù, indietro dal bordo, tira giù per aggiornare, righe da scorrere
 initGestures({
   run,
   refresh: async () => {
-    if (route()[0] === 'dove') { await dove.actions['dove-aggiorna'](); return; }
+    const r = route();
+    if (r[0] === 'dove') { await dove.actions['dove-aggiorna'](); return; }
+    if (r[0] === 'musica' || svago.visibile(r, 'musica')) await musica.refresh();
+    if (r[0] === 'desideri') await desideri.refresh();
     if (store.mode === 'sync') await store.sync();
     rerender();
   },
@@ -183,6 +256,7 @@ initGestures({
 // cambio pagina con una dissolvenza leggera (View Transitions, Safari 18+)
 window.addEventListener('hashchange', () => {
   closeSheet();
+  musica.chiudiLettore();
   ricette.releaseWake();
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const gesto = document.documentElement.dataset.gesto;
@@ -264,7 +338,7 @@ function maybeWelcome() {
       // i nomi ci sono già (dall'altro telefono): basta sapere chi sei
       openSheet({
         title: 'Ciao! Chi sei?',
-        body: html`<p class="prose" style="margin-top:-4px">Così biglietti, faccende e spesa portano la tua firma.</p>
+        body: html`<p class="prose" style="margin-top:-4px">Così faccende, lavori e spesa portano la tua firma.</p>
           <div class="btn-row">${['p1', 'p2'].map((k) => html`<button class="btn ${k === 'p2' ? 'primary' : 'dark'}" type="button" data-action="welcome-me" data-v="${k}">${n[k]}</button>`)}</div>`,
       });
       return;
@@ -290,11 +364,13 @@ function maybeWelcome() {
 actions['welcome-me'] = ({ el }) => { setMe(el.dataset.v); closeSheet(); rerender(); toast(`Ciao ${settings().names[el.dataset.v]}!`); };
 
 /** Avvia la sincronizzazione con il codice di famiglia (chiamata anche dalla schermata del codice). */
-export function startSync(code) {
+export async function startSync(code) {
   const s = useSync(code);
+  await s.carica(); // la copia dei dati salvata qui (pochi millisecondi): si parte da quella
+  if (store !== s) return; // nel frattempo è cambiato qualcosa (es. un altro codice)
   state.needCode = false;
   s.onAuthLost = () => {
-    s.forget();
+    s.forget(true);
     unsubs.forEach((u) => u && u());
     unsubs = [];
     state.backend = { ...(state.backend || {}), claimed: true };
@@ -304,10 +380,17 @@ export function startSync(code) {
     toast('Il codice di famiglia è cambiato: inseriscilo di nuovo');
   };
   s.onChange = () => rerender();
+  s.onScarto = (op, status) => toast(status === 413
+    ? 'Una modifica era troppo pesante (forse una foto) e non è arrivata all’altro telefono'
+    : 'Una modifica non è stata accettata dalla casa: l’ho tolta');
   subscribeAll();
   s.start();
   render();
   setTimeout(rinfrescaNotifiche, 4000);
+  // Spotify collegato: cosa suona adesso, per il mini lettore in basso
+  setTimeout(avviaSpotify, 1500);
+  // subito dopo il primo disegno: musica, copertine, locandine, foto e mappa pronte prima di entrare nelle pagine
+  setTimeout(precaricaTutto, 700);
   // la Home propone le notifiche solo dove si possono davvero accendere
   setTimeout(() => statoNotifiche().then((s) => { state.ui['push.stato'] = s; rerender(); }).catch(() => {}), 1200);
 }
@@ -341,7 +424,9 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || (location
   // Quando arriva una versione nuova dell'app la pagina si ricarica da sola (se non stai scrivendo qualcosa).
   const aveva = Boolean(sw.controller);
   let inAttesa = false;
-  const occupato = () => sheetOpen() || /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '');
+  // non si ricarica mentre si scrive, con un foglio aperto o mentre Spotify suona dentro l'app (si fermerebbe la musica)
+  const suonaQui = () => { const p = spotifyStato.player; return quiInUso() || Boolean(p && p.is_playing && p.device && eQui(p.device.id)); };
+  const occupato = () => sheetOpen() || suonaQui() || /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '');
   const ricarica = () => { if (occupato()) inAttesa = true; else location.reload(); };
   sw.addEventListener('controllerchange', () => { if (aveva) ricarica(); });
   // tocco su una notifica con l'app già aperta: vado alla pagina giusta

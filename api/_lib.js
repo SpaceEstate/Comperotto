@@ -6,7 +6,7 @@
 // L'app usa quello che trova.
 import crypto from 'node:crypto';
 
-export const COLLECTIONS = ['settings', 'spesa', 'freq', 'lavori', 'routine', 'ricette', 'desideri', 'gatti', 'eventiGatti', 'bacheca', 'musica', 'film', 'posizioni'];
+export const COLLECTIONS = ['settings', 'spesa', 'freq', 'lavori', 'routine', 'ricette', 'desideri', 'gatti', 'eventiGatti', 'bacheca', 'musica', 'film', 'posizioni', 'liste', 'viaggi', 'valigia'];
 
 const stripId = (o) => { const x = { ...(o && typeof o === 'object' ? o : {}) }; delete x.id; return x; };
 const parse = (s) => { try { return JSON.parse(s); } catch { return null; } };
@@ -56,7 +56,9 @@ const redisBackend = {
     return out;
   },
   async collection(col) {
-    const [all, v] = await redis([['HGETALL', RK.col(col)], ['HGET', RK.ver, col]]);
+    // prima la versione, poi i documenti (chi scrive fa il contrario): se intanto cambia qualcosa, al prossimo giro
+    // lo riscarico; non può succedere di avere la versione nuova con i documenti vecchi
+    const [v, all] = await redis([['HGET', RK.ver, col], ['HGETALL', RK.col(col)]]);
     const items = {};
     Object.entries(pairs(all)).forEach(([id, json]) => { const o = parse(json); if (o) items[id] = o; });
     return { v: Number(v || 0), items };
@@ -129,11 +131,39 @@ async function pg() {
     pool.on('error', () => {});
   }
   if (!schemaReady) {
-    schemaReady = pool.query(`
-      CREATE TABLE IF NOT EXISTS fam_docs (col text NOT NULL, id text NOT NULL, data jsonb NOT NULL, PRIMARY KEY (col, id));
-      CREATE TABLE IF NOT EXISTS fam_ver (col text PRIMARY KEY, v bigint NOT NULL DEFAULT 0);
-      CREATE TABLE IF NOT EXISTS fam_meta (k text PRIMARY KEY, v text NOT NULL);
-    `).catch((e) => { schemaReady = null; throw e; });
+    schemaReady = (async () => {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS fam_docs (col text NOT NULL, id text NOT NULL, data jsonb NOT NULL, PRIMARY KEY (col, id));
+        CREATE TABLE IF NOT EXISTS fam_ver (col text PRIMARY KEY, v bigint NOT NULL DEFAULT 0);
+        CREATE TABLE IF NOT EXISTS fam_meta (k text PRIMARY KEY, v text NOT NULL);
+      `);
+      // Sincronizzazione a pezzi (si prepara una volta sola): ogni documento ricorda la versione della raccolta in cui
+      // è cambiato (fam_docs.v), chi viene tolto lascia un segno (fam_tolti) e "base" dice da quale versione in poi i
+      // pezzi bastano. Al primo giro base = versione di adesso: chi è più indietro riscarica tutto una volta.
+      const giaFatto = (r) => r.rows[0] && Number(r.rows[0].v) >= 2;
+      if (giaFatto(await pool.query("SELECT v FROM fam_meta WHERE k = 'schema'"))) return;
+      const c = await pool.connect();
+      try {
+        await c.query('BEGIN');
+        await c.query('SELECT pg_advisory_xact_lock(4242)'); // due avvii insieme: lo fa uno solo
+        if (!giaFatto(await c.query("SELECT v FROM fam_meta WHERE k = 'schema'"))) {
+          await c.query(`
+            ALTER TABLE fam_docs ADD COLUMN IF NOT EXISTS v bigint NOT NULL DEFAULT 0;
+            ALTER TABLE fam_ver ADD COLUMN IF NOT EXISTS base bigint NOT NULL DEFAULT 0;
+            CREATE TABLE IF NOT EXISTS fam_tolti (col text NOT NULL, id text NOT NULL, v bigint NOT NULL, PRIMARY KEY (col, id));
+            CREATE INDEX IF NOT EXISTS fam_docs_col_v ON fam_docs (col, v);
+            UPDATE fam_ver SET base = v;
+            INSERT INTO fam_meta (k, v) VALUES ('schema', '2') ON CONFLICT (k) DO UPDATE SET v = '2';
+          `);
+        }
+        await c.query('COMMIT');
+      } catch (e) {
+        await c.query('ROLLBACK').catch(() => {});
+        throw e;
+      } finally {
+        c.release();
+      }
+    })().catch((e) => { schemaReady = null; throw e; });
   }
   await schemaReady;
   return pool;
@@ -161,41 +191,79 @@ const pgBackend = {
   },
   async collection(col) {
     const p = await pg();
-    const [docs, ver] = await Promise.all([
-      p.query('SELECT id, data FROM fam_docs WHERE col = $1', [col]),
-      p.query('SELECT v FROM fam_ver WHERE col = $1', [col]),
-    ]);
+    // prima la versione, poi i documenti: se intanto cambia qualcosa, al prossimo giro lo riscarico (mai il contrario)
+    const ver = await p.query('SELECT v FROM fam_ver WHERE col = $1', [col]);
+    const docs = await p.query('SELECT id, data FROM fam_docs WHERE col = $1', [col]);
     const items = {};
     docs.rows.forEach((x) => { items[x.id] = x.data; });
     return { v: ver.rows[0] ? Number(ver.rows[0].v) : 0, items };
   },
+  /**
+   * Solo i documenti cambiati dopo la versione "dal", e quelli tolti nel frattempo.
+   * null se "dal" è troppo vecchia (prima di "base") o più nuova del server (database ripristinato): allora tutto.
+   */
+  async cambiati(col, dal) {
+    const p = await pg();
+    const ver = await p.query('SELECT v, base FROM fam_ver WHERE col = $1', [col]);
+    const v = ver.rows[0] ? Number(ver.rows[0].v) : 0;
+    const base = ver.rows[0] ? Number(ver.rows[0].base) : 0;
+    if (!(dal >= base) || dal > v) return null;
+    const docs = await p.query('SELECT id, data FROM fam_docs WHERE col = $1 AND v > $2', [col, dal]);
+    const tolti = await p.query('SELECT id FROM fam_tolti WHERE col = $1 AND v > $2', [col, dal]);
+    const items = {};
+    docs.rows.forEach((x) => { items[x.id] = x.data; });
+    return { v, items, tolti: tolti.rows.map((x) => x.id) };
+  },
   async apply(ops) {
     const c = await (await pg()).connect();
-    const touched = new Set();
     try {
       await c.query('BEGIN');
+      // La versione nuova di ogni raccolta toccata si prende subito: la sua riga resta bloccata fino alla fine, così chi
+      // scrive sulla stessa raccolta aspetta il suo turno e ogni documento cambiato porta proprio quella versione.
+      // In ordine alfabetico: due scritture su più raccolte non si bloccano mai a vicenda.
+      const cols = [...new Set(ops.flatMap((o) => (o.op === 'wipe' ? COLLECTIONS : [o.col])))].sort();
+      const ver = {};
+      for (const col of cols) {
+        const r = await c.query('INSERT INTO fam_ver (col, v) VALUES ($1, 1) ON CONFLICT (col) DO UPDATE SET v = fam_ver.v + 1 RETURNING v', [col]);
+        ver[col] = Number(r.rows[0].v);
+      }
+      const conTolti = new Set();
       for (const o of ops) {
-        if (o.op === 'wipe') { await c.query('DELETE FROM fam_docs'); COLLECTIONS.forEach((x) => touched.add(x)); continue; }
-        const data = JSON.stringify(stripId(o.data));
+        if (o.op === 'wipe') {
+          await c.query('DELETE FROM fam_docs');
+          await c.query('DELETE FROM fam_tolti');
+          // dopo un azzeramento i pezzi non bastano più: tutti riscaricano tutto
+          for (const col of COLLECTIONS) await c.query('UPDATE fam_ver SET base = $2 WHERE col = $1', [col, ver[col]]);
+          continue;
+        }
+        const v = ver[o.col];
+        const data = JSON.stringify(stripId(o.data), (k, x) => (typeof x === 'string' ? x.replace(/\u0000/g, '') : x));
+        // un documento rimesso dopo essere stato tolto non è più "tolto"
+        const viaTolto = 'WITH via AS (DELETE FROM fam_tolti WHERE col = $1 AND id = $2)';
         if (o.op === 'set') {
-          await c.query('INSERT INTO fam_docs (col, id, data) VALUES ($1, $2, $3::jsonb) ON CONFLICT (col, id) DO UPDATE SET data = EXCLUDED.data', [o.col, o.id, data]);
+          await c.query(`${viaTolto} INSERT INTO fam_docs (col, id, data, v) VALUES ($1, $2, $3::jsonb, $4)
+            ON CONFLICT (col, id) DO UPDATE SET data = EXCLUDED.data, v = EXCLUDED.v`, [o.col, o.id, data, v]);
         } else if (o.op === 'update') {
-          await c.query('INSERT INTO fam_docs (col, id, data) VALUES ($1, $2, $3::jsonb) ON CONFLICT (col, id) DO UPDATE SET data = fam_docs.data || EXCLUDED.data', [o.col, o.id, data]);
+          await c.query(`${viaTolto} INSERT INTO fam_docs (col, id, data, v) VALUES ($1, $2, $3::jsonb, $4)
+            ON CONFLICT (col, id) DO UPDATE SET data = fam_docs.data || EXCLUDED.data, v = EXCLUDED.v`, [o.col, o.id, data, v]);
         } else if (o.op === 'bump') {
-          await c.query(`INSERT INTO fam_docs (col, id, data) VALUES ($1, $2, $3::jsonb || jsonb_build_object('count', 1))
-            ON CONFLICT (col, id) DO UPDATE SET data = fam_docs.data || $3::jsonb || jsonb_build_object('count', COALESCE((fam_docs.data->>'count')::int, 0) + 1)`, [o.col, o.id, data]);
+          await c.query(`${viaTolto} INSERT INTO fam_docs (col, id, data, v) VALUES ($1, $2, $3::jsonb || jsonb_build_object('count', 1), $4)
+            ON CONFLICT (col, id) DO UPDATE SET data = fam_docs.data || $3::jsonb || jsonb_build_object('count', COALESCE((fam_docs.data->>'count')::int, 0) + 1), v = EXCLUDED.v`, [o.col, o.id, data, v]);
         } else if (o.op === 'remove') {
           await c.query('DELETE FROM fam_docs WHERE col = $1 AND id = $2', [o.col, o.id]);
+          await c.query('INSERT INTO fam_tolti (col, id, v) VALUES ($1, $2, $3) ON CONFLICT (col, id) DO UPDATE SET v = EXCLUDED.v', [o.col, o.id, v]);
+          conTolti.add(o.col);
         }
-        touched.add(o.col);
       }
-      const changes = {};
-      for (const col of touched) {
-        const r = await c.query('INSERT INTO fam_ver (col, v) VALUES ($1, 1) ON CONFLICT (col) DO UPDATE SET v = fam_ver.v + 1 RETURNING v', [col]);
-        const after = Number(r.rows[0].v);
-        changes[col] = [after - 1, after];
+      // i segni dei tolti non crescono all'infinito: ne tengo 500 per raccolta; chi è rimasto più indietro riscarica tutto
+      for (const col of conTolti) {
+        await c.query(`WITH vecchi AS (SELECT id FROM fam_tolti WHERE col = $1 ORDER BY v DESC, id OFFSET 500),
+            via AS (DELETE FROM fam_tolti t USING vecchi WHERE t.col = $1 AND t.id = vecchi.id RETURNING t.v)
+          UPDATE fam_ver SET base = GREATEST(base, (SELECT MAX(v) FROM via)) WHERE col = $1 AND EXISTS (SELECT 1 FROM via)`, [col]);
       }
       await c.query('COMMIT');
+      const changes = {};
+      cols.forEach((col) => { changes[col] = [ver[col] - 1, ver[col]]; });
       return changes;
     } catch (e) {
       await c.query('ROLLBACK').catch(() => {});
@@ -238,16 +306,44 @@ export async function verifyCode(code) {
 
 export const checkAuth = (req) => verifyCode(req.headers['x-famiglia']);
 
-/** Nome e password dall'intestazione "Authorization: Basic …" (OwnTracks: nome + codice di famiglia). */
-export function basic(req) {
-  const h = req.headers.authorization || '';
-  if (!h.startsWith('Basic ')) return {};
-  try {
-    const [user, ...rest] = Buffer.from(h.slice(6), 'base64').toString('utf8').split(':');
-    return { user, pass: rest.join(':') };
-  } catch {
-    return {};
-  }
+// ---- troppi tentativi: chi prova tanti codici DIVERSI sbagliati viene fermato per un quarto d'ora ----
+// (si contano i codici diversi: un telefono rimasto con il codice vecchio, che riprova sempre lo stesso,
+//  non blocca la casa; chi tira a indovinare sì)
+const FINESTRA = 15 * 60000;
+const MAX_CODICI = 10;
+const bloccati = new Map(); // in memoria di questa istanza: ip → fino a quando
+const corto = (x) => crypto.createHash('sha256').update(`comperotto:${x}`).digest('hex').slice(0, 12);
+export const ipDi = (req) => String((req.headers && (req.headers['x-forwarded-for'] || req.headers['x-real-ip'])) || '').split(',')[0].trim() || (req.socket && req.socket.remoteAddress) || '?';
+
+/** 'ok' | 'no' (codice sbagliato) | 'bloccato' (troppi tentativi da questo indirizzo) */
+export async function autorizza(req, code) {
+  const ip = ipDi(req);
+  const fino = bloccati.get(ip);
+  if (fino && fino > Date.now()) return 'bloccato';
+  if (fino) bloccati.delete(ip);
+  if (await verifyCode(code)) return 'ok';
+  const db = backend();
+  if (!db || !code) return 'no';
+  const k = `auth:ko:${corto(ip)}`;
+  const adesso = Date.now();
+  let rec = null;
+  try { rec = JSON.parse((await db.metaGet(k)) || 'null'); } catch {}
+  if (!rec || adesso - rec.at > FINESTRA) rec = { at: adesso, c: [] };
+  const h = corto(normCode(code));
+  if (!rec.c.includes(h)) rec.c = [...rec.c, h].slice(-MAX_CODICI * 2);
+  try { await db.metaSet(k, JSON.stringify(rec)); } catch {}
+  if (rec.c.length >= MAX_CODICI) { bloccati.set(ip, rec.at + FINESTRA); return 'bloccato'; }
+  return 'no';
+}
+
+/** Da usare all'inizio di ogni funzione protetta: true se ha già risposto lei (401 o 429). */
+export async function respingi(req, res, code = req.headers['x-famiglia']) {
+  const esito = await autorizza(req, code);
+  if (esito === 'ok') return false;
+  await sleep(400);
+  if (esito === 'bloccato') send(res, 429, { error: 'Troppi tentativi con un codice sbagliato: riprova tra un quarto d’ora' });
+  else send(res, 401, { error: 'Codice di famiglia sbagliato' });
+  return true;
 }
 
 export function body(req) {

@@ -7,7 +7,7 @@ import { dueChores, choreRow, trashFor, binChips } from './casa.js';
 import { cats, catAvatar, upcomingFor, lastWeight } from './gatti.js';
 import { seasonInfo, currentTheme, seasonDeco } from '../season.js';
 import { badge as shopBadge } from './spesa.js';
-import { statusOf, personBadge, pillOf, iconOf } from './dove.js';
+import { statusOf, personBadge, pillOf, iconOf, auto, autoBadge, bottoneAuto, puoParcheggiare, durata, trovaIndirizzo } from './dove.js';
 
 function greeting() {
   const h = new Date().getHours();
@@ -82,16 +82,23 @@ function pushHint() {
 }
 
 function doveCard() {
-  return html`<a class="card dove-home" href="#/dove">
-    <div class="dh-head"><span class="dot-ico tone-sky">${icon('pin', 'sm')}</span><b>Dov’è</b>${icon('right', 'xs')}</div>
-    ${['p1', 'p2'].map((k) => {
-      const st = statusOf(k);
-      return html`<div class="dh-row">${personBadge(k)}<span class="dh-name">${nameOf(k)}</span>
-        ${st.p ? html`<span class="pill ${pillOf(st)}">${icon(iconOf(st), 'xs')} ${st.cls ? st.label : 'Posizione'}</span>
-          <span class="dh-sub">${[st.since, st.place].filter(Boolean).join(' · ') || timeAgo(st.p.at)}</span>` : html`<span class="dh-sub">non ancora condivisa</span>`}
-      </div>`;
-    })}
-  </a>`;
+  const a = auto();
+  return html`<section class="card dove-home">
+    <a class="dh-link" href="#/dove">
+      <div class="dh-head"><span class="dot-ico tone-sky">${icon('pin', 'sm')}</span><b>Dov’è</b>${icon('right', 'xs')}</div>
+      ${['p1', 'p2'].map((k) => {
+        const st = statusOf(k);
+        return html`<div class="dh-row">${personBadge(k)}<span class="dh-name">${nameOf(k)}</span>
+          ${st.p ? html`<span class="pill ${pillOf(st)}">${icon(iconOf(st), 'xs')} ${st.cls ? st.label : 'Posizione'}</span>
+            <span class="dh-sub">${[st.since, st.place].filter(Boolean).join(' · ') || timeAgo(st.p.at)}</span>` : html`<span class="dh-sub">non ancora condivisa</span>`}
+        </div>`;
+      })}
+    </a>
+    ${a ? html`<a class="dh-row dh-auto" href="#/dove/auto">${autoBadge('sm')}<span class="dh-name">Auto</span>
+      <span class="pill soon">${icon('parking', 'xs')} ${durata(a.at)}</span>
+      <span class="dh-sub">${a.place || 'Segnata sulla mappa'}</span></a>` : ''}
+    ${puoParcheggiare() ? bottoneAuto('dh-park') : ''}
+  </section>`;
 }
 
 const WD = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
@@ -214,6 +221,11 @@ export function render() {
       </div>
     </div>
   `;
+}
+
+/** Dopo il disegno: se l'auto è stata segnata senza rete, appena si può cerco il suo indirizzo. */
+export function after() {
+  trovaIndirizzo();
 }
 
 function noteSheet() {

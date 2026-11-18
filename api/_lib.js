@@ -238,6 +238,18 @@ export async function verifyCode(code) {
 
 export const checkAuth = (req) => verifyCode(req.headers['x-famiglia']);
 
+/** Nome e password dall'intestazione "Authorization: Basic …" (OwnTracks: nome + codice di famiglia). */
+export function basic(req) {
+  const h = req.headers.authorization || '';
+  if (!h.startsWith('Basic ')) return {};
+  try {
+    const [user, ...rest] = Buffer.from(h.slice(6), 'base64').toString('utf8').split(':');
+    return { user, pass: rest.join(':') };
+  } catch {
+    return {};
+  }
+}
+
 export function body(req) {
   if (req.body && typeof req.body === 'object') return req.body;
   try { return JSON.parse(req.body || '{}'); } catch { return {}; }

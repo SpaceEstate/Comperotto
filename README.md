@@ -123,6 +123,28 @@ Si salva solo l'ultima posizione di ciascuno, protetta dal codice di famiglia.
 
 La mappa mostra sempre Patrick e Serena; **Casa, Lavoro e le attività** (bar, negozi, farmacie…) compaiono ingrandendo, come in Dov'è di Apple. C'è l'interruttore **Mappa / Satellite** e, con l'app in modalità scura, la mappa diventa scura.
 
+### L'auto: «Ho parcheggiato»
+
+Quando lasciate la macchina toccate **Ho parcheggiato qui** (in Home, nel riquadro Dov'è, oppure nella pagina Dov'è): l'app prende la posizione precisa del telefono e mette l'auto sulla mappa, con l'indirizzo (e il nome del parcheggio, se c'è). Funziona anche senza rete, per esempio in un garage sotterraneo: l'auto parte appena torna la connessione. Toccando la riga **Auto** in Home la mappa si apre sull'auto; toccando l'auto si apre la sua scheda con **Portami all'auto** (Mappe, a piedi), una **nota** («Piano -2, posto 14») e il cestino per toglierla. Su iPad il pulsante non c'è: l'auto si vede e basta.
+
+**Ancora più veloce, senza aprire l'app: il comando rapido.** Su ogni iPhone, una volta, nell'app **Comandi** → **+**:
+
+1. Aggiungi l'azione **Ottieni posizione attuale**.
+2. Aggiungi l'azione **Ottieni contenuti dell'URL** con l'URL `https://comperotto.vercel.app/api/auto` e apri le opzioni (la freccia):
+   - **Metodo**: `POST`;
+   - **Intestazioni** → *Aggiungi nuova intestazione*: chiave `x-famiglia`, valore il vostro codice di famiglia;
+   - **Corpo della richiesta**: **JSON**, con tre campi (*Aggiungi nuovo campo*):
+     - *Testo* `chi` → il tuo nome (`patrick` o `serena`);
+     - *Numero* `lat` → la variabile **Posizione attuale**, poi toccala e scegli **Latitudine**;
+     - *Numero* `lon` → **Posizione attuale** → **Longitudine**.
+3. Aggiungi **Mostra notifica** con dentro **Contenuti dell'URL**: risponde «Auto segnata: Via Roma 12, Torino» (o cosa non va, es. «Codice di famiglia sbagliato»).
+4. Chiamalo **Ho parcheggiato**. La prima volta chiede il permesso per la posizione: consenti.
+
+Poi mettetelo dove è più comodo: sul **tasto Azione** (Impostazioni → Tasto Azione → Comando rapido), nel **Centro di Controllo**, sulla **schermata Home**, oppure «Ehi Siri, ho parcheggiato».
+Per non doverci nemmeno pensare: Comandi → **Automazione** → **+** → **CarPlay** (o **Bluetooth** e l'impianto dell'auto) → *Si disconnette* → **Esegui immediatamente** → *Ho parcheggiato*: quando spegnete la macchina l'auto si segna da sola.
+
+Come per OwnTracks, il codice resta solo sul telefono, mai nel repository.
+
 ## 6. Notifiche
 
 Su ogni iPhone/iPad con l'app **installata sulla schermata Home**: **Impostazioni → Notifiche → Attiva le notifiche** (c'è anche un invito in Home). Non serve configurare niente: le chiavi si creano da sole e restano nel database.
@@ -159,7 +181,7 @@ js/notifiche.js         notifiche di questo dispositivo
 js/views/*.js           le schermate
 assets/fonts/           i caratteri (dentro l'app: niente richieste esterne)
 api/                    funzioni Vercel: stato, setup del codice, dati (Neon/Postgres o Upstash Redis), film,
-                        posizione, notifiche (push, promemoria della sera)
+                        posizione, auto («Ho parcheggiato» dal comando rapido), notifiche (push, promemoria della sera)
 alexa-skill/            skill Alexa (modello italiano + codice)
 ```
 

@@ -17,6 +17,11 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   riscaldata), nomi in italiano, attività con pallino colorato per categoria che compaiono per gradi con lo zoom, i nostri posti
   (Casa, Lavoro…) come le attività (da zoom 14), Satellite = foto Esri (tileSize 128) con scritte vettoriali sopra. Patrick e Serena sono
   segnaposti sempre visibili. Niente crediti sulla mappa; coordinate dagli indirizzi con `/api/geocodifica`.
+- **Auto ("Ho parcheggiato"):** documento `posizioni/auto` (non è una persona: `{ lat, lon, acc, at, chi, place, nota, src }`), segnaposto
+  azzurro sempre visibile sotto le persone. Dall'app (`auto-qui` in `js/views/dove.js`, solo iPhone; riga e pulsante anche nel riquadro
+  Dov'è della Home) si salva con lo store come gli altri dati, quindi anche senza rete; l'indirizzo arriva poi da `/api/geocodifica?lat&lon`
+  (al contrario, in `api/_luogo.js`). Dal comando rapido dell'iPhone: `POST /api/auto` (x-famiglia + JSON `chi`, `lat`, `lon`; accetta
+  anche "45,07" con la virgola) che risponde in testo semplice per la notifica del comando. `#/dove/auto` apre la mappa sull'auto.
 - **Notifiche** (Web Push, senza servizi esterni): `api/_push.js` (chiavi VAPID create da sole e tenute nel database, cifratura
   aes128gcm fatta a mano e verificata contro la libreria `web-push`), `api/push.js` (iscrizioni), `api/promemoria.js` (cron serale in
   `vercel.json`: rifiuti, compleanni, gatti), avvisi di arrivo/partenza in `api/posizione.js`, biglietti in `api/dati.js`.

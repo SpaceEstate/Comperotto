@@ -1214,6 +1214,37 @@ html:root[data-season="natale"][data-season] .home-top { background: linear-grad
 svg.i.spin { animation: spin 1s linear infinite; }
 @media (min-width: 700px) and (min-height: 560px) { .map-card .mappa { height: 460px; } }
 
+/* ---------- l'auto: "Ho parcheggiato" ---------- */
+.auto-pin { width: 46px; height: 46px; border-radius: 15px; display: grid; place-items: center; flex: none; background: #DCECF8; color: #3F6C8C; box-shadow: inset 0 0 0 2px #A9C8E0; }
+.auto-pin svg.i { width: 24px; height: 24px; }
+.auto-pin.sm { width: 32px; height: 32px; border-radius: 11px; }
+.auto-pin.sm svg.i { width: 18px; height: 18px; }
+.auto-nota { display: flex; align-items: center; gap: 5px; }
+@media (max-width: 359px) { .auto-parola { display: none; } } /* iPhone piccolo: basta il cartello P */
+.auto-actions { margin-top: 12px; }
+/* sulla mappa: quadrotto azzurro con l'auto, sotto Patrick e Serena */
+.pin-auto {
+  position: relative; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 13px; cursor: pointer;
+  background: #5E93BE; color: #fff; border: 3px solid #fff; box-shadow: 0 6px 14px rgba(40, 28, 16, .3);
+}
+.pin-auto svg.i { width: 21px; height: 21px; stroke-width: 2; }
+.pin-auto::after { content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: #fff; }
+/* Home: dentro "Dov'è" la riga dell'auto e il pulsante rapido */
+.dh-link { display: block; color: inherit; text-decoration: none; }
+a.dh-auto { color: inherit; text-decoration: none; }
+.dh-park {
+  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 46px; margin: 6px 0;
+  border-radius: 14px; background: var(--oak-soft); color: var(--oak-deep); font-weight: 700; font-size: 15px;
+}
+.dh-park:active { transform: scale(.98); }
+.dh-park[disabled] { opacity: .75; }
+/* foglio dell'auto */
+.auto-head { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; }
+.auto-head > div { min-width: 0; }
+.auto-head > div > b { display: block; font-size: 17px; line-height: 1.3; }
+.auto-head > div > span { display: block; font-size: 13px; color: var(--text-3); margin-top: 3px; line-height: 1.4; }
+.auto-go { margin-bottom: 16px; }
+
 /* ---------- gesti dell'iPhone ---------- */
 /* righe da scorrere: il dito in orizzontale lo gestiamo noi, in verticale scorre la pagina */
 [data-swipe-id] { touch-action: pan-y; }

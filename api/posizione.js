@@ -5,8 +5,9 @@
 // L'app invece manda l'intestazione x-famiglia e { chi: "p1" | "p2", lat, lon, … }.
 //
 // Si tiene solo l'ultima posizione di ciascuno (niente storico).
-import { backend, verifyCode, body, send, sleep } from './_lib.js';
+import { backend, verifyCode, basic, body, send, sleep } from './_lib.js';
 import { avvisa, origineDi } from './_push.js';
+import { luogo } from './_luogo.js';
 
 const R = 6371000;
 const toRad = (d) => (d * Math.PI) / 180;
@@ -17,38 +18,6 @@ export function distanza(a, b) {
 }
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 const tid = (name) => (norm(name).replace(/[^a-z]/g, '').slice(0, 2) || 'xx').toUpperCase();
-
-/** "Via Roma, Torino" dalle coordinate (OpenStreetMap), con un limite di tempo. */
-async function luogo(lat, lon) {
-  try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 2500);
-    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=17&accept-language=it&lat=${lat}&lon=${lon}`, {
-      headers: { 'User-Agent': 'FamComperotto/1.0 (app di casa per uso familiare)', Accept: 'application/json' },
-      signal: ctrl.signal,
-    });
-    clearTimeout(t);
-    if (!r.ok) return '';
-    const j = await r.json();
-    const a = j.address || {};
-    const via = a.road || a.pedestrian || a.square || a.neighbourhood || a.suburb || '';
-    const citta = a.city || a.town || a.village || a.municipality || a.county || '';
-    return [via, citta].filter(Boolean).join(', ') || (j.display_name || '').split(',').slice(0, 2).join(',').trim();
-  } catch {
-    return '';
-  }
-}
-
-function basic(req) {
-  const h = req.headers.authorization || '';
-  if (!h.startsWith('Basic ')) return {};
-  try {
-    const [user, ...rest] = Buffer.from(h.slice(6), 'base64').toString('utf8').split(':');
-    return { user, pass: rest.join(':') };
-  } catch {
-    return {};
-  }
-}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'Metodo non permesso' });

@@ -1,6 +1,7 @@
 // Dov'è: chi è a casa, al lavoro o fuori, con la mappa. Le posizioni arrivano da OwnTracks (in automatico)
 // o da "Aggiorna" (solo da iPhone); per la posizione dal vivo c'è il pulsante per "Dov'è" di Apple.
-import { html, raw, timeAgo, vibrate, uid, cap, isIPad, lsGet, lsSet } from '../utils.js';
+// C'è anche l'auto: "Ho parcheggiato" (dall'app o dal Comando Rapido dell'iPhone, api/auto.js) la segna sulla mappa.
+import { html, raw, timeAgo, vibrate, uid, cap, isIPad, lsGet, lsSet, iso, todayIso, daysBetween, WEEKDAYS, MONTHS } from '../utils.js';
 import { icon } from '../icons.js';
 import { state, store, settings, saveSettings, me, nameOf, toast, pageHead, isSynced, openSheet, closeSheet, sheetError, val, confirmSheet, ui, setUi } from '../core.js';
 import { stile, icone, mettiIcone, iconaPosto } from '../mappa.js';
@@ -72,8 +73,143 @@ export function personBadge(k) {
 
 const mapsUrl = (p, name) => `https://maps.apple.com/?ll=${p.lat},${p.lon}&q=${encodeURIComponent(name)}`;
 
+// ---------------------------------------------------------------------------
+// L'auto: dove l'abbiamo lasciata (posizioni/auto). La segna chi parcheggia, dall'iPhone.
+// ---------------------------------------------------------------------------
+/** { lat, lon, acc, at, chi, place, nota, src } oppure undefined */
+export const auto = () => state.data.posizioni.find((p) => p.id === 'auto' && hasXY(p));
+/** Il pulsante "Ho parcheggiato" c'è solo sull'iPhone: l'iPad resta a casa. */
+export const puoParcheggiare = () => !isIPad();
+/** A piedi fino all'auto, con Mappe */
+export const percorso = (a) => `https://maps.apple.com/?daddr=${a.lat},${a.lon}&dirflg=w`;
+
+/** "oggi alle 14:32", "ieri alle 9:05", "lunedì alle 18:10", "3 novembre alle 8:00" */
+function quando(t) {
+  const d = new Date(t);
+  const g = daysBetween(iso(d), todayIso());
+  const giorno = g === 0 ? 'oggi' : g === 1 ? 'ieri' : g > 1 && g < 7 ? WEEKDAYS[d.getDay()] : `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  const h = d.getHours();
+  return `${giorno} ${h === 1 ? 'all’' : 'alle '}${h}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+const chiAuto = (a) => (a.chi === 'p1' || a.chi === 'p2' ? nameOf(a.chi) : '');
+/** "Parcheggiata da Serena oggi alle 14:32 · posizione approssimativa (±60 m)" */
+export function parcheggiata(a) {
+  const chi = chiAuto(a);
+  return `Parcheggiata${chi ? ` da ${chi}` : ''} ${quando(a.at)}${a.acc > 30 ? ` · posizione approssimativa (±${a.acc} m)` : ''}`;
+}
+export function autoBadge(cls = '') {
+  return html`<span class="auto-pin ${cls}">${icon('car', cls === 'sm' ? 'sm' : '')}</span>`;
+}
+
+/** Il pulsante "Ho parcheggiato" (in Home e qui): mentre cerca la posizione gira la rotellina. */
+export function bottoneAuto(cls = 'btn primary block') {
+  const busy = ui('auto.busy', false);
+  return html`<button class="${cls}" data-action="auto-qui" ${busy ? raw('disabled') : ''}>${icon(busy ? 'refresh' : 'parking', busy ? 'sm spin' : 'sm')} ${busy ? 'Cerco la posizione…' : 'Ho parcheggiato qui'}</button>`;
+}
+
+function autoCard() {
+  const a = auto();
+  if (!a && !puoParcheggiare()) return '';
+  return html`
+    <div class="section-title"><span>Auto</span></div>
+    ${a ? html`<section class="card dove-card auto-card">
+      <button class="dove-hit" data-action="auto-info" aria-label="L’auto: ${a.place || 'sulla mappa'}">
+        ${autoBadge()}
+        <span class="dove-main">
+          <b>Auto</b>
+          <span class="dove-status"><span class="pill soon">${icon('parking', 'xs')} <span class="auto-parola">Parcheggiata</span> ${durata(a.at)}</span></span>
+          ${a.place ? html`<span class="dove-place">${a.place}</span>` : ''}
+          ${a.nota ? html`<span class="dove-place auto-nota">${icon('note', 'xs')} ${a.nota}</span>` : ''}
+          <span class="dove-sub">${[chiAuto(a), quando(a.at), a.acc > 30 ? `±${a.acc} m` : ''].filter(Boolean).join(' · ')}</span>
+        </span>
+      </button>
+      <a class="icon-btn" href="${percorso(a)}" target="_blank" rel="noopener" aria-label="Portami all’auto">${icon('nav', 'sm')}</a>
+    </section>` : html`<section class="card dove-card auto-card">
+      <div class="dove-hit">${autoBadge()}<span class="dove-main"><b>Auto</b><span class="dove-sub">Non ancora segnata</span></span></div>
+    </section>`}
+    ${puoParcheggiare() ? html`<div class="auto-actions">${bottoneAuto()}</div>` : ''}`;
+}
+
+/** La posizione più precisa che arriva in pochi secondi: per l'auto conta ogni metro, quindi niente posizioni vecchie. */
+function posizionePrecisa({ buona = 15, attesa = 8000, massimo = 20000 } = {}) {
+  return new Promise((ok, ko) => {
+    if (!navigator.geolocation) { ko(Object.assign(new Error('no'), { code: 2 })); return; }
+    let best = null, err = null, finito = false, id = null, t1 = null, t2 = null;
+    const fine = () => {
+      if (finito) return;
+      finito = true;
+      if (id != null) navigator.geolocation.clearWatch(id);
+      clearTimeout(t1); clearTimeout(t2);
+      if (best) ok(best); else ko(err || Object.assign(new Error('tempo scaduto'), { code: 3 }));
+    };
+    id = navigator.geolocation.watchPosition(
+      (p) => { if (!best || p.coords.accuracy <= best.coords.accuracy) best = p; if (p.coords.accuracy <= buona) fine(); },
+      (e) => { err = e; if (e && e.code === 1) { best = null; fine(); } },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: massimo },
+    );
+    // dopo qualche secondo va bene la migliore arrivata; se non è arrivato ancora niente aspetto un altro po'
+    t1 = setTimeout(() => { if (best) fine(); }, attesa);
+    t2 = setTimeout(fine, massimo);
+  });
+}
+
+/** Rimette l'auto com'era (per "Annulla") */
+function rimetti(prima) {
+  if (!prima) { store.remove('posizioni', 'auto'); return; }
+  const { id, ...resto } = prima;
+  store.set('posizioni', 'auto', resto);
+}
+
+/** L'indirizzo dell'auto ("Via Roma 12, Torino"), se manca: appena salvata, o salvata senza rete. */
+const cercati = new Map();
+export async function trovaIndirizzo() {
+  const a = auto();
+  if (!a || a.place || !isSynced() || Date.now() - (cercati.get(a.at) || 0) < 60000) return;
+  cercati.set(a.at, Date.now());
+  try {
+    const r = await store.call(`geocodifica?lat=${a.lat}&lon=${a.lon}`);
+    const ora = auto();
+    if (r.nome && ora && ora.at === a.at && !ora.place) store.update('posizioni', 'auto', { place: r.nome });
+  } catch (e) {
+    if (e instanceof TypeError) cercati.delete(a.at); // senza rete: riprovo appena torna
+    else if (/non trovato/i.test((e && e.message) || '')) cercati.set(a.at, Infinity); // lì non c'è un indirizzo: non insisto
+  }
+}
+
+/** La mappa (se c'è) va sull'auto */
+function vaiAllAuto(anima = true) {
+  const a = auto(), m = document.getElementById('mappa');
+  if (!a || !m || !m._map) return false;
+  const zoom = Math.max(m._map.getZoom(), 17);
+  if (anima) m._map.flyTo({ center: [a.lon, a.lat], zoom, duration: 900 });
+  else m._map.jumpTo({ center: [a.lon, a.lat], zoom });
+  return true;
+}
+
+function autoSheet() {
+  const a = auto();
+  if (!a) return;
+  vaiAllAuto();
+  openSheet({
+    title: 'Auto',
+    body: html`
+      <div class="auto-head">
+        ${autoBadge()}
+        <div><b>${a.place || 'Segnata sulla mappa'}</b><span>${parcheggiata(a)}</span></div>
+      </div>
+      <a class="btn block auto-go" href="${percorso(a)}" target="_blank" rel="noopener">${icon('nav', 'sm')} Portami all’auto</a>
+      <label class="field"><span>Nota</span><input name="nota" value="${a.nota || ''}" maxlength="80" placeholder="es. Piano -2, posto 14"></label>`,
+    extra: html`<button class="btn danger" type="button" data-action="auto-togli" aria-label="Togli l’auto dalla mappa">${icon('trash', 'sm')}</button>`,
+    onSubmit: (fd) => {
+      const ora = auto();
+      const nota = cap(val(fd, 'nota'));
+      if (ora && nota !== (ora.nota || '')) store.update('posizioni', 'auto', { nota });
+    },
+  });
+}
+
 export function render() {
-  const any = PEOPLE.some((k) => pos(k)) || luoghi().some(hasXY);
+  const any = PEOPLE.some((k) => pos(k)) || luoghi().some(hasXY) || Boolean(auto());
   const posti = luoghi();
   return html`
     <a class="back-link phone-only" href="#/">${icon('left', 'sm')} Home</a>
@@ -107,6 +243,8 @@ export function render() {
       <button class="btn" data-action="dove-aggiorna" ${ui('dove.busy', false) ? raw('disabled') : ''}>${icon('refresh', ui('dove.busy', false) ? 'sm spin' : 'sm')} ${ui('dove.busy', false) ? 'Aggiorno…' : 'Aggiorna'}</button>
       <a class="btn primary" href="findmy://">${icon('search', 'sm')} Apri Dov’è</a>
     </div>
+
+    ${autoCard()}
 
     <div class="section-title"><span>I nostri posti</span></div>
     <div class="list">${posti.map((l) => html`
@@ -145,8 +283,11 @@ function loadMapLibre() {
   return mlgl;
 }
 
-/** Dove sono Patrick e Serena (segnaposti sempre visibili) */
-const persone = () => PEOPLE.flatMap((k) => { const p = pos(k); return p ? [{ k, ll: [p.lon, p.lat] }] : []; });
+/** Segnaposti sempre visibili: l'auto (sotto) e poi Patrick e Serena (sopra, se le stanno vicino) */
+const persone = () => {
+  const a = auto();
+  return [...(a ? [{ k: 'auto', ll: [a.lon, a.lat] }] : []), ...PEOPLE.flatMap((k) => { const p = pos(k); return p ? [{ k, ll: [p.lon, p.lat] }] : []; })];
+};
 /** I nostri posti, nel formato che vuole la mappa */
 const postiGeo = () => ({
   type: 'FeatureCollection',
@@ -157,7 +298,7 @@ const postiGeo = () => ({
   })),
 });
 
-/** Inquadra le persone; se nessuno ha ancora una posizione, casa (o il primo posto) */
+/** Inquadra le persone e l'auto; se non c'è ancora nessuna posizione, casa (o il primo posto) */
 function inquadra(map, animate = true) {
   const pts = persone().map((x) => x.ll);
   if (!pts.length) {
@@ -165,16 +306,23 @@ function inquadra(map, animate = true) {
     if (l) map.jumpTo({ center: [l.lon, l.lat], zoom: 15 });
     return;
   }
-  if (pts.length === 1 || distanza({ lon: pts[0][0], lat: pts[0][1] }, { lon: pts[1][0], lat: pts[1][1] }) < 60) {
-    map[animate ? 'easeTo' : 'jumpTo']({ center: pts[0], zoom: 15.5 });
+  const lons = pts.map((x) => x[0]), lats = pts.map((x) => x[1]);
+  const sw = [Math.min(...lons), Math.min(...lats)], ne = [Math.max(...lons), Math.max(...lats)];
+  if (distanza({ lon: sw[0], lat: sw[1] }, { lon: ne[0], lat: ne[1] }) < 60) {
+    map[animate ? 'easeTo' : 'jumpTo']({ center: [(sw[0] + ne[0]) / 2, (sw[1] + ne[1]) / 2], zoom: 15.5 });
     return;
   }
-  const lons = pts.map((x) => x[0]), lats = pts.map((x) => x[1]);
-  map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: { top: 76, bottom: 44, left: 56, right: 56 }, maxZoom: 16, animate });
+  map.fitBounds([sw, ne], { padding: { top: 76, bottom: 44, left: 56, right: 56 }, maxZoom: 16, animate });
 }
 
 function markerEl(k) {
   const el = document.createElement('div');
+  if (k === 'auto') {
+    // toccando l'auto sulla mappa si apre la sua scheda
+    el.innerHTML = `<span class="pin-auto" data-action="auto-info">${icon('car').s}</span>`;
+    el.title = 'Auto';
+    return el;
+  }
   el.innerHTML = `<span class="pin-person ${k}">${initialOf(k)}</span>`;
   el.title = nameOf(k);
   return el;
@@ -188,8 +336,14 @@ const chiaveStile = () => `${tipoMappa()}|${scuro() ? 'scuro' : 'chiaro'}`;
 let viva = null;
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (document.getElementById('mappa')) after(); });
 
-export async function after() {
+// Da "Auto" in Home (#/dove/auto) la mappa parte dall'auto: appena ci sono sia la mappa sia l'auto.
+let sullAuto = false;
+
+/** r = la rotta (es. ['dove', 'auto']), nuova = appena arrivati su questa pagina */
+export async function after(r = [], nuova = false) {
+  if (nuova) sullAuto = r[1] === 'auto';
   ensureCoords();
+  trovaIndirizzo();
   let el = document.getElementById('mappa');
   if (!el) return;
   if (viva && viva !== el) { el.replaceWith(viva); el = viva; el._map.resize(); inquadra(el._map, false); }
@@ -224,6 +378,7 @@ export async function after() {
       inquadra(map, false);
     } catch { el.classList.add('no-map'); return; } finally { el._inCorso = false; }
   }
+  if (sullAuto && vaiAllAuto(false)) sullAuto = false;
   const map = el._map;
   const posti = postiGeo(), pk = JSON.stringify(posti);
   // Mappa/Satellite o chiaro/scuro sono cambiati
@@ -234,7 +389,7 @@ export async function after() {
     const st = await stile(tipoMappa(), posti, scuro());
     if (el._stile === chiave) map.setStyle(st, { diff: false });
   }
-  // segnaposti delle persone
+  // segnaposti delle persone e dell'auto
   const pp = persone();
   const key = JSON.stringify(pp);
   if (key !== el._key) {
@@ -386,6 +541,38 @@ export const actions = {
     const home = hasXY(casa) ? distanza(data, casa) <= (casa.r || 150) : null;
     const prev = pos(me()) || {};
     store.set('posizioni', me(), { lat: data.lat, lon: data.lon, acc: data.acc, at: Date.now(), home, homeSince: home !== prev.home ? Date.now() : prev.homeSince || Date.now(), place: home ? 'Casa' : prev.place || '', src: 'app' });
+  },
+  // "Ho parcheggiato qui": la posizione precisa di adesso diventa il segnaposto dell'auto.
+  // Si salva come tutti gli altri dati (se manca la rete parte appena torna); l'indirizzo arriva subito dopo.
+  'auto-qui': async () => {
+    if (ui('auto.busy', false)) return;
+    setUi('auto.busy', true);
+    try {
+      let p;
+      try { p = await posizionePrecisa(); } catch (e) {
+        toast(e && e.code === 1
+          ? 'Per segnare l’auto consenti la localizzazione: Impostazioni → Privacy → Localizzazione → Siti web di Safari'
+          : 'Non trovo la posizione adesso: riprova tra qualche secondo', { ms: 6000 });
+        return;
+      }
+      const prima = auto();
+      const { latitude: lat, longitude: lon, accuracy } = p.coords;
+      store.set('posizioni', 'auto', { lat, lon, acc: Math.round(accuracy) || null, at: Date.now(), chi: me() || null, place: '', nota: '', src: 'app' });
+      vibrate(12);
+      toast(accuracy > 30 ? `Auto segnata, ma la posizione è approssimativa (±${Math.round(accuracy)} m)` : 'Auto segnata qui ✓', { undo: () => rimetti(prima), ms: 5000 });
+      setTimeout(() => vaiAllAuto(), 60); // se la mappa è aperta, ci va sopra
+      trovaIndirizzo();
+    } finally {
+      setUi('auto.busy', false);
+    }
+  },
+  'auto-info': () => autoSheet(),
+  'auto-togli': () => {
+    const prima = auto();
+    closeSheet();
+    if (!prima) return;
+    store.remove('posizioni', 'auto');
+    toast('Auto tolta dalla mappa', { undo: () => rimetti(prima) });
   },
   'luogo-new': () => luogoSheet(),
   'luogo-edit': ({ id }) => { const l = (settings().luoghi || []).find((x) => x.id === id); if (l) luogoSheet(luoghi().find((x) => x.id === id)); },

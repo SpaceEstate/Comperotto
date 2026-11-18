@@ -10,6 +10,10 @@ const mainTheme = (f) => filmCats(f)[0];
 /** La categoria del periodo (Natale, Halloween), se il periodo ne ha una */
 const catDelPeriodo = () => { const c = currentTheme(); return c && FILM_CATS[c.id] ? c.id : null; };
 const FILTRI = [['davedere', 'Da vedere'], ['visti', 'Visti'], ['tutti', 'Tutti']];
+// solo i film o solo le serie (si somma alle categorie); toccando di nuovo quello scelto si torna a tutti e due
+const TIPI = [['movie', 'Film', 'film'], ['tv', 'Serie TV', 'tv']];
+const tipoScelto = () => (TIPI.some(([v]) => v === ui('film.tipo', '')) ? ui('film.tipo', '') : '');
+const delTipo = (tipo) => (f) => !tipo || (tipo === 'tv' ? f.kind === 'tv' : f.kind !== 'tv');
 const safePoster = (u) => (typeof u === 'string' && /^https:\/\/(images\.justwatch\.com|is\d+-ssl\.mzstatic\.com|image\.tmdb\.org)\//.test(u) ? u : '');
 const safeIcon = (u) => (typeof u === 'string' && /^https:\/\/images\.justwatch\.com\//.test(u) ? u : '');
 const searchUrl = (title) => `https://www.justwatch.com/it/cerca?q=${encodeURIComponent(title)}`;
@@ -57,9 +61,10 @@ function grid(list) {
     </button>`)}</div>`;
 }
 
-/** Il film di «Stasera guardiamo…»: uno da vedere (della categoria scelta, se c'è), cambia ogni giorno o con il dado. */
-function stasera(all, theme = 'tutti') {
-  const daVedere = all.filter((f) => !f.watched);
+/** Il film di «Stasera guardiamo…»: uno da vedere (della categoria scelta, se c'è, e solo film o solo serie se scelto),
+ *  cambia ogni giorno o con il dado. */
+function stasera(all, theme = 'tutti', tipo = '') {
+  const daVedere = all.filter((f) => !f.watched && delTipo(tipo)(f));
   const nellaCategoria = FILM_CATS[theme] ? daVedere.filter((f) => filmCats(f).includes(theme)) : [];
   const pool = nellaCategoria.length ? nellaCategoria : daVedere;
   if (!pool.length) return null;
@@ -72,8 +77,8 @@ function stasera(all, theme = 'tutti') {
 }
 
 /** «Stasera guardiamo…»: sempre in cima; con una categoria scelta propone un film di quella categoria. */
-function featured(all, theme = 'tutti') {
-  const f = stasera(all, theme);
+function featured(all, theme = 'tutti', tipo = '') {
+  const f = stasera(all, theme, tipo);
   if (!f) return '';
   const src = safePoster(f.poster);
   const on = streaming(f);
@@ -97,7 +102,7 @@ function featured(all, theme = 'tutti') {
 export function locandine() {
   const all = [...state.data.film].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   const theme = FILM_CATS[ui('film.theme', 'tutti')] ? ui('film.theme', 'tutti') : 'tutti';
-  const primo = stasera(all, theme);
+  const primo = stasera(all, theme, tipoScelto());
   // prima quelli da vedere (la pagina parte da lì), poi i già visti
   const film = [...(primo ? [primo] : []), ...all.filter((f) => !f.watched), ...all.filter((f) => f.watched)].slice(0, 160);
   return [
@@ -113,11 +118,12 @@ export const render = () => html`${pageHead('Film', testa())}${corpo()}`;
 export function corpo() {
   const filter = FILTRI.some(([v]) => v === ui('film.filter', 'davedere')) ? ui('film.filter', 'davedere') : 'davedere';
   const theme = FILM_CATS[ui('film.theme', 'tutti')] ? ui('film.theme', 'tutti') : 'tutti';
+  const tipo = tipoScelto();
   const results = ui('film.results', null);
   const all = [...state.data.film].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   const pass = (f) =>
     (filter === 'tutti' || (filter === 'davedere' && !f.watched) || (filter === 'visti' && f.watched)) &&
-    (theme === 'tutti' || filmCats(f).includes(theme));
+    (theme === 'tutti' || filmCats(f).includes(theme)) && delTipo(tipo)(f);
   const list = all.filter(pass);
   const cur = catDelPeriodo();
   const seasonal = cur && theme === 'tutti' ? list.filter((f) => filmCats(f).includes(cur)) : [];
@@ -140,19 +146,21 @@ export function corpo() {
         </button>`)}</div>` : html`<p class="muted small">Nessun risultato. <button class="card-link" data-action="film-manual">Aggiungilo lo stesso</button></p>`}
     </div>` : ''}
 
-    ${featured(all, theme)}
+    ${featured(all, theme, tipo)}
 
     <div class="chips" role="group" aria-label="Quali film">
-      ${FILTRI.map(([v, l]) => html`<button class="chip ${filter === v ? 'on' : ''}" data-action="film-filter" data-v="${v}" aria-pressed="${filter === v}">${l}</button>`)}
+      ${FILTRI.map(([v, l]) => html`<button class="chip ${filter === v ? 'on' : ''}" data-action="film-filter" data-v="${v}" aria-pressed="${filter === v ? 'true' : 'false'}">${l}</button>`)}
+      <span class="chip-sep" aria-hidden="true"></span>
+      ${TIPI.map(([v, l, ic]) => html`<button class="chip ${tipo === v ? 'on' : ''}" data-action="film-tipo" data-v="${tipo === v ? '' : v}" aria-pressed="${tipo === v ? 'true' : 'false'}">${icon(ic, 'xs')} ${l}</button>`)}
     </div>
     <div class="chips film-cats" role="group" aria-label="Categorie">
-      ${Object.entries(FILM_CATS).map(([k, c]) => html`<button class="chip ${theme === k ? 'on' : ''}" data-action="film-theme" data-v="${theme === k ? 'tutti' : k}" aria-pressed="${theme === k}">${icon(c.icon, 'xs')} ${c.label}</button>`)}
+      ${Object.entries(FILM_CATS).map(([k, c]) => html`<button class="chip ${theme === k ? 'on' : ''}" data-action="film-theme" data-v="${theme === k ? 'tutti' : k}" aria-pressed="${theme === k ? 'true' : 'false'}">${icon(c.icon, 'xs')} ${c.label}</button>`)}
       <a class="chip chip-edit" href="#/impostazioni/categorie/film" aria-label="Togli o aggiungi categorie">${icon('pencil', 'xs')}</a>
     </div>
 
     ${seasonal.length ? html`<div class="section-title"><span>${icon(FILM_CATS[cur].icon, 'xs')} Atmosfera ${FILM_CATS[cur].label}</span></div>${grid(seasonal)}` : ''}
     ${rest.length ? html`${seasonal.length ? html`<div class="section-title"><span>Tutti gli altri</span></div>` : html`<div style="height:10px"></div>`}${grid(rest)}` : ''}
-    ${!list.length ? emptyState(filter === 'visti' ? 'Ancora nessun film visto' : theme !== 'tutti' ? `Nessun film ${FILM_CATS[theme].label}` : 'Nessun film qui', 'Cerca un titolo qui sopra per aggiungerlo.', catFace('a')) : ''}`;
+    ${!list.length ? emptyState(filter === 'visti' ? (tipo === 'tv' ? 'Ancora nessuna serie vista' : 'Ancora nessun film visto') : `${tipo === 'tv' ? 'Nessuna serie' : 'Nessun film'} ${theme !== 'tutti' ? FILM_CATS[theme].label : 'qui'}`, 'Cerca un titolo qui sopra per aggiungerlo.', catFace('a')) : ''}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -357,6 +365,7 @@ export const actions = {
   },
   'film-spin': () => { vibrate(); setUi('film.spin', Number(ui('film.spin', 0)) + 1); },
   'film-filter': ({ el }) => setUi('film.filter', el.dataset.v),
+  'film-tipo': ({ el }) => setUi('film.tipo', el.dataset.v || ''),
   'film-theme': ({ el }) => setUi('film.theme', el.dataset.v),
   'film-open': ({ id }) => { const f = state.data.film.find((x) => x.id === id); if (f) detailSheet(f); },
   'film-watched': ({ id }) => {

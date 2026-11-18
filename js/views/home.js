@@ -212,7 +212,7 @@ export function render() {
 
 export const actions = {
   noop: () => {},
-  'film-theme-go': ({ el }) => { state.ui['film.theme'] = FILM_CATS[el.dataset.v] ? el.dataset.v : 'tutti'; state.ui['film.filter'] = FILM_CATS[el.dataset.v] ? 'tutti' : 'davedere'; location.hash = '#/svago/film'; },
+  'film-theme-go': ({ el }) => { state.ui['film.theme'] = FILM_CATS[el.dataset.v] ? el.dataset.v : 'tutti'; state.ui['film.filter'] = FILM_CATS[el.dataset.v] ? 'tutti' : 'davedere'; state.ui['film.tipo'] = ''; location.hash = '#/svago/film'; },
   'hint-close': () => { lsSet('casa.hint.install', '1'); rerender(); },
   'hint-push-close': () => { lsSet('casa.hint.push', '1'); rerender(); },
 };

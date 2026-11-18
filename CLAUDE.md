@@ -131,6 +131,8 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
 - **Film:** categorie in `FILM_CATS` (`js/data.js`): Famiglia, Natale, Halloween, Sempre, Thriller, Azione, Horror, Cartoni; dai generi
   di JustWatch (`ani` → cartoni) e di Apple si propongono da sole. Gli esempi si aggiornano una volta (`settings.filmCats`, ora 2).
   «Stasera guardiamo…» (`stasera()`) è sempre in cima: con una categoria scelta propone un film di quella, altrimenti uno da vedere.
+  Accanto a Da vedere · Visti · Tutti ci sono «Film» e «Serie TV» (`TIPI`, `ui('film.tipo')`: solo film o solo serie, toccando di nuovo
+  si torna a tutti e due): si sommano alle categorie e valgono anche per «Stasera guardiamo…»; dalla Home si riparte da tutti e due.
 - **Caselle di ricerca:** la X per cancellare è `cancella(id, poi)` di `core.js` (si vede solo con del testo, via `:placeholder-shown`).
 - **Spesa:** reparti in `SHOP_CATS` (`js/data.js`) nell'ordine del giro; gli id vecchi passano da `LEGACY_CATS` (il vecchio `freschi` ora è `frigo`).
   Stesso prodotto solo se il nome è uguale o cambia per parole "di riempimento" (`stessoProdotto()`/`nucleo()` in `spesa.js`: medie,

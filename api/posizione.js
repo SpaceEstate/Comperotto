@@ -181,6 +181,46 @@ function campo(b, nomi, giro = 0) {
 }
 const visto = (v) => (v === undefined ? 'manca' : v === null || v === '' ? 'vuota' : `«${(typeof v === 'object' ? JSON.stringify(v) : String(v)).slice(0, 40)}»`);
 
+/**
+ * La virgola persa. L'iPhone in italiano scrive Latitudine come "46,0677…" e il campo Numero del comando lo rilegge
+ * senza la virgola: arriva 460677…. Le cifre sono giuste: qui provo tutte le posizioni possibili della virgola
+ * (0,4…  4,6…  46,…  460,…) e tengo solo quelle che hanno senso (latitudine fino a 90, longitudine fino a 180).
+ */
+export function possibili(v, max) {
+  if (!Number.isFinite(v)) return [];
+  if (Math.abs(v) <= max) return [v];
+  const a = Math.abs(v);
+  const cifre = (a >= 1e21 ? BigInt(Math.round(a)).toString() : String(a)).replace(/\D/g, '');
+  const out = [];
+  for (let k = 0; k <= 3 && k < cifre.length; k++) {
+    const c = (v < 0 ? -1 : 1) * Number(`${cifre.slice(0, k) || '0'}.${cifre.slice(k)}`);
+    if (Math.abs(c) <= max) out.push(c);
+  }
+  return out;
+}
+/** Tra i punti possibili quello più vicino a dove siamo di solito (le scelte sono lontane migliaia di km tra loro). */
+export function piuVicino(lats, lons, riferimenti) {
+  let meglio = null;
+  for (const lat of lats) {
+    for (const lon of lons) {
+      const d = Math.min(...riferimenti.map((r) => distanza({ lat, lon }, r)));
+      if (!meglio || d < meglio.d) meglio = { lat, lon, d };
+    }
+  }
+  return meglio;
+}
+/** Dove siamo di solito: le ultime posizioni (prima chi ha parcheggiato), casa, i nostri posti, l'auto di prima. */
+async function riferimenti(db, s, chi) {
+  const { items: pos } = await db.collection('posizioni');
+  const out = [];
+  const metti = (p) => {
+    const a = num(p && p.lat), o = num(p && p.lon);
+    if (Number.isFinite(a) && Number.isFinite(o) && Math.abs(a) <= 90 && Math.abs(o) <= 180 && (a || o)) out.push({ lat: a, lon: o });
+  };
+  [chi && pos[chi], pos.p1, pos.p2, s.casaPos, ...(Array.isArray(s.luoghi) ? s.luoghi : []), pos.auto].forEach(metti);
+  return out.length ? out : [{ lat: 42.5, lon: 12.5 }]; // niente di noto: l'Italia
+}
+
 async function parcheggio(req, res) {
   if (req.method !== 'POST') return testo(res, 405, 'Nel comando il metodo deve essere POST');
   const db = backend();
@@ -193,20 +233,28 @@ async function parcheggio(req, res) {
     return esito === 'bloccato' ? testo(res, 429, 'Troppi tentativi con un codice sbagliato: riprova tra un quarto d’ora') : testo(res, 401, 'Codice di famiglia sbagliato');
   }
   const latV = campo(b, ['lat', 'latitudine', 'latitude']), lonV = campo(b, ['lon', 'lng', 'long', 'longitudine', 'longitude']);
-  const lat = coordinata(latV), lon = coordinata(lonV);
-  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180 || (!lat && !lon)) {
-    // la risposta dice cosa è arrivato (mai il codice): così dalla notifica si capisce cosa sistemare
+  let lat = coordinata(latV), lon = coordinata(lonV);
+  // la risposta dice cosa è arrivato (mai il codice): così dalla notifica si capisce cosa sistemare
+  const nonLetta = () => testo(res, 400, `Posizione non letta: lat ${visto(latV)}, lon ${visto(lonV)}`);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || (!lat && !lon)) {
     if (latV === undefined && lonV === undefined) return testo(res, 400, `Nel comando mancano i campi lat e lon (arrivati: ${Object.keys(b).join(', ').slice(0, 80) || 'nessuno'})`);
-    return testo(res, 400, `Posizione non letta: lat ${visto(latV)}, lon ${visto(lonV)}`);
+    return nonLetta();
   }
   try {
+    let sett = null;
+    const impostazioni = async () => (sett ||= (await db.collection('settings')).items.main || {});
     // chi ha parcheggiato: "p1"/"p2" oppure il nome (es. "serena"); se manca o non torna, pazienza
     const raw = String(campo(b, ['chi']) || auth.user || '').trim();
     let chi = ['p1', 'p2'].includes(raw) ? raw : null;
     if (!chi && raw) {
-      const { items } = await db.collection('settings');
-      const names = { p1: 'Patrick', p2: 'Serena', ...((items.main || {}).names || {}) };
+      const names = { p1: 'Patrick', p2: 'Serena', ...((await impostazioni()).names || {}) };
       chi = ['p1', 'p2'].find((k) => norm(names[k]) === norm(raw)) || null;
+    }
+    // numeri troppo grandi: è la virgola persa dall'iPhone (46,0677… → 460677…), la rimetto al posto giusto
+    if (Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+      const p = piuVicino(possibili(lat, 90), possibili(lon, 180), await riferimenti(db, await impostazioni(), chi));
+      if (!p) return nonLetta();
+      lat = p.lat; lon = p.lon;
     }
     const acc = coordinata(campo(b, ['acc', 'precisione']));
     // l'indirizzo con poca attesa (la risposta deve essere svelta): se non arriva lo cerca poi l'app

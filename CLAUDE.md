@@ -40,7 +40,8 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
 - **Auto ("Ho parcheggiato"):** il pulsante è un comando rapido sulla schermata Home dell'iPhone (istruzioni nel README), non un tasto
   dell'app: si preme e basta. Manda `POST /api/posizione?auto` con JSON `{ codice, chi, lat, lon }` (il codice nel corpo, mai nell'indirizzo;
   vanno bene anche x-famiglia o Basic; `coordinata()` legge anche "45,07" con la virgola, i gradi "45° 4′ 13″ N", liste e dizionari, e i nomi
-  dei campi non badano a maiuscole e spazi) e riceve in testo semplice «Posizione inviata», che il comando mostra come notifica (gli errori
+  dei campi non badano a maiuscole e spazi; l'iPhone in italiano nel campo Numero perde la virgola, 46,0677… arriva 460677…: `possibili()`
+  prova le posizioni della virgola e `piuVicino()` tiene il punto più vicino alle ultime posizioni, a casa, ai posti, all'auto di prima) e riceve in testo semplice «Posizione inviata», che il comando mostra come notifica (gli errori
   sono frasi brevi; se lat/lon non si leggono la risposta dice cosa è arrivato, mai il codice). Si salva in `posizioni/auto` (`{ lat, lon, acc, at, chi, place, nota, src }`: non è una
   persona, niente avvisi né zone); indirizzo con civico e nome del parcheggio da `api/_luogo.js` (se non arriva in 1,5 s lo cerca l'app con
   `/api/geocodifica?lat&lon`). Nell'app si vede e basta: riga Auto nel riquadro Dov'è della Home (→ `#/dove/auto`, la mappa parte

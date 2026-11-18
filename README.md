@@ -158,6 +158,7 @@ La musica arriva da **Spotify** (serve Premium), come nell'app di Spotify:
 - **playlist vostre**: crearle, rinominarle, eliminarle, aggiungere e togliere brani (⋯ accanto al brano → *Aggiungi a una playlist*), e *Aggiungi in coda*;
 - **Dove ascoltare?**: di base la musica parte **sul dispositivo che state usando** (toccando un brano sull'iPhone suona subito lì, dentro l'app); si può scegliere un altro dispositivo con Spotify aperto o un **Echo**, e finché resta collegato i brani partono lì;
 - nel lettore anche **Ripeti** (tutto, oppure solo il brano);
+- in cima a Musica la scheda è come *Stasera guardiamo…* dei film: copertina sfocata dietro, *Ascolta* (o i comandi, se suona già), il dado per un'altra canzone e le **casse** per scegliere dove ascoltare (accese, con il nome accanto, quando la musica va su un altro dispositivo);
 - il **mini lettore** resta in basso su tutte le pagine (copertina, titolo, dove suona, play/pausa e avanti): un tocco apre la **finestra del lettore** senza lasciare la pagina (copertina grande, barra del brano, comandi, ♥, dove suona e i prossimi brani); si chiude con la freccia, la X o trascinandola giù;
 - per cambiare brano si può anche **scorrere di lato** sulla copertina o sul mini lettore (verso sinistra il prossimo, verso destra il precedente), come su Spotify; un brano della coda *Dopo* si tocca e parte (Spotify non permette alle app di togliere o spostare i brani in coda).
 

@@ -135,26 +135,40 @@ function consigliata() {
   contesti.set('consiglio', { uris: [...pool.slice(i), ...pool.slice(0, i)].map((t) => t.uri) });
   return pool[i];
 }
+// La scheda in cima a Musica è fatta come «Stasera guardiamo…» dei film: dietro la copertina sfocata,
+// davanti copertina, titolo e artista; i tasti tondi (dado o cuore, e le casse per scegliere dove ascoltare).
+/** La copertina dietro la scheda: solo un indirizzo https pulito (finisce dentro lo stile). */
+const fondo = (src) => (src && /^https:\/\/[^\s"'()\\<>]+$/.test(src) ? `--copertina:url('${src}')` : '');
+const copertina = (al, img) => {
+  const dentro = html`${icon('music', 'lg')}${img ? html`<img src="${img}" alt="" decoding="async">` : ''}`;
+  return al && al.id ? html`<a class="sp-cover" href="#/musica/album/${al.id}" aria-label="Apri l’album">${dentro}</a>` : html`<div class="sp-cover">${dentro}</div>`;
+};
+/** Le casse: aprono «Dove ascoltare?». Se la musica va (o andrebbe) su un altro dispositivo si accendono e accanto c'è il suo nome. */
+function casse(dev) {
+  const nome = dev ? devNome(dev) : '';
+  const altrove = Boolean(dev && !eQuesto(dev));
+  const label = nome ? `Dove ascoltare (ora: ${nome})` : 'Scegli dove ascoltare';
+  return html`<button class="icon-btn sp-casse ${altrove ? 'altrove' : ''}" data-action="sp-dispositivi" aria-label="${label}" title="${label}">${icon('casse')}</button>${altrove ? html`<button class="sp-dove" data-action="sp-dispositivi" tabindex="-1" aria-hidden="true">${nome}</button>` : ''}`;
+}
+
 function consiglioCard() {
   const t = consigliata();
   if (!t) return '';
-  const dev = sceltoOAttivo();
-  return html`<div class="card sp-now sp-consiglio" id="sp-now">
-    <div class="sp-top">
-      ${t.album && t.album.id ? html`<a class="sp-cover" href="#/musica/album/${t.album.id}" aria-label="Album">${icon('music', 'lg')}${t.big || t.img ? html`<img src="${t.big || t.img}" alt="" decoding="async">` : ''}</a>`
-        : html`<div class="sp-cover">${icon('music', 'lg')}${t.big || t.img ? html`<img src="${t.big || t.img}" alt="" decoding="async">` : ''}</div>`}
-      <div class="sp-meta">
-        <small class="sp-eyebrow">Da ascoltare oggi</small>
-        <b>${t.name}</b>
-        <span>${t.e ? html`<i class="sp-e">E</i>` : ''}${nomiArtisti(t)}</span>
-        <button class="sp-dev ${dev ? '' : 'none'}" data-action="sp-dispositivi">${icon(dev ? devIcon(dev) : 'speaker', 'xs')}<span>${dev ? devNome(dev) : 'Scegli dove ascoltare'}</span>${icon('down', 'xs')}</button>
-      </div>
+  const img = t.big || t.img;
+  return html`<section class="card sp-now sp-consiglio" id="sp-now" style="${fondo(img)}">
+    <div class="sp-now-bg" aria-hidden="true"></div>
+    ${copertina(t.album, img)}
+    <div class="sp-meta">
+      <p class="sp-eyebrow">Da ascoltare oggi</p>
+      <h2 class="sp-titolo">${t.name}</h2>
+      <p class="sp-artisti">${t.e ? html`<i class="sp-e">E</i>` : ''}${nomiArtisti(t)}</p>
     </div>
-    <div class="sp-cons-ctrl">
-      <button class="btn primary" data-action="sp-brano" data-uri="${t.uri}" data-ctx="consiglio">${icon('play', 'sm filled')} Ascolta</button>
+    <div class="sp-tasti">
       <button class="icon-btn" data-action="sp-spin" aria-label="Un’altra canzone">${icon('dice')}</button>
+      ${casse(sceltoOAttivo())}
     </div>
-  </div>`;
+    <button class="btn primary sp-ascolta" data-action="sp-brano" data-uri="${t.uri}" data-ctx="consiglio">${icon('play', 'sm filled')} Ascolta</button>
+  </section>`;
 }
 
 function nowCard() {
@@ -163,7 +177,6 @@ function nowCard() {
   if ((!p || !p.item) && sp.playerAt && !S.inArrivo()) { const c = consiglioCard(); if (c) return c; }
   const vis = insieme('grande', p && p.item, 200);
   const it = vis.it;
-  const dev = sceltoOAttivo();
   const playing = Boolean(p && p.is_playing);
   const img = vis.img;
   const dur = (it && it.duration_ms) || 0;
@@ -173,19 +186,20 @@ function nowCard() {
   ultimo = ''; // i minuti li riscrive il disegno: l'orologio riparte da qui
   const saved = it ? S.salvato(it.uri) : false;
   if (it && it.uri && saved === undefined) queueMicrotask(() => S.controllaSalvati([it.uri]));
-  const al = it && it.album;
-  return html`<div class="card sp-now ${playing ? 'playing' : ''}" id="sp-now">
-    <div class="sp-top">
-      ${al && al.id ? html`<a class="sp-cover" href="#/musica/album/${al.id}" aria-label="Album">${icon('music', 'lg')}${img ? html`<img src="${img}" alt="" decoding="async">` : ''}</a>`
-        : html`<div class="sp-cover">${icon('music', 'lg')}${img ? html`<img src="${img}" alt="" decoding="async">` : ''}</div>`}
-      <div class="sp-meta">
-        <b>${it ? it.name : sp.playerAt && !S.inArrivo() ? 'Niente in riproduzione' : 'Spotify'}</b>
-        <span>${it ? nomiArtisti(it) || (it.show && it.show.name) || '' : sp.playerAt && !S.inArrivo() ? 'Cerca qualcosa o tocca una playlist' : 'Un attimo…'}</span>
-        <button class="sp-dev ${dev ? '' : 'none'}" data-action="sp-dispositivi">${icon(dev ? devIcon(dev) : 'speaker', 'xs')}<span>${dev ? devNome(dev) : 'Scegli dove ascoltare'}</span>${icon('down', 'xs')}</button>
-      </div>
-      ${it && it.type !== 'episode' ? html`<button class="sp-ic big ${saved ? 'on' : ''}" data-action="sp-cuore" data-uri="${it.uri}" aria-label="${saved ? 'Togli dai preferiti' : 'Aggiungi ai preferiti'}">${icon('heart', saved ? 'filled' : '')}</button>` : ''}
+  const fermo = !it && sp.playerAt && !S.inArrivo(); // niente in riproduzione (e nessuna canzone da consigliare)
+  return html`<section class="card sp-now ${playing ? 'playing' : ''}" id="sp-now" style="${fondo(img)}">
+    <div class="sp-now-bg" aria-hidden="true"></div>
+    ${copertina(it && it.album, img)}
+    <div class="sp-meta">
+      ${it ? html`<p class="sp-eyebrow">${playing ? 'In riproduzione' : 'In pausa'}</p>` : ''}
+      <h2 class="sp-titolo">${it ? it.name : fermo ? 'Niente in riproduzione' : 'Spotify'}</h2>
+      <p class="sp-artisti">${it ? nomiArtisti(it) || (it.show && it.show.name) || '' : fermo ? 'Cerca qualcosa o tocca una playlist' : 'Un attimo…'}</p>
     </div>
-    ${it ? html`
+    <div class="sp-tasti">
+      ${it && it.type !== 'episode' ? html`<button class="icon-btn sp-cuore ${saved ? 'on' : ''}" data-action="sp-cuore" data-uri="${it.uri}" aria-label="${saved ? 'Togli dai preferiti' : 'Aggiungi ai preferiti'}" aria-pressed="${saved ? 'true' : 'false'}">${icon('heart', saved ? 'filled' : '')}</button>` : ''}
+      ${casse(sceltoOAttivo())}
+    </div>
+    ${it ? html`<div class="sp-sotto">
       <div class="sp-seek no-gesture" id="sp-seek-${it.id || 'x'}">
         <div class="sp-bar"><i style="width:${pct.toFixed(2)}%"></i></div>
         <input type="range" min="0" max="${dur}" step="1000" value="${Math.round(pos)}" data-change="sp-seek" aria-label="Posizione nel brano">
@@ -197,8 +211,9 @@ function nowCard() {
         <button class="sp-play" data-action="sp-playpausa" aria-label="${playing ? 'Pausa' : 'Riproduci'}">${icon(playing ? 'pause' : 'play', 'filled')}</button>
         <button class="sp-btn" data-action="sp-avanti" aria-label="Successivo">${icon('next', 'filled')}</button>
         ${bottoneRipeti(p, 'sp-btn', 'sm')}
-      </div>` : ''}
-  </div>`;
+      </div>
+    </div>` : ''}
+  </section>`;
 }
 
 /** Ripeti: spento, tutto (playlist o album), solo questo brano (con il piccolo "1"). */

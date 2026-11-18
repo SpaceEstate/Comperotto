@@ -116,6 +116,9 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   caricano quelli dell'altro) e, con pochi preferiti, guarda anche le playlist e gli ascolti recenti; le novità leggono singoli e
   album a parte. Quando non suona niente, in cima "Da ascoltare oggi" (`consiglioCard()`: da "Scelti per te", altrimenti dalla
   musica del periodo; una al giorno, il dado ne propone un'altra) che parte solo toccando «Ascolta», con dopo le altre.
+  La scheda in cima (consigliata o in riproduzione) è fatta come «Stasera guardiamo…» dei film: copertina sfocata dietro
+  (`--copertina` sulla scheda, `.sp-now-bg`), testo chiaro, tasti tondi (dado o cuore) e le casse (`casse()`, icona `casse`) che
+  aprono «Dove ascoltare?»: accese e con il nome accanto quando si ascolta su un altro dispositivo. Niente più linguetta del dispositivo.
 - **Film:** categorie in `FILM_CATS` (`js/data.js`): Famiglia, Natale, Halloween, Sempre, Thriller, Azione, Horror, Cartoni; dai generi
   di JustWatch (`ani` → cartoni) e di Apple si propongono da sole. Gli esempi si aggiornano una volta (`settings.filmCats`, ora 2).
   «Stasera guardiamo…» (`stasera()`) è sempre in cima: con una categoria scelta propone un film di quella, altrimenti uno da vedere.

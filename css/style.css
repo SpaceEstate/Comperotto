@@ -687,17 +687,29 @@ input:placeholder-shown + .search-x { display: none; }
 .sp-ricollega .btn { margin-left: auto; }
 .sp-ricollega > svg.i { color: var(--oak-deep); flex: none; }
 .sp-logo { width: 44px; height: 44px; flex: none; border-radius: 14px; display: grid; place-items: center; background: var(--sage-soft); color: var(--sage); }
-.sp-now { padding: 14px; }
-.sp-top { display: flex; gap: 14px; align-items: center; }
+/* la scheda in cima, come «Stasera guardiamo…» dei film: la copertina sfocata dietro, il testo chiaro davanti */
+.card.sp-now {
+  position: relative; overflow: hidden; isolation: isolate;
+  display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "cover meta" "cover tasti" "sotto sotto"; column-gap: 14px;
+  padding: 16px; border: 0; border-radius: 24px; background: #2A2420; color: #fff; box-shadow: var(--shadow-2);
+}
+.sp-now-bg { position: absolute; inset: -40px; z-index: -1; pointer-events: none; background: var(--copertina, linear-gradient(140deg, #5A6B54, #22281F)) center / cover; filter: blur(26px) brightness(.5) saturate(1.25); transform: translateZ(0); }
 .sp-cover, .sp-img { position: relative; overflow: hidden; display: grid; place-items: center; flex: none; background: linear-gradient(160deg, var(--sage-soft), var(--sky-soft)); color: var(--sage); }
-.sp-cover { width: 76px; height: 76px; border-radius: 14px; box-shadow: var(--shadow-1); }
 .sp-cover img, .sp-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.sp-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
-.sp-meta > b { max-width: 100%; font-family: var(--font-serif); font-weight: 500; font-size: 19px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sp-meta > span { max-width: 100%; font-size: 13.5px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sp-dev { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; margin-top: 6px; height: 28px; padding: 0 10px; border-radius: 999px; font-size: 12.5px; font-weight: 700; background: var(--sage-soft); color: var(--sage); }
-.sp-dev span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sp-dev.none { background: var(--oak-soft); color: var(--oak-deep); }
+.sp-now > .sp-cover { grid-area: cover; align-self: start; width: 104px; height: 104px; border-radius: 12px; background: rgba(255,255,255,.14); color: rgba(255,255,255,.85); box-shadow: 0 12px 30px rgba(0,0,0,.45); }
+.sp-meta { grid-area: meta; min-width: 0; align-self: start; }
+.sp-eyebrow { margin: 2px 0 0; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-titolo { margin: 6px 0 4px; font-family: var(--font-serif); font-weight: 500; font-size: 22px; line-height: 1.12; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sp-meta > .sp-titolo:first-child { margin-top: 2px; }
+.sp-artisti { margin: 0; font-size: 13.5px; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-now .sp-e { background: rgba(255,255,255,.82); color: #2A2420; }
+.sp-tasti { grid-area: tasti; align-self: end; display: flex; align-items: center; gap: 8px; min-width: 0; padding-top: 10px; }
+.sp-now .icon-btn { width: 40px; height: 40px; background: rgba(255,255,255,.18); color: #fff; border: 0; box-shadow: none; }
+.sp-now .sp-cuore.on { color: color-mix(in srgb, var(--rose) 72%, #fff); }
+.sp-now .sp-casse.altrove { background: var(--sage-pastel); color: #13230F; }
+.sp-dove { min-width: 0; padding: 6px 0; font: inherit; font-size: 12.5px; font-weight: 700; color: var(--sage-pastel); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-ascolta { grid-area: sotto; width: 100%; height: 46px; margin-top: 14px; font-size: 15px; gap: 6px; }
+.sp-sotto { grid-area: sotto; min-width: 0; margin-top: 6px; }
 .sp-seek { position: relative; height: 30px; margin: 8px 2px 0; display: flex; align-items: center; }
 .sp-bar { position: relative; flex: 1; height: 5px; border-radius: 5px; background: var(--line); }
 .sp-bar > i { position: relative; display: block; height: 100%; border-radius: 5px; background: var(--sage); transition: width .25s linear; }
@@ -714,7 +726,12 @@ input:placeholder-shown + .search-x { display: none; }
 .sp-play svg.i { width: 26px; height: 26px; }
 .sp-ic { width: 38px; height: 38px; flex: none; border-radius: 50%; display: grid; place-items: center; color: var(--text-3); transition: transform .15s ease, color .15s ease; }
 .sp-ic.on { color: var(--rose); }
-.sp-ic.big { width: 44px; height: 44px; align-self: flex-start; }
+.sp-now .sp-bar { background: rgba(255,255,255,.24); }
+.sp-now .sp-bar > i, .sp-now .sp-bar > i::after { background: #fff; }
+.sp-now .sp-times { color: rgba(255,255,255,.72); }
+.sp-now .sp-btn { color: rgba(255,255,255,.92); }
+.sp-now .sp-btn.on { color: var(--sage-pastel); background: rgba(255,255,255,.14); }
+.sp-now .sp-rep.uno::after { background: var(--sage-pastel); color: #13230F; }
 
 /* cerca */
 .sp-search { display: flex; align-items: center; gap: 10px; height: 48px; margin-top: 14px; padding: 0 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-1); color: var(--text-3); font-size: 15.5px; text-decoration: none; }
@@ -949,25 +966,27 @@ button.back-link { background: none; border: 0; cursor: pointer; font-family: in
 .sp-album-foot span { font-size: 12px; }
 .sp-chips { margin-top: 0; margin-bottom: 10px; }
 .chip .sp-n { font-weight: 600; opacity: .6; }
-.sp-consiglio .sp-eyebrow { display: block; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); margin-bottom: 2px; }
-.sp-cons-ctrl { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
-.sp-cons-ctrl .btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .sp-rep { position: relative; }
 .sp-rep.uno::after { content: '1'; position: absolute; top: 6px; right: 5px; min-width: 13px; height: 13px; border-radius: 7px; background: var(--sage); color: #fff; font-size: 9px; font-weight: 800; line-height: 13px; text-align: center; }
 .sp-sheet-head .row-main { display: flex; flex-direction: column; gap: 2px; color: var(--text-2); }
 .sp-addlist .set-row { padding: 10px 14px; }
 @media (max-width: 360px) {
-  .sp-now { padding: 12px; }
-  .sp-top { gap: 11px; }
-  .sp-cover { width: 60px; height: 60px; border-radius: 12px; }
-  .sp-meta > b { font-size: 17px; }
-  .sp-ic.big { width: 34px; height: 34px; }
+  .card.sp-now { padding: 14px; column-gap: 12px; }
+  .sp-now > .sp-cover { width: 84px; height: 84px; }
+  .sp-titolo { font-size: 19px; }
+  .sp-now .icon-btn { width: 38px; height: 38px; }
 }
 @media (prefers-reduced-motion: reduce) { .sp-eq i { animation: none; } .sp-bar > i, .sp-mini-bar > i { transition: none; } .sp-mini { animation: none; } .tabbar, .view, .sp-mini { transition: none !important; } }
 @media (min-width: 700px) and (min-height: 560px) {
   .sp-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 18px 14px; }
   .sp-hs { grid-auto-columns: 150px; margin: 0; padding: 2px 0 6px; scroll-padding: 0; }
-  .sp-cover { width: 92px; height: 92px; }
+  .card.sp-now { padding: 22px; column-gap: 22px; }
+  .sp-now > .sp-cover { width: 150px; height: 150px; }
+  .sp-titolo { font-size: 30px; }
+  .sp-now .icon-btn { width: 42px; height: 42px; }
+  .card.sp-now.sp-consiglio { grid-template-columns: auto auto minmax(0, 1fr); grid-template-areas: "cover meta meta" "cover sotto tasti"; column-gap: 0; }
+  .sp-consiglio > .sp-cover { margin-right: 22px; }
+  .sp-consiglio > .sp-ascolta { align-self: end; width: auto; height: 42px; margin: 0 8px 0 0; padding: 0 18px; font-size: 14px; }
   .sp-hero-img { width: 200px; height: 200px; }
   .sp-hero-txt h1 { font-size: 40px; }
   .sp-search, .sp-q { max-width: 680px; }

@@ -146,8 +146,40 @@ function testo(res, status, msg) {
   res.setHeader('Cache-Control', 'no-store');
   res.end(msg);
 }
-// l'iPhone in italiano può mandare i numeri come testo, con la virgola: "45,0703"
-const numero = (x) => num(typeof x === 'string' ? x.trim().replace(',', '.') : x);
+// Latitudine e longitudine come arrivano dal comando rapido, in qualsiasi forma: numero, testo con la virgola
+// ("45,0703", l'iPhone in italiano), con i gradi ("45,0703° N", "45° 4′ 13″ N"), dentro una lista o un dizionario.
+const INVISIBILI = /[  -‏‪- ⁠﻿]/g;
+export function coordinata(x, giro = 0) {
+  if (x === null || x === undefined || typeof x === 'boolean' || giro > 3) return NaN;
+  if (typeof x === 'number') return x;
+  if (Array.isArray(x)) return x.length ? coordinata(x[0], giro + 1) : NaN;
+  if (typeof x === 'object') {
+    for (const v of Object.values(x)) { const n = coordinata(v, giro + 1); if (Number.isFinite(n)) return n; }
+    return NaN;
+  }
+  const s = String(x).normalize('NFKC').replace(INVISIBILI, ' ').replace(/[−–—]/g, '-').trim();
+  const dec = (v) => (v ? Number(v.replace(',', '.')) : 0);
+  let n;
+  // gradi, primi e secondi: 45° 4′ 13,2″ N
+  const g = s.match(/(-?\d+(?:[.,]\d+)?)\s*°\s*(\d+(?:[.,]\d+)?)\s*['′’]\s*(?:(\d+(?:[.,]\d+)?)\s*(?:["″”]|''|′′))?/);
+  if (g) n = (/^-/.test(g[1]) ? -1 : 1) * (Math.abs(dec(g[1])) + dec(g[2]) / 60 + dec(g[3]) / 3600);
+  else { const m = s.match(/-?\d+(?:[.,]\d+)?/); n = m ? dec(m[0]) : NaN; }
+  // sud e ovest (anche "O") sono negativi
+  if (n > 0 && /\b(?:[SWO]|Sud|Ovest|South|West)\b/.test(s)) n = -n;
+  return n;
+}
+/** Il primo campo che c'è tra quei nomi (maiuscole, accenti e spazi non contano; anche dentro un dizionario). */
+function campo(b, nomi, giro = 0) {
+  if (!b || typeof b !== 'object' || giro > 2) return undefined;
+  const chiavi = Object.keys(b);
+  for (const nome of nomi) {
+    const k = chiavi.find((x) => norm(x).replace(/\s+/g, '') === nome);
+    if (k !== undefined) return b[k];
+  }
+  for (const k of chiavi) { const v = campo(b[k], nomi, giro + 1); if (v !== undefined) return v; }
+  return undefined;
+}
+const visto = (v) => (v === undefined ? 'manca' : v === null || v === '' ? 'vuota' : `«${(typeof v === 'object' ? JSON.stringify(v) : String(v)).slice(0, 40)}»`);
 
 async function parcheggio(req, res) {
   if (req.method !== 'POST') return testo(res, 405, 'Nel comando il metodo deve essere POST');
@@ -155,25 +187,28 @@ async function parcheggio(req, res) {
   if (!db) return testo(res, 503, 'Database non collegato');
   const b = body(req);
   const auth = basic(req);
-  const esito = await autorizza(req, req.headers['x-famiglia'] || b.codice || auth.pass);
+  const esito = await autorizza(req, req.headers['x-famiglia'] || campo(b, ['codice']) || auth.pass);
   if (esito !== 'ok') {
     await sleep(400);
     return esito === 'bloccato' ? testo(res, 429, 'Troppi tentativi con un codice sbagliato: riprova tra un quarto d’ora') : testo(res, 401, 'Codice di famiglia sbagliato');
   }
-  const lat = numero(b.lat), lon = numero(b.lon);
+  const latV = campo(b, ['lat', 'latitudine', 'latitude']), lonV = campo(b, ['lon', 'lng', 'long', 'longitudine', 'longitude']);
+  const lat = coordinata(latV), lon = coordinata(lonV);
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180 || (!lat && !lon)) {
-    return testo(res, 400, 'Posizione mancante: nel comando servono Latitudine e Longitudine');
+    // la risposta dice cosa è arrivato (mai il codice): così dalla notifica si capisce cosa sistemare
+    if (latV === undefined && lonV === undefined) return testo(res, 400, `Nel comando mancano i campi lat e lon (arrivati: ${Object.keys(b).join(', ').slice(0, 80) || 'nessuno'})`);
+    return testo(res, 400, `Posizione non letta: lat ${visto(latV)}, lon ${visto(lonV)}`);
   }
   try {
     // chi ha parcheggiato: "p1"/"p2" oppure il nome (es. "serena"); se manca o non torna, pazienza
-    const raw = String(b.chi || auth.user || '').trim();
+    const raw = String(campo(b, ['chi']) || auth.user || '').trim();
     let chi = ['p1', 'p2'].includes(raw) ? raw : null;
     if (!chi && raw) {
       const { items } = await db.collection('settings');
       const names = { p1: 'Patrick', p2: 'Serena', ...((items.main || {}).names || {}) };
       chi = ['p1', 'p2'].find((k) => norm(names[k]) === norm(raw)) || null;
     }
-    const acc = numero(b.acc);
+    const acc = coordinata(campo(b, ['acc', 'precisione']));
     // l'indirizzo con poca attesa (la risposta deve essere svelta): se non arriva lo cerca poi l'app
     const place = await indirizzo(lat, lon, { preciso: true, attesa: 1500 });
     await db.apply([{ op: 'set', col: 'posizioni', id: 'auto', data: { lat, lon, acc: acc > 0 ? Math.round(acc) : null, at: Date.now(), chi, place, nota: '', src: 'comando' } }]);

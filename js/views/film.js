@@ -2,7 +2,7 @@
 // copertina e "dove vederlo" arrivano da soli, e cercando un titolo la categoria si propone dal genere.
 import { html, raw, norm, cap, vibrate, todayIso } from '../utils.js';
 import { icon, catFace } from '../icons.js';
-import { FILM_CATS, filmCats } from '../data.js';
+import { FILM_CATS, filmCats, filmTemiNascosti, temiDaSalvare, categorieDaGeneri } from '../data.js';
 import { state, store, openSheet, closeSheet, toast, val, emptyState, ui, setUi, themeChoices, pageHead, isSynced, settings, saveSettings, cancella } from '../core.js';
 import { currentTheme } from '../season.js';
 
@@ -29,7 +29,8 @@ const rotte = new Set(); // copertine che non si sono caricate: al loro posto il
 function poster(f, size = '') {
   const src = safePoster(f.poster);
   if (src && !rotte.has(src)) return html`<img src="${src}" alt="" loading="lazy" decoding="async" data-poster="${f.id || ''}">`;
-  return html`<div class="poster-ph th-${mainTheme(f)} ${size}">${icon(f.kind === 'tv' ? 'tv' : 'film')}<span>${f.title}</span></div>`;
+  const th = mainTheme(f);
+  return html`<div class="poster-ph th-${FILM_CATS[th] && FILM_CATS[th].mia ? 'mia' : th} ${size}">${icon(f.kind === 'tv' ? 'tv' : 'film')}<span>${f.title}</span></div>`;
 }
 // un'immagine che non arriva (rete lenta, indirizzo cambiato) non lascia un buco
 document.addEventListener('error', (ev) => {
@@ -146,6 +147,7 @@ export function corpo() {
     </div>
     <div class="chips film-cats" role="group" aria-label="Categorie">
       ${Object.entries(FILM_CATS).map(([k, c]) => html`<button class="chip ${theme === k ? 'on' : ''}" data-action="film-theme" data-v="${theme === k ? 'tutti' : k}" aria-pressed="${theme === k}">${icon(c.icon, 'xs')} ${c.label}</button>`)}
+      <a class="chip chip-edit" href="#/impostazioni/categorie/film" aria-label="Togli o aggiungi categorie">${icon('pencil', 'xs')}</a>
     </div>
 
     ${seasonal.length ? html`<div class="section-title"><span>${icon(FILM_CATS[cur].icon, 'xs')} Atmosfera ${FILM_CATS[cur].label}</span></div>${grid(seasonal)}` : ''}
@@ -294,7 +296,7 @@ function detailSheet(f) {
 function editSheet(f = null, preset = {}) {
   const d = f || preset;
   // categoria proposta: quella già scelta, altrimenti dal genere (ricerca), altrimenti quella del periodo
-  const proposte = f ? filmCats(f) : (preset.categorie || []).filter((c) => FILM_CATS[c]);
+  const proposte = f ? filmCats(f) : [...new Set([...(preset.categorie || []), ...categorieDaGeneri(preset.generi)])].filter((c) => FILM_CATS[c]);
   const scelte = proposte.length ? proposte : [catDelPeriodo() || 'sempre'];
   openSheet({
     title: f ? 'Modifica' : 'Nuovo film o serie',
@@ -312,7 +314,9 @@ function editSheet(f = null, preset = {}) {
     onSubmit: (fd) => {
       const title = cap(val(fd, 'title'));
       if (!title) return false;
-      const data = { title, year: Number(val(fd, 'year')) || null, kind: val(fd, 'kind') || 'movie', themes: fd.getAll('themes').length ? fd.getAll('themes') : ['sempre'], note: val(fd, 'note') };
+      // le categorie tolte (e i temi di prima) restano salvate: riaccendendole il film torna lì
+      const themes = temiDaSalvare(fd.getAll('themes'), f && f.themes, f ? filmTemiNascosti(f) : []);
+      const data = { title, year: Number(val(fd, 'year')) || null, kind: val(fd, 'kind') || 'movie', themes, note: val(fd, 'note') };
       if (f) {
         const changed = f.title !== title || (f.year || null) !== data.year || (f.kind || 'movie') !== data.kind;
         store.update('film', f.id, changed ? { ...data, jw: null, poster: '', offers: [], offersAt: null, lookupMiss: null } : data);

@@ -1379,6 +1379,10 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
 .fh-actions .btn { height: 42px; padding: 0 16px; font-size: 14px; }
 .fh-actions .icon-btn { background: rgba(255,255,255,.18); color: #fff; border: 0; }
 .chip-sep { width: 1px; flex: none; background: var(--line-2); margin: 6px 2px; }
+/* la matita in fondo ai filtri: porta a Impostazioni → Filtri e categorie */
+.chip.chip-edit { padding: 0 13px; color: var(--text-3); border-style: dashed; text-decoration: none; }
+.r-ph.th-mia { background: radial-gradient(circle at 30% 20%, #E6EEE9, #CBDCD2); color: #47665A; }
+.poster-ph.th-mia { background: linear-gradient(160deg, #E3ECE7, #C3D6CB); color: #34503F; }
 .mini-prov { display: flex; gap: 4px; margin-top: 5px; }
 .mini-prov img { width: 18px; height: 18px; border-radius: 5px; }
 a.prov { text-decoration: none; color: var(--text); }
@@ -1648,6 +1652,21 @@ body.swiping-back .fab { visibility: hidden; }
 .sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); transition: transform .2s cubic-bezier(.2,.8,.2,1); }
 .sw:checked { background: var(--sage-pastel); }
 .sw:checked::after { transform: translateX(20px); }
+
+/* Impostazioni → Filtri e categorie */
+.cat-row { padding: 10px 12px 10px 14px; }
+.cat-row .row-main { flex: 1; min-width: 0; }
+.cat-ico { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 11px; background: var(--surface-2); color: var(--text-2); font-size: 19px; line-height: 1; }
+.cat-ico[style] { background: color-mix(in srgb, var(--c) 30%, transparent); }
+.cat-ico svg.i { width: 20px; height: 20px; }
+.cat-row.spenta .cat-ico, .cat-row.spenta .row-main { opacity: .5; }
+.cat-row .cat-mod { width: 36px; height: 36px; color: var(--text-3); }
+.cat-add { font: inherit; color: var(--oak-deep); }
+.cat-add > svg.i { width: 36px; flex: none; }
+.cat-altre { display: inline-flex; align-items: center; margin: 18px 4px 0; }
+.icon-pick, .emo-pick { gap: 6px; }
+.icon-pick span, .emo-pick span { width: 44px; height: 40px; padding: 0; justify-content: center; }
+.emo-pick span { font-size: 21px; }
 label.set-row { cursor: pointer; }
 
 /* Home: il conto alla rovescia sta sotto "Oggi in casa" (su iPad dentro la colonna di sinistra) */

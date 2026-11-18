@@ -85,6 +85,7 @@ async function justwatch(q) {
     link: n.content && n.content.fullPath ? `https://www.justwatch.com${n.content.fullPath}` : '',
     offers: offersFrom(n.offers),
     categorie: categorie(n.content && n.content.genres),
+    generi: ((n.content && n.content.genres) || []).map((g) => g && g.shortName).filter((g) => typeof g === 'string').slice(0, 8),
   })).filter((x) => x.title);
 }
 
@@ -103,6 +104,7 @@ async function itunes(q, kind) {
     link: '',
     offers: null,
     categorie: daGenere(x.primaryGenreName),
+    generi: typeof x.primaryGenreName === 'string' && x.primaryGenreName ? [x.primaryGenreName.slice(0, 40)] : [],
   })).filter((x) => x.title);
 }
 

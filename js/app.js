@@ -4,6 +4,7 @@ import { icon } from './icons.js';
 import { COLLECTIONS, setErrorHandler, detectBackend, savedCode, useSync } from './store.js';
 import { state, store, setRenderer, rerender, closeSheet, submitSheet, sheetOpen, sheetError, openSheet, toast, settings, saveSettings, me, setMe, val } from './core.js';
 import { applySeason } from './season.js';
+import { usaCategorie } from './data.js';
 import { initGestures } from './gestures.js';
 import { rinfresca as rinfrescaNotifiche, stato as statoNotifiche } from './notifiche.js';
 import { sp as spotifyStato, eQui, avviaSpotify, quiInUso } from './spotify.js';
@@ -126,6 +127,7 @@ function render() {
     return;
   }
   if (!state.loaded.has('settings')) return;
+  usaCategorie(settings()); // filtri e categorie tolti o aggiunti (Impostazioni → Filtri e categorie)
 
   const mod = VIEWS[r[0]] || home;
   const key = r.join('/');

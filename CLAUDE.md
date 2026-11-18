@@ -45,6 +45,15 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   campo "Categoria"). `ricetteCats(r)`: Capodanno conta come Natale; i temi di prima che non sono categorie (Pasqua, San Valentino,
   "Parigi e Canarie"…) restano salvati ma non si mostrano (`temiVecchi()` si conservano salvando) e la ricetta va in Sempre.
   Esempi aggiornati una volta (`settings.ricetteCats`: 1 crêpes in Colazione, 2 crêpes/tiramisù/biscotti anche in Dolci).
+- **Filtri e categorie** (`#/impostazioni/categorie[/film|/ricette|/spesa]`, matita in fondo ai filtri di Film e Ricette): per tutta la
+  casa si tolgono categorie e reparti e se ne aggiungono di nuovi. In settings `categorieFilm` / `categorieRicette` / `categorieSpesa` =
+  `{ spente, mie }` (`mie`: `{ id, label, icon }`, per i reparti `{ id, label, emoji, color, dopo }` = nel giro dopo quel reparto).
+  `FILM_CATS`, `RICETTE_CATS` e `SHOP_CATS` restano gli stessi oggetti ma li rifà `usaCategorie(settings())` prima di ogni disegno
+  (`elencoCategorie()` dà anche quelle tolte). Togliere = nascondere, mai cancellare: film e ricette tengono i loro temi
+  (`filmTemiNascosti()`, `temiVecchi()`, `temiDaSalvare()`: salvando senza toccare non si aggiunge «Sempre»), i prodotti il loro reparto
+  (si vedono in «Altro»; nel foglio il reparto si scrive solo se lo si cambia). «Sempre» e «Altro» non si tolgono. L'id viene dal nome
+  (`idCategoria()`): rifacendo «Pasqua» tornano le ricette che l'avevano; riaggiungendo una tolta, si riaccende. Le vostre categorie dei
+  film si propongono da sole dai generi della ricerca (`generi` da `api/film.js`, `categorieDaGeneri()`: es. Commedia ← `cmy`).
   "Parigi e Canarie" resta solo come atmosfera e musica di aprile. Nel tema scuro si attenuano solo i segnaposto colorati,
   mai le foto vere (`.r-ph:not(.r-ph-cover)`).
 - **Desideri e liste:** raccolta `liste` (`tipo: 'nostra' | 'amazon'`); "Desideri di casa" è la lista di sempre (desideri senza

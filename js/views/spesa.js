@@ -9,7 +9,8 @@ const learnedCat = (name) => {
   const f = state.data.freq.find((x) => x.id === freqId(cleanName(name)));
   return f && f.catManual ? normCat(f.category) : null;
 };
-const catOf = (it) => (it.catManual && it.category ? normCat(it.category) : learnedCat(it.name) || classify(cleanName(it.name)));
+// (sempre uno dei reparti in uso: quelli tolti in Impostazioni finiscono in "Altro")
+const catOf = (it) => normCat(it.catManual && it.category ? it.category : learnedCat(it.name) || classify(cleanName(it.name)));
 
 // "il latte" → "Latte": niente articoli, sempre con la maiuscola
 const ART = /^(?:(?:il|lo|la|i|gli|le|un|uno|una|del|dello|della|dei|degli|delle)\s+|(?:l|un|dell|d)['’]\s*)/i;
@@ -152,10 +153,17 @@ function editSheet(it) {
       const name = cleanName(val(fd, 'name'));
       if (!name) return false;
       const cat = val(fd, 'category');
-      const manual = cat !== classify(name);
-      store.update('spesa', it.id, { name, qty: val(fd, 'qty'), category: cat, catManual: manual, note: val(fd, 'note') });
-      // la prossima volta che si aggiunge questo prodotto va già nel reparto giusto
-      if (cat !== catOf(it) || manual) store.update('freq', freqId(name), { name, category: cat, catManual: manual });
+      const patch = { name, qty: val(fd, 'qty'), note: val(fd, 'note') };
+      if (cat !== catOf(it)) {
+        // reparto cambiato: la prossima volta che si aggiunge questo prodotto va già lì
+        const manual = cat !== classify(name);
+        store.update('spesa', it.id, { ...patch, category: cat, catManual: manual });
+        store.update('freq', freqId(name), { name, category: cat, catManual: manual });
+      } else {
+        // reparto non toccato: resta quello salvato (anche se è un reparto tolto, che intanto si vede in "Altro")
+        store.update('spesa', it.id, patch);
+        if (it.catManual && it.category) store.update('freq', freqId(name), { name, category: it.category, catManual: true });
+      }
     },
   });
 }

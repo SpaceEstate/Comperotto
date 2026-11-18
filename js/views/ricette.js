@@ -1,7 +1,7 @@
 // Ricette, divise per tema (Natale, Halloween, Pasqua, …)
 import { html, raw, norm, cap, parseQty, resizeImage, safeImg, safeUrl, hostOf, vibrate } from '../utils.js';
 import { icon, catFace } from '../icons.js';
-import { RICETTE_CATS, ricetteCats, temiVecchi } from '../data.js';
+import { RICETTE_CATS, ricetteCats, temiVecchi, temiDaSalvare } from '../data.js';
 import { state, store, openSheet, closeSheet, toast, val, lines, pageHead, emptyState, ui, setUi, navigate, themeChoices, confirmSheet, rerender, isSynced, sheetError, cancella, settings, saveSettings } from '../core.js';
 import { addShopping } from './spesa.js';
 import { currentTheme, seasonInfo } from '../season.js';
@@ -11,7 +11,7 @@ const catLabel = (c) => (RICETTE_CATS[c] || RICETTE_CATS.sempre).label;
 
 export function placeholder(theme, cls = '') {
   const c = RICETTE_CATS[theme] ? theme : 'sempre';
-  return html`<div class="r-ph th-${c} ${cls}">${icon(RICETTE_CATS[c].icon)}</div>`;
+  return html`<div class="r-ph th-${RICETTE_CATS[c].mia ? 'mia' : c} ${cls}">${icon(RICETTE_CATS[c].icon)}</div>`;
 }
 
 function card(r) {
@@ -66,6 +66,7 @@ export function corpo() {
       <button class="chip ${theme === 'tutte' ? 'on' : ''}" data-action="ricette-theme" data-theme="tutte">Tutte</button>
       <button class="chip ${theme === 'preferite' ? 'on' : ''}" data-action="ricette-theme" data-theme="preferite">${icon('heart', 'xs')} Preferite</button>
       ${Object.entries(RICETTE_CATS).map(([id, t]) => html`<button class="chip ${theme === id ? 'on' : ''}" data-action="ricette-theme" data-theme="${id}">${icon(t.icon, 'xs')} ${t.label}</button>`)}
+      <a class="chip chip-edit" href="#/impostazioni/categorie/ricette" aria-label="Togli o aggiungi categorie">${icon('pencil', 'xs')}</a>
     </div>
 
     ${q && filtered.length ? html`<div class="section-title"><span>Nel nostro ricettario · ${filtered.length}</span></div>` : ''}
@@ -275,7 +276,7 @@ function recipeSheet(r = null, preset = null) {
       if (!title) return false;
       const data = {
         // i temi di prima che non sono categorie restano salvati (niente dati persi)
-        title, themes: [...(fd.getAll('themes').length ? fd.getAll('themes') : ['sempre']), ...temiVecchi(r)],
+        title, themes: temiDaSalvare(fd.getAll('themes'), r && r.themes, temiVecchi(r)),
         time: Number(val(fd, 'time')) || null, servings: Number(val(fd, 'servings')) || null,
         ingredients: lines(val(fd, 'ingredients')), steps: lines(val(fd, 'steps')), note: val(fd, 'note'), photo,
       };

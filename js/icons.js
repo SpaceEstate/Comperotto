@@ -85,6 +85,7 @@ const P = {
   shuffle: '<path d="M3.5 7.5h2.8c1.9 0 3.1.9 4.1 2.4l2.2 3.4c1 1.5 2.2 2.2 4.1 2.2h3.3"/><path d="M3.5 16.5h2.8c1.3 0 2.2-.4 3-1.1M13.4 8.6c.8-.7 1.7-1.1 3.1-1.1h3.5"/><path d="M17.5 5 20 7.5 17.5 10M17.5 13 20 15.5 17.5 18"/>',
   volume: '<path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4a.5.5 0 0 1-.5-.5v-4a.5.5 0 0 1 .5-.5z"/><path d="M15.5 9.2a4 4 0 0 1 0 5.6M18 6.8a7.4 7.4 0 0 1 0 10.4"/>',
   speaker: '<rect x="6" y="3" width="12" height="18" rx="6"/><circle cx="12" cy="14.2" r="2.6"/><path d="M10.6 7.6h2.8"/>',
+  filtri: '<path d="M4 5.5h16l-6.3 7.3v5.4l-3.4 1.8v-7.2z"/>',
   casse: '<rect x="5.5" y="2.5" width="13" height="19" rx="2.8"/><circle cx="12" cy="14.6" r="3.4"/><circle cx="12" cy="7.2" r="1.2"/>',
   phone: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.6"/><path d="M10.8 18.5h2.4"/>',
   tablet: '<rect x="4.5" y="2.5" width="15" height="19" rx="2.4"/><path d="M10.8 18.5h2.4"/>',

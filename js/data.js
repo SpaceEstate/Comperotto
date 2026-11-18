@@ -17,28 +17,35 @@ export const THEMES = {
 };
 export const THEME_IDS = Object.keys(THEMES);
 
+// Categorie (i filtri delle pagine): quelle di casa più quelle che aggiungete voi, meno quelle che togliete
+// (Impostazioni → Filtri e categorie). Oggetti senza prototipo: un tema salvato come "constructor" non è una categoria.
+const senzaProto = (o) => Object.assign(Object.create(null), o);
+
 // Categorie delle ricette (i filtri della pagina Ricette), nell'ordine in cui compaiono
-export const RICETTE_CATS = {
+const RICETTE_BASE = senzaProto({
   natale: { label: 'Natale', icon: 'tree' },
   halloween: { label: 'Halloween', icon: 'pumpkin' },
   sempre: { label: 'Sempre', icon: 'bowl' },
   estate: { label: 'Estate', icon: 'wave' },
   colazione: { label: 'Colazione', icon: 'cup' },
   dolci: { label: 'Dolci', icon: 'cake' },
-};
-// temi di prima che finiscono in una categoria (Capodanno è nelle feste di Natale)
+});
+/** Le categorie delle ricette in uso (si aggiornano da sole con le impostazioni: vedi usaCategorie). */
+export const RICETTE_CATS = senzaProto(RICETTE_BASE);
+// temi di prima che finiscono in una categoria (Capodanno è nelle feste di Natale, se non è una categoria sua)
 const RICETTE_ALIAS = { capodanno: 'natale' };
-/** Le categorie di una ricetta. I temi di prima che non sono categorie (es. Pasqua, "Parigi e Canarie")
- *  restano salvati ma non si mostrano: se non resta niente, la ricetta è in "Sempre". */
+const comeCategoria = (t) => (RICETTE_CATS[t] ? t : Object.hasOwn(RICETTE_ALIAS, t) ? RICETTE_ALIAS[t] : t);
+/** Le categorie di una ricetta. I temi di prima che non sono categorie (es. Pasqua, "Parigi e Canarie") e le
+ *  categorie tolte restano salvati ma non si mostrano: se non resta niente, la ricetta è in "Sempre". */
 export const ricetteCats = (r) => {
-  const c = [...new Set(((r && r.themes) || []).map((t) => RICETTE_ALIAS[t] || t).filter((t) => RICETTE_CATS[t]))];
+  const c = [...new Set(((r && r.themes) || []).map(comeCategoria).filter((t) => RICETTE_CATS[t]))];
   return c.length ? c : ['sempre'];
 };
-/** I temi salvati che non sono categorie (si tengono quando si modifica la ricetta: niente dati persi). */
-export const temiVecchi = (r) => ((r && r.themes) || []).filter((t) => !RICETTE_CATS[t] && !RICETTE_ALIAS[t]);
+/** I temi salvati che ora non si vedono (vecchi o di categorie tolte): si tengono quando si modifica la ricetta. */
+export const temiVecchi = (r) => ((r && r.themes) || []).filter((t) => !RICETTE_CATS[comeCategoria(t)]);
 
 // Categorie dei film (diverse dai temi di ricette e musica), nell'ordine in cui compaiono
-export const FILM_CATS = {
+const FILM_BASE = senzaProto({
   famiglia: { label: 'Famiglia', icon: 'users' },
   natale: { label: 'Natale', icon: 'tree' },
   halloween: { label: 'Halloween', icon: 'pumpkin' },
@@ -47,13 +54,28 @@ export const FILM_CATS = {
   azione: { label: 'Azione', icon: 'bolt' },
   horror: { label: 'Horror', icon: 'ghost' },
   cartoni: { label: 'Cartoni', icon: 'balloon' },
-};
-/** Le categorie di un film. I temi di prima che non sono più categorie (es. "Parigi e Canarie", "Estate")
- *  restano salvati ma non si mostrano: se non resta niente, il film è in "Sempre". */
+});
+/** Le categorie dei film in uso (si aggiornano da sole con le impostazioni: vedi usaCategorie). */
+export const FILM_CATS = senzaProto(FILM_BASE);
+/** Le categorie di un film. I temi di prima che non sono più categorie (es. "Parigi e Canarie", "Estate") e le
+ *  categorie tolte restano salvati ma non si mostrano: se non resta niente, il film è in "Sempre". */
 export const filmCats = (f) => {
   const c = ((f && f.themes) || []).filter((t) => FILM_CATS[t]);
   return c.length ? c : ['sempre'];
 };
+/** Quanti film o ricette hanno quella categoria (contando anche quelli in cui ora non si vede perché è tolta). */
+export const conCategoria = (tipo, lista, id) => (lista || []).filter((x) => ((x && x.themes) || [])
+  .some((t) => t === id || (tipo === 'ricette' && Object.hasOwn(RICETTE_ALIAS, t) && RICETTE_ALIAS[t] === id && !RICETTE_CATS[t]))).length;
+/** I temi da salvare modificando un film o una ricetta: quelli scelti più quelli che ora non si vedono. Se si vedeva
+ *  solo «Sempre» perché le sue categorie sono tolte (o di prima) e lo si è lasciato così, non si aggiunge «Sempre»:
+ *  riaccendendo le categorie torna tutto com'era. */
+export function temiDaSalvare(scelti, prima, nascosti) {
+  const soloSempre = !scelti.length || (scelti.length === 1 && scelti[0] === 'sempre' && !(prima || []).includes('sempre'));
+  if (soloSempre && nascosti.length) return [...nascosti];
+  return [...new Set([...(scelti.length ? scelti : ['sempre']), ...nascosti])];
+}
+/** I temi di un film che ora non si vedono (vecchi o di categorie tolte): si tengono quando lo si modifica. */
+export const filmTemiNascosti = (f) => ((f && f.themes) || []).filter((t) => !FILM_CATS[t]);
 export const themeLabel = (id, short = false) => (THEMES[id] ? (short && THEMES[id].short) || THEMES[id].label : id);
 
 // ---------------------------------------------------------------------------
@@ -124,7 +146,7 @@ export function upcomingDates(settings, cats = [], ref = todayIso()) {
 // ---------------------------------------------------------------------------
 // Reparti nell'ordine del giro al supermercato (surgelati e bevande alla fine: restano freddi e non schiacciano il resto).
 // Gli id vecchi restano validi grazie a LEGACY_CATS (es. il vecchio "freschi" era latte e formaggi: ora è "frigo").
-export const SHOP_CATS = [
+const SHOP_BASE = [
   { id: 'fresco', emoji: '🥬', label: 'Freschi', color: '#8DBF7E' },
   { id: 'frigo', emoji: '🧀', label: 'Frigo', color: '#F2CF72' },
   { id: 'forno', emoji: '🥖', label: 'Forno', color: '#E2B47E' },
@@ -137,10 +159,115 @@ export const SHOP_CATS = [
   { id: 'bevande', emoji: '🥤', label: 'Bevande', color: '#8FB9D8' },
   { id: 'altro', emoji: '🛒', label: 'Altro', color: '#C9C0B6' },
 ];
+/** I reparti in uso, nell'ordine del giro (si aggiornano da soli con le impostazioni: vedi usaCategorie). */
+export const SHOP_CATS = SHOP_BASE.map((c) => ({ ...c }));
 const LEGACY_CATS = { frutta: 'fresco', carne: 'fresco', freschi: 'frigo', latticini: 'frigo', gatti: 'animali' };
-const legacy = (id) => LEGACY_CATS[id] || id;
+const legacy = (id) => (Object.hasOwn(LEGACY_CATS, id) ? LEGACY_CATS[id] : id);
 export const shopCat = (id) => SHOP_CATS.find((c) => c.id === legacy(id)) || SHOP_CATS[SHOP_CATS.length - 1];
 export const normCat = (id) => (SHOP_CATS.some((c) => c.id === legacy(id)) ? legacy(id) : 'altro');
+
+// ---------------------------------------------------------------------------
+// Filtri e categorie che si possono togliere o aggiungere (per tutta la casa, in settings):
+//   categorieFilm / categorieRicette / categorieSpesa = { spente: [id…], mie: [{ id, label, icon | emoji, color, dopo }] }
+// Togliere = nascondere: film, ricette e prodotti tengono le loro categorie (riaccendendola tornano al loro posto).
+// "Sempre" (film e ricette) e "Altro" (spesa) restano sempre: è lì che va ciò che non ha una categoria visibile.
+// ---------------------------------------------------------------------------
+export const CATEGORIE = {
+  film: { chiave: 'categorieFilm', base: FILM_BASE, fissa: 'sempre', icona: 'film', riservati: ['tutti', 'davedere', 'visti'] },
+  ricette: { chiave: 'categorieRicette', base: RICETTE_BASE, fissa: 'sempre', icona: 'bowl', riservati: ['tutte', 'preferite'] },
+  spesa: { chiave: 'categorieSpesa', base: senzaProto(Object.fromEntries(SHOP_BASE.map((c) => [c.id, c]))), fissa: 'altro', riservati: Object.keys(LEGACY_CATS) },
+};
+/** Le icone tra cui scegliere per una categoria nuova di film o ricette. */
+export const ICONE_CATEGORIE = ['star', 'heart', 'sparkles', 'sun', 'moon', 'leaf', 'plant', 'tree', 'pumpkin', 'egg', 'cake', 'cup',
+  'bowl', 'chef', 'basket', 'drop', 'wave', 'palm', 'eiffel', 'map', 'film', 'tv', 'music', 'camera', 'eye', 'bolt', 'ghost', 'balloon',
+  'users', 'cat', 'paw', 'gift', 'bulb', 'clock'];
+/** Le faccine tra cui scegliere per un reparto nuovo. */
+export const EMOJI_REPARTI = ['🛒', '🍎', '🥦', '🥩', '🐟', '🍞', '🧀', '🥚', '🥫', '🍝', '🌶️', '🧂', '🍪', '🍬', '☕', '🍷', '🍺', '🧃',
+  '🍼', '🧸', '💊', '🧻', '🧽', '🧺', '🌸', '🔋', '🐶', '🎁', '🏠', '📦'];
+const COLORI_REPARTI = ['#A9C9A0', '#E9C38A', '#D9A7B5', '#9FC3D9', '#C5B3DE', '#E3B49B', '#B7C99A', '#D7C08F'];
+const ID_OK = /^[a-z0-9][a-z0-9-]{0,39}$/;
+const mieValide = (conf) => (conf && Array.isArray(conf.mie) ? conf.mie : [])
+  .filter((m) => m && typeof m.id === 'string' && ID_OK.test(m.id) && !(m.id in Object.prototype) && typeof m.label === 'string' && m.label.trim());
+
+/** Le impostazioni di un tipo (film, ricette, spesa), sempre nella stessa forma. */
+export function confCategorie(s, tipo) {
+  const c = (s && s[CATEGORIE[tipo].chiave]) || {};
+  return { spente: Array.isArray(c.spente) ? c.spente.filter((x) => typeof x === 'string') : [], mie: mieValide(c) };
+}
+
+/** Tutte le categorie di un tipo, anche quelle tolte, nell'ordine in cui compaiono:
+ *  { id, label, icon | emoji e color, mia (aggiunta da voi), spenta (tolta), fissa (Sempre / Altro) }. */
+export function elencoCategorie(s, tipo) {
+  const { base, fissa, icona } = CATEGORIE[tipo];
+  const { spente, mie } = confCategorie(s, tipo);
+  let lista;
+  if (tipo === 'spesa') {
+    // i vostri reparti vanno nel giro dopo quello scelto (altrimenti prima di "Altro", che resta l'ultimo)
+    lista = SHOP_BASE.map((c) => ({ ...c }));
+    mie.forEach((m, i) => {
+      if (lista.some((c) => c.id === m.id) || Object.hasOwn(LEGACY_CATS, m.id)) return;
+      const r = { id: m.id, emoji: typeof m.emoji === 'string' && m.emoji && m.emoji.length <= 16 ? m.emoji : '🛒', label: m.label.trim().slice(0, 30),
+        color: /^#[0-9a-f]{6}$/i.test(m.color || '') ? m.color : COLORI_REPARTI[i % COLORI_REPARTI.length], dopo: m.dopo || '', mia: true };
+      const j = lista.findIndex((c) => c.id === m.dopo);
+      lista.splice(j >= 0 ? j + 1 : lista.length - 1, 0, r);
+    });
+    lista = [...lista.filter((c) => c.id !== 'altro'), lista.find((c) => c.id === 'altro')];
+  } else {
+    lista = Object.entries(base).map(([id, c]) => ({ id, ...c }));
+    mie.forEach((m) => { if (!lista.some((c) => c.id === m.id)) lista.push({ id: m.id, label: m.label.trim().slice(0, 30), icon: ICONE_CATEGORIE.includes(m.icon) ? m.icon : icona, mia: true }); });
+  }
+  return lista.map((c) => ({ ...c, fissa: c.id === fissa, spenta: c.id !== fissa && spente.includes(c.id) }));
+}
+
+let firmaCategorie = '';
+/** Rifà FILM_CATS, RICETTE_CATS e SHOP_CATS dalle impostazioni (si chiama prima di ogni disegno: costa poco). */
+export function usaCategorie(s = {}) {
+  const firma = JSON.stringify(['film', 'ricette', 'spesa'].map((t) => confCategorie(s, t)));
+  if (firma === firmaCategorie) return;
+  firmaCategorie = firma;
+  for (const [dest, tipo] of [[FILM_CATS, 'film'], [RICETTE_CATS, 'ricette']]) {
+    Object.keys(dest).forEach((k) => delete dest[k]);
+    elencoCategorie(s, tipo).filter((c) => !c.spenta).forEach(({ id, label, icon, mia }) => { dest[id] = mia ? { label, icon, mia: true } : { ...CATEGORIE[tipo].base[id] }; });
+  }
+  SHOP_CATS.length = 0;
+  SHOP_CATS.push(...elencoCategorie(s, 'spesa').filter((c) => !c.spenta).map(({ spenta, fissa, dopo, ...c }) => c));
+}
+
+/** L'id di una categoria nuova dal suo nome ("Primi piatti" → "primi-piatti"). Stesso nome = stessa categoria:
+ *  rifacendo una categoria di prima (es. "Pasqua" nelle ricette) tornano anche le cose che l'avevano. */
+export function idCategoria(tipo, label) {
+  let base = norm(label).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30) || 'categoria';
+  const { riservati } = CATEGORIE[tipo];
+  let id = base, n = 2;
+  while (riservati.includes(id) || id in Object.prototype) id = `${base}-${n++}`;
+  return id;
+}
+/** Un colore per un reparto nuovo (il primo che non c'è già). */
+export const coloreReparto = (usati = []) => COLORI_REPARTI.find((c) => !usati.includes(c)) || COLORI_REPARTI[usati.length % COLORI_REPARTI.length];
+
+// Generi di JustWatch (sigle) e di Apple (nomi) → le vostre categorie dei film con un nome che ci somiglia
+// (quelle di casa le propone già il server: Famiglia, Azione, Thriller, Horror, Cartoni)
+const GENERI_MIE = [
+  [/^(cmy|comedy|commedia)$/i, /^(commedi|comic)/],
+  [/^(scf|sci-?fi.*|science fiction|fantascienza)$/i, /^(fantascienz|sci-?fi)/],
+  [/^(rma|romance|sentimentale|romantic.*)$/i, /^(romant|sentiment|amore|love)/],
+  [/^(doc|documentar.*)$/i, /^document/],
+  [/^(drm|drama|dramma.*|drammatic.*)$/i, /^dramm/],
+  [/^(crm|crime|poliziesc.*|giall.*)$/i, /^(crim|giall|polizies)/],
+  [/^(fnt|fantasy)$/i, /^fantasy/],
+  [/^(war|guerra)$/i, /^guerr/],
+  [/^(hst|history|storic.*)$/i, /^stori/],
+  [/^(msc|music.*)$/i, /^music/],
+  [/^(spt|sport.*)$/i, /^sport/],
+  [/^(wsn|western)$/i, /^western/],
+  [/^(rly|reality.*)$/i, /^reality/],
+];
+/** Le vostre categorie dei film che corrispondono ai generi trovati (per proporle da sole, come quelle di casa). */
+export function categorieDaGeneri(generi = []) {
+  const g = (Array.isArray(generi) ? generi : []).map((x) => String(x || '').trim()).filter(Boolean);
+  if (!g.length) return [];
+  return Object.entries(FILM_CATS).filter(([id, c]) => c.mia && GENERI_MIE.some(([gen, nome]) => g.some((x) => gen.test(x)) && (nome.test(id) || nome.test(norm(c.label))))).map(([id]) => id);
+}
 
 // Parole che fanno capire il reparto (separate da virgola; vanno bene anche più parole)
 const KW = {

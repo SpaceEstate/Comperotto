@@ -1,7 +1,7 @@
 // Impostazioni: chi sei, aspetto, famiglia (nomi, compleanni, ricorrenze), copia dei dati
-import { html, raw, cap, lsGet, lsSet, uid, parseDMY, fmtDMY, timeAgo, isIPad } from '../utils.js';
+import { html, raw, cap, norm, lsGet, lsSet, uid, parseDMY, fmtDMY, timeAgo, isIPad } from '../utils.js';
 import { icon } from '../icons.js';
-import { SEASONS } from '../data.js';
+import { SEASONS, CATEGORIE, ICONE_CATEGORIE, EMOJI_REPARTI, elencoCategorie, confCategorie, idCategoria, coloreReparto, conCategoria } from '../data.js';
 import { state, store, isSynced, settings, saveSettings, me, setMe, nameOf, openSheet, closeSheet, sheetError, toast, val, pageHead, rerender, confirmSheet } from '../core.js';
 import { seasonOverride, setSeasonOverride } from '../season.js';
 import { seedData } from '../seed.js';
@@ -22,6 +22,7 @@ export function applyTheme() {
 }
 
 export function render(route = []) {
+  if (route[1] === 'categorie') return categoriePage(route[2]);
   if (route[1] === 'rifiuti') {
     return html`<a class="back-link" href="#/impostazioni">${icon('left', 'sm')} Impostazioni</a>
       ${pageHead('Rifiuti', { eyebrow: 'Il calendario della raccolta' })}
@@ -66,12 +67,103 @@ export function render(route = []) {
       <button class="set-row" data-action="set-dates">${icon('calendar')}<div class="row-main"><b>Ricorrenze</b><span>${ric.length ? ric.map((r) => `${r.label} (${fmtDMY(r.date)})`).join(', ') : 'Compleanni di amici e parenti…'}</span></div>${icon('right', 'sm')}</button>
       <a class="set-row" href="#/gatti">${icon('cat')}<div class="row-main"><b>Thor e Minù</b><span>Foto, peso, vaccini</span></div>${icon('right', 'sm')}</a>
       <a class="set-row" href="#/impostazioni/rifiuti">${icon('bin')}<div class="row-main"><b>Calendario rifiuti</b><span>I giorni della raccolta</span></div>${icon('right', 'sm')}</a>
+      <a class="set-row" href="#/impostazioni/categorie">${icon('filtri')}<div class="row-main"><b>Filtri e categorie</b><span>Film, ricette e reparti della spesa</span></div>${icon('right', 'sm')}</a>
       ${isSynced() ? html`<button class="set-row" data-action="share-app">${icon('share')}<div class="row-main"><b>Invia l’app a ${other}</b><span>Il link per installarla sul suo telefono</span></div>${icon('right', 'sm')}</button>` : ''}
       <button class="set-row" data-action="export">${icon('download')}<div class="row-main"><b>Scarica una copia</b><span>Tutti i dati di casa in un file</span></div></button>
     </div>
 
     <p class="muted small" style="text-align:center;margin-top:28px">Fatta con amore per ${n.p1}, ${n.p2}, Thor e Minù</p>
     ${isSynced() ? html`<button class="card-link" data-action="logout" style="margin:6px auto 0;display:block;color:var(--text-3);font-weight:500">Esci da questo dispositivo</button>` : ''}`;
+}
+
+// ---------------------------------------------------------------------------
+// Filtri e categorie (per tutta la casa): film, ricette e reparti della spesa. Si tolgono quelle che non servono
+// e se ne aggiungono di nuove. Togliere = nascondere: film, ricette e prodotti tengono le loro categorie
+// e riaccendendole tornano al loro posto. "Sempre" e "Altro" restano: è lì che va tutto il resto.
+// ---------------------------------------------------------------------------
+const TIPI_CAT = {
+  film: { titolo: 'Film', nuova: 'Nuova categoria', uno: 'film', tanti: 'film', da: ['#/svago/film', 'Film'] },
+  ricette: { titolo: 'Ricette', nuova: 'Nuova categoria', uno: 'ricetta', tanti: 'ricette', da: ['#/cibo/ricette', 'Ricette'] },
+  spesa: { titolo: 'Reparti della spesa', nuova: 'Nuovo reparto', da: ['#/cibo/spesa', 'Spesa'] },
+};
+const salvaCategorie = (tipo, conf) => saveSettings({ [CATEGORIE[tipo].chiave]: { spente: conf.spente, mie: conf.mie } });
+
+function categoriePage(solo) {
+  const s = settings();
+  const uno = Object.hasOwn(TIPI_CAT, solo || '') ? solo : '';
+  const [href, nome] = uno ? TIPI_CAT[uno].da : ['#/impostazioni', 'Impostazioni'];
+  return html`<a class="back-link" href="${href}">${icon('left', 'sm')} ${nome}</a>
+    ${pageHead('Filtri e categorie', { eyebrow: 'Per tutta la casa' })}
+    ${Object.keys(TIPI_CAT).filter((t) => !uno || t === uno).map((t) => sezioneCategorie(s, t))}
+    ${uno ? html`<a class="card-link cat-altre" href="#/impostazioni/categorie">Tutti i filtri e i reparti ${icon('right', 'xs')}</a>` : ''}`;
+}
+
+function sezioneCategorie(s, tipo) {
+  const t = TIPI_CAT[tipo];
+  const tutti = tipo === 'spesa' ? [] : state.data[tipo];
+  const sotto = (c) => {
+    if (c.fissa) return tipo === 'spesa' ? 'Non si toglie: qui va ciò che non ha un reparto' : `Non si toglie: qui va ${tipo === 'film' ? 'ogni film' : 'ogni ricetta'} senza altre categorie`;
+    if (tipo === 'spesa') return c.spenta ? 'Tolto: i suoi prodotti vanno in «Altro»' : '';
+    const n = conCategoria(tipo, tutti, c.id);
+    return `${n ? `${n} ${n === 1 ? t.uno : t.tanti}` : `Nessun${tipo === 'ricette' ? 'a ricetta' : ' film'}`}${c.spenta ? ' · tolta: non si vede' : ''}`;
+  };
+  return html`<div class="section-title"><span>${t.titolo}</span></div>
+    <div class="list cat-list">
+      ${elencoCategorie(s, tipo).map((c) => html`<div class="set-row cat-row ${c.spenta ? 'spenta' : ''}">
+        <span class="cat-ico" ${tipo === 'spesa' ? raw(`style="--c:${c.color}"`) : ''}>${tipo === 'spesa' ? html`<span aria-hidden="true">${c.emoji}</span>` : icon(c.icon)}</span>
+        <div class="row-main"><b>${c.label}</b>${sotto(c) ? html`<span>${sotto(c)}</span>` : ''}</div>
+        ${c.mia ? html`<button class="icon-btn ghost cat-mod" type="button" data-action="cat-modifica" data-tipo="${tipo}" data-id="${c.id}" aria-label="Modifica ${c.label}">${icon('pencil', 'sm')}</button>` : ''}
+        ${c.fissa ? '' : html`<input class="sw" type="checkbox" data-change="cat-accesa" data-tipo="${tipo}" data-id="${c.id}" ${c.spenta ? '' : raw('checked')} aria-label="${c.label}: ${c.spenta ? 'tolta' : 'si vede'}">`}
+      </div>`)}
+      <button class="set-row cat-add" type="button" data-action="cat-nuova" data-tipo="${tipo}">${icon('plus')}<div class="row-main"><b>${t.nuova}</b></div></button>
+    </div>`;
+}
+
+function categoriaSheet(tipo, c = null) {
+  const spesa = tipo === 'spesa';
+  const tutte = elencoCategorie(settings(), tipo);
+  // dove va un reparto nuovo nel giro: di base alla fine (prima di "Altro")
+  const prima = tutte.filter((x) => !x.fissa && (!c || x.id !== c.id));
+  const dopo = c ? c.dopo : (prima.filter((x) => !x.spenta).pop() || {}).id;
+  openSheet({
+    title: c ? (spesa ? 'Modifica il reparto' : 'Modifica la categoria') : TIPI_CAT[tipo].nuova,
+    body: html`
+      <label class="field"><span>Nome</span><input name="label" value="${c ? c.label : ''}" maxlength="30" required placeholder="${spesa ? 'es. Farmacia' : tipo === 'film' ? 'es. Commedia' : 'es. Primi piatti'}" ${c ? '' : raw('autofocus')}></label>
+      ${spesa ? html`
+        <div class="field"><span>Faccina</span><div class="radio-chips emo-pick">${EMOJI_REPARTI.map((e, i) => html`<label><input type="radio" name="emoji" value="${e}" ${(c ? c.emoji === e : i === 0) ? raw('checked') : ''}><span>${e}</span></label>`)}</div></div>
+        <label class="field"><span>Nel giro della spesa, dopo</span><select name="dopo">
+          ${prima.map((x) => html`<option value="${x.id}" ${x.id === dopo ? raw('selected') : ''}>${x.emoji} ${x.label}${x.spenta ? ' (tolto)' : ''}</option>`)}
+        </select></label>`
+      : html`<div class="field"><span>Icona</span><div class="radio-chips icon-pick">${ICONE_CATEGORIE.map((ic, i) => html`<label><input type="radio" name="icon" value="${ic}" aria-label="Icona ${i + 1}" ${(c ? c.icon === ic : i === 0) ? raw('checked') : ''}><span>${icon(ic)}</span></label>`)}</div></div>`}`,
+    submit: c ? 'Salva' : 'Aggiungi',
+    extra: c ? html`<button class="btn danger" type="button" aria-label="Elimina" data-action="cat-elimina" data-tipo="${tipo}" data-id="${c.id}">${icon('trash', 'sm')}</button>` : '',
+    onSubmit: (fd) => {
+      const label = cap(val(fd, 'label')).slice(0, 30);
+      if (!label) return false;
+      const st = settings();
+      const conf = confCategorie(st, tipo);
+      const ora = elencoCategorie(st, tipo);
+      const stesso = ora.find((x) => norm(x.label) === norm(label) && (!c || x.id !== c.id));
+      const scelte = spesa ? { emoji: val(fd, 'emoji') || '🛒', dopo: val(fd, 'dopo') || '' } : { icon: val(fd, 'icon') || CATEGORIE[tipo].icona };
+      if (c) {
+        if (stesso) { sheetError(`C’è già «${stesso.label}»`); return false; }
+        salvaCategorie(tipo, { ...conf, mie: conf.mie.map((m) => (m.id === c.id ? { ...m, label, ...scelte } : m)) });
+        return;
+      }
+      // stesso nome di una categoria che c'è già: se è tolta torna, altrimenti c'è già
+      const id = idCategoria(tipo, label);
+      const gia = ora.find((x) => x.id === id) || stesso;
+      if (gia && gia.spenta) {
+        salvaCategorie(tipo, { ...conf, spente: conf.spente.filter((x) => x !== gia.id) });
+        toast(`«${gia.label}» è tornat${spesa ? 'o' : 'a'}`);
+        return;
+      }
+      if (gia) { sheetError(`C’è già «${gia.label}»`); return false; }
+      const nuova = spesa ? { id, label, ...scelte, color: coloreReparto(ora.filter((x) => x.mia).map((x) => x.color)) } : { id, label, ...scelte };
+      salvaCategorie(tipo, { ...conf, mie: [...conf.mie, nuova] });
+      toast(`Aggiunt${spesa ? 'o' : 'a'}: ${label}`);
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -271,6 +363,32 @@ export const actions = {
   },
   'set-season': ({ el }) => { setSeasonOverride(el.value); rerender(); },
   'set-names': () => namesSheet(),
+  'cat-accesa': ({ el }) => {
+    const { tipo, id } = el.dataset;
+    if (!Object.hasOwn(TIPI_CAT, tipo || '')) return;
+    const conf = confCategorie(settings(), tipo);
+    salvaCategorie(tipo, { ...conf, spente: el.checked ? conf.spente.filter((x) => x !== id) : [...new Set([...conf.spente, id])] });
+  },
+  'cat-nuova': ({ el }) => { if (Object.hasOwn(TIPI_CAT, el.dataset.tipo || '')) categoriaSheet(el.dataset.tipo); },
+  'cat-modifica': ({ el }) => {
+    const { tipo, id } = el.dataset;
+    const c = Object.hasOwn(TIPI_CAT, tipo || '') && elencoCategorie(settings(), tipo).find((x) => x.id === id && x.mia);
+    if (c) categoriaSheet(tipo, c);
+  },
+  'cat-elimina': ({ el }) => {
+    const { tipo, id } = el.dataset;
+    const c = Object.hasOwn(TIPI_CAT, tipo || '') && elencoCategorie(settings(), tipo).find((x) => x.id === id && x.mia);
+    if (!c) return;
+    confirmSheet({
+      title: `Eliminare «${c.label}»?`,
+      text: tipo === 'spesa' ? 'I suoi prodotti vanno in «Altro».' : `${tipo === 'film' ? 'I film' : 'Le ricette'} che l’avevano restano come sono: rifacendo una categoria con lo stesso nome ci tornano.`,
+      onYes: () => {
+        const conf = confCategorie(settings(), tipo);
+        salvaCategorie(tipo, { spente: conf.spente.filter((x) => x !== id), mie: conf.mie.filter((m) => m.id !== id) });
+        toast(`Eliminat${tipo === 'spesa' ? 'o' : 'a'}: ${c.label}`);
+      },
+    });
+  },
   'set-dates': () => datesSheet(),
   'date-del': ({ id }) => {
     const ric = (settings().ricorrenze || []).filter((r) => r.id !== id);

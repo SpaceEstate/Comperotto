@@ -91,6 +91,21 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   Regole 2026 (modalità sviluppo, max 5 utenti, proprietario Premium): ricerca max 10 per tipo, `tracks`→`items` nelle playlist,
   preferiti con `PUT/DELETE me/library?uris=`, brani solo delle playlist proprie (`/playlists/{id}/items`, altrimenti 403).
   Collegamenti senza i permessi nuovi → `completo: false` e la pagina chiede "Ricollega".
+  Limiti 2026 verificati: album di un artista **max 10 per richiesta** (`artists/{id}/albums`, prima chiedevamo 30 e Spotify
+  rifiutava: la discografia non si vedeva), ricerca max 10; niente `top-tracks`, artisti simili, novità, categorie, letture a gruppi.
+  Musica come l'app Spotify: in cima "Ascoltati di recente" (`me/player/recently-played`, contesti senza doppioni; nomi e foto di
+  playlist e artisti letti a parte) e "I tuoi artisti" (`me/top/artists`, ultime settimane): permessi `user-read-recently-played`
+  e `user-top-read`, facoltativi (`extra: false` → invito a ricollegare, il resto va). Libreria a schede Playlist · Album (`me/albums`)
+  · Artisti (`me/following`), scelta ricordata (`casa.spotify.lib`). Ricerca "Tutto": risultato migliore (`migliore()`: l'artista,
+  brano, album o playlist col nome più vicino), 4 brani (partono con dopo gli altri trovati), artisti, album, playlist.
+  Artista (`#/musica/artista/<id>`): Segui (`me/library` con l'URI dell'artista), brani (dalla ricerca `artist:"Nome"`, solo i suoi,
+  senza doppioni: Spotify non dà più i "popolari"), ultima uscita, discografia a schede (album, singoli ed EP, compilation; gruppi
+  letti a parte, 10 per volta) e "Appare in". Discografia completa: `#/musica/artista/<id>/discografia/<gruppo>` ("Altri" 10 per volta;
+  i bottoni dei gruppi non riempiono la storia). Album: copertina grande, artisti toccabili, dischi, "E" sui brani espliciti, data,
+  durata, diritti (℗ ©), "Altro di…". Comandi delle pagine come su Spotify (`azioni()`: ♥/Segui e ⋯ a sinistra, casuale e il grande
+  play a destra). ⋯ di album e artisti: vai all'artista, discografia, condividi, apri in Spotify; ⋯ del brano: anche ogni artista e
+  condividi. "Indietro" torna alla pagina di Musica di prima (pila in `segnaStoria()`). Lettore: "Ripeti" (spento → tutto → solo
+  il brano, con l'1; `me/player/repeat`, stato confermato come "casuale") al posto dell'icona dei dispositivi (che resta sotto).
 - **Film:** categorie in `FILM_CATS` (`js/data.js`): Famiglia, Natale, Halloween, Sempre, Thriller, Azione, Horror, Cartoni; dai generi
   di JustWatch (`ani` → cartoni) e di Apple si propongono da sole. Gli esempi si aggiornano una volta (`settings.filmCats`, ora 2).
   «Stasera guardiamo…» (`stasera()`) è sempre in cima: con una categoria scelta propone un film di quella, altrimenti uno da vedere.

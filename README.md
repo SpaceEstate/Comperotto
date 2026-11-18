@@ -151,10 +151,13 @@ Ogni tipo si può spegnere dal singolo dispositivo; "Prova" manda una notifica d
 La musica arriva da **Spotify** (serve Premium), come nell'app di Spotify:
 - in cima a *Musica* cosa sta suonando e dove, con la barra del brano da trascinare (avanti e indietro), casuale, indietro, play/pausa, avanti e ♥ (il volume si regola dal dispositivo);
 - **musica a tema del periodo** (Natale, Halloween, estate, Parigi e Canarie, San Valentino, autunno, inverno, primavera: le liste sono in `js/data.js`, `MUSICA_TEMA`) e **Scelti per te** (brani dei vostri artisti preferiti non ancora salvati) con le **novità** dei vostri artisti;
-- **Cerca** brani, artisti, album e playlist; pagine di playlist, album e artista con *Riproduci* e *Casuale*;
-- **Brani che ti piacciono** (il ♥ accanto a ogni brano), album e playlist salvati nella libreria;
+- in cima **Ascoltati di recente** e **I tuoi artisti** (quelli che ascoltate di più nelle ultime settimane);
+- **Cerca** brani, artisti, album e playlist, con il **risultato migliore** in cima, come su Spotify;
+- **artisti** con *Segui*, i loro brani, l'ultima uscita, la **discografia** (album, singoli ed EP, compilation, e dove appaiono) e la discografia completa; **album** con dischi, data, durata e «Altro di…»; ogni pagina ha casuale e il grande play, e *Indietro* torna alla pagina di prima;
+- **Brani che ti piacciono** (il ♥ accanto a ogni brano) e la **libreria** a schede: playlist, album salvati, artisti seguiti;
 - **playlist vostre**: crearle, rinominarle, eliminarle, aggiungere e togliere brani (⋯ accanto al brano → *Aggiungi a una playlist*), e *Aggiungi in coda*;
 - **Dove ascoltare?**: di base la musica parte **sul dispositivo che state usando** (toccando un brano sull'iPhone suona subito lì, dentro l'app); si può scegliere un altro dispositivo con Spotify aperto o un **Echo**, e finché resta collegato i brani partono lì;
+- nel lettore anche **Ripeti** (tutto, oppure solo il brano);
 - il **mini lettore** resta in basso su tutte le pagine (copertina, titolo, dove suona, play/pausa e avanti): un tocco apre la **finestra del lettore** senza lasciare la pagina (copertina grande, barra del brano, comandi, ♥, dove suona e i prossimi brani); si chiude con la freccia, la X o trascinandola giù;
 - per cambiare brano si può anche **scorrere di lato** sulla copertina o sul mini lettore (verso sinistra il prossimo, verso destra il precedente), come su Spotify; un brano della coda *Dopo* si tocca e parte (Spotify non permette alle app di togliere o spostare i brani in coda).
 

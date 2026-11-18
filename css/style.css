@@ -218,6 +218,8 @@ svg.i.lg { width: 28px; height: 28px; stroke-width: 1.6; }
   color: var(--text-3); margin: 22px 4px 8px; display: flex; align-items: center; justify-content: space-between;
 }
 .section-title:first-child { margin-top: 4px; }
+/* i link a destra del titolo di una sezione restano come i bottoni (non in maiuscolo) */
+.section-title .card-link { text-transform: none; letter-spacing: normal; }
 
 /* ---------- home ---------- */
 .hello { padding: 8px 2px 4px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
@@ -892,6 +894,63 @@ html.np-open body { overflow: hidden; }
 .sp-echo-aiuto p { margin: 6px 0 0; line-height: 1.45; }
 .sp-apri { display: flex; margin: 14px auto 0; }
 .sp-sheet-head { display: flex; align-items: center; gap: 14px; margin: -2px 0 14px; }
+/* Spotify come l'app: risultato migliore, artista, uscite, album, libreria, ripeti */
+button.back-link { background: none; border: 0; cursor: pointer; font-family: inherit; }
+.sp-e { display: inline-grid; place-items: center; width: 15px; height: 15px; margin-right: 5px; border-radius: 3px; background: var(--text-3); color: var(--surface); font-size: 9.5px; font-weight: 800; font-style: normal; line-height: 1; vertical-align: 1px; flex: none; }
+.sp-best { position: relative; margin-bottom: 6px; }
+.sp-best-link { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 16px; border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-1); color: inherit; text-decoration: none; min-width: 0; }
+.sp-best-link:active { transform: scale(.99); }
+.sp-best-img { width: 96px; height: 96px; border-radius: 12px; box-shadow: var(--shadow-2); margin-bottom: 10px; }
+.sp-best-img.round { border-radius: 50%; }
+.sp-best-img svg.i { width: 34px; height: 34px; }
+.sp-best-link b { font-family: var(--font-serif); font-weight: 500; font-size: 26px; line-height: 1.1; overflow-wrap: anywhere; padding-right: 58px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sp-best-link > span:not(.sp-img) { display: flex; align-items: center; max-width: 100%; padding-right: 58px; font-size: 13.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-best.on .sp-best-link b { color: var(--sage); }
+.sp-best-play { position: absolute; right: 16px; bottom: 16px; width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center; background: var(--sage); color: #fff; box-shadow: 0 6px 16px rgba(0, 0, 0, .16); }
+.sp-best-play:active { transform: scale(.92); }
+.sp-best-play svg.i { width: 20px; height: 20px; margin-left: 2px; }
+.sp-best-play .sp-eq { position: static; background: none; padding: 0; height: 16px; }
+.sp-artist { display: flex; align-items: flex-end; gap: 16px; padding: 6px 2px 14px; }
+.sp-artist-img { width: 140px; height: 140px; border-radius: 50%; box-shadow: var(--shadow-2); }
+.sp-artist-img svg.i { width: 44px; height: 44px; }
+.sp-artist-txt { flex: 1; min-width: 0; }
+.sp-artist-txt .eyebrow { font-size: 13px; font-weight: 600; color: var(--text-3); margin: 0 0 2px; }
+.sp-artist-txt h1 { font-family: var(--font-serif); font-weight: 500; font-size: 32px; line-height: 1.05; margin: 0; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.sp-generi { margin: 6px 0 0; font-size: 13px; color: var(--text-3); }
+@media (max-width: 380px) { .sp-artist-img { width: 104px; height: 104px; } .sp-artist-txt h1 { font-size: 26px; } }
+.sp-azioni { justify-content: space-between; }
+.sp-az { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.sp-actions .btn.sp-segui { flex: 0 1 auto; padding-inline: 16px; min-height: 40px; border-radius: 999px; white-space: nowrap; gap: 4px; }
+@media (max-width: 380px) { .sp-actions .btn.sp-segui { padding-inline: 12px; font-size: 14px; } .sp-az { gap: 6px; } }
+.sp-actions .btn.sp-segui.on { color: var(--sage); }
+.sp-gioca { width: 56px; height: 56px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--oak); color: var(--oak-ink); box-shadow: 0 6px 16px rgba(0, 0, 0, .14); transition: transform .15s ease; }
+.sp-gioca:active { transform: scale(.92); }
+.sp-gioca svg.i { width: 24px; height: 24px; margin-left: 3px; }
+.sp-casuale svg.i { width: 22px; height: 22px; }
+.sp-uscita { gap: 2px; padding: 8px 4px 8px 10px; }
+.sp-uscita .sp-track-main { text-decoration: none; }
+.sp-ucover { width: 56px; height: 56px; border-radius: 10px; }
+.sp-ucover svg.i { width: 20px; height: 20px; }
+.sp-uscita.on .row-title { color: var(--sage); font-weight: 700; }
+.sp-uscita .sp-ic { color: var(--sage); }
+.sp-uscita .sp-ic .sp-eq { position: static; background: var(--sage); height: 18px; padding: 3px 4px; }
+.sp-album { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 4px 8px 14px; }
+.sp-album-img { width: min(240px, 64vw); height: auto; aspect-ratio: 1; border-radius: 16px; box-shadow: var(--shadow-2); margin-bottom: 14px; }
+.sp-album-img svg.i { width: 48px; height: 48px; }
+.sp-album-txt { min-width: 0; max-width: 100%; }
+.sp-album-txt h1 { font-family: var(--font-serif); font-weight: 500; font-size: 26px; line-height: 1.12; margin: 0; overflow-wrap: anywhere; }
+.sp-album-art { margin: 6px 0 2px; font-weight: 700; font-size: 15px; }
+.sp-album-art a { color: inherit; text-decoration: none; }
+.sp-album-art a:active { opacity: .6; }
+.sp-album-txt p.muted { margin: 0; }
+.sp-disco-h { display: flex; align-items: center; gap: 6px; padding: 12px 14px 4px; font-size: 12px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; }
+.sp-disco-h svg.i { width: 14px; height: 14px; }
+.sp-album-foot { margin: 14px 4px 4px; font-size: 13px; color: var(--text-3); line-height: 1.55; }
+.sp-album-foot span { font-size: 12px; }
+.sp-chips { margin-top: 0; margin-bottom: 10px; }
+.chip .sp-n { font-weight: 600; opacity: .6; }
+.sp-rep { position: relative; }
+.sp-rep.uno::after { content: '1'; position: absolute; top: 6px; right: 5px; min-width: 13px; height: 13px; border-radius: 7px; background: var(--sage); color: #fff; font-size: 9px; font-weight: 800; line-height: 13px; text-align: center; }
 .sp-sheet-head .row-main { display: flex; flex-direction: column; gap: 2px; color: var(--text-2); }
 .sp-addlist .set-row { padding: 10px 14px; }
 @media (max-width: 360px) {

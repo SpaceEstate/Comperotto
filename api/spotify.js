@@ -20,12 +20,17 @@ const SCOPE = [
   'user-read-playback-state', 'user-modify-playback-state', 'user-read-currently-playing',
   'playlist-read-private', 'playlist-read-collaborative', 'playlist-modify-private', 'playlist-modify-public',
   'user-library-read', 'user-library-modify', 'user-follow-read', 'user-follow-modify',
+  // "Ascoltati di recente" e "I tuoi artisti" in Musica
+  'user-read-recently-played', 'user-top-read',
   // il lettore dentro l'app (Web Playback SDK) rifiuta il token senza questi tre: "Invalid token scopes"
   'streaming', 'user-read-private', 'user-read-email',
 ].join(' ');
 // senza questi va ricollegato (collegamenti fatti prima che l'app sapesse salvare brani e creare playlist)
 const NECESSARI = ['user-library-modify', 'playlist-modify-private', 'streaming', 'user-read-email', 'user-read-private'];
 const completo = (a) => Boolean(a && a.scope && NECESSARI.every((x) => a.scope.split(' ').includes(x)));
+// facoltativi: senza, in Musica mancano solo "Ascoltati di recente" e "I tuoi artisti" (e c'è l'invito a ricollegare)
+const EXTRA = ['user-read-recently-played', 'user-top-read'];
+const extra = (a) => Boolean(a && a.scope && EXTRA.every((x) => a.scope.split(' ').includes(x)));
 const CHI = ['p1', 'p2'];
 const CLIENT_ID = /^[0-9a-f]{32}$/i;
 
@@ -116,7 +121,7 @@ export default async function handler(req, res) {
 
     if (azione === 'stato') {
       const account = {};
-      for (const k of CHI) { const a = await leggi(`spotify:${k}`); account[k] = a && a.refresh ? { nome: a.nome || '', id: a.id || '', completo: completo(a) } : null; }
+      for (const k of CHI) { const a = await leggi(`spotify:${k}`); account[k] = a && a.refresh ? { nome: a.nome || '', id: a.id || '', completo: completo(a), extra: extra(a) } : null; }
       return send(res, 200, { pronta: Boolean(await appId()), account });
     }
 

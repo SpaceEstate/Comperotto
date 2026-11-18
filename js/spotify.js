@@ -148,6 +148,8 @@ function conAttese(p) {
       if (v.context !== undefined) p.context = v.context;
     } else if (campo === 'shuffle') {
       if (!presto && p.shuffle_state === v) delete attese[campo]; else p.shuffle_state = v;
+    } else if (campo === 'repeat') {
+      if (!presto && (p.repeat_state || 'off') === v) delete attese[campo]; else p.repeat_state = v;
     } else if (campo === 'device') {
       if (!presto && p.device && p.device.id === v.id) delete attese[campo]; else p.device = v;
     }
@@ -155,7 +157,7 @@ function conAttese(p) {
   return p;
 }
 /** Le cose che, se cambiano, vanno ridisegnate (i minuti li muove la pagina da sola). */
-const firma = (p) => (p ? [p.item && p.item.uri, p.is_playing, p.shuffle_state, p.device && p.device.id, p.device && p.device.name, p.context && p.context.uri].join('|') : '-');
+const firma = (p) => (p ? [p.item && p.item.uri, p.is_playing, p.shuffle_state, p.repeat_state, p.device && p.device.id, p.device && p.device.name, p.context && p.context.uri].join('|') : '-');
 const firmaDev = (l) => (l || []).map((d) => `${d.id}:${d.is_active ? 1 : 0}:${d.name}`).join(',');
 
 let inCorso = null;
@@ -446,6 +448,18 @@ export async function casuale() {
   await inFila(() => call(`me/player/shuffle?state=${on}`, { method: 'PUT' })).catch((e) => { delete attese.shuffle; ripassa(); throw e; });
 }
 
+/** Ripeti, come su Spotify: niente → tutta la playlist o l'album → solo questo brano → niente. */
+export async function ripeti() {
+  const p = sp.player;
+  if (!p) return;
+  const giro = ['off', 'context', 'track'];
+  const nuovo = giro[(giro.indexOf(p.repeat_state || 'off') + 1) % giro.length];
+  p.repeat_state = nuovo;
+  aspetta('repeat', nuovo);
+  rerender();
+  await inFila(() => call(`me/player/repeat?state=${nuovo}`, { method: 'PUT' })).catch((e) => { delete attese.repeat; ripassa(); throw e; });
+}
+
 /** Avanti e indietro nel brano (in millisecondi). */
 export async function vaiA(ms) {
   const p = sp.player;
@@ -603,10 +617,12 @@ export function brano(t, album = null) {
     big: bestImage((al && al.images) || t.images, 300),
     xl: bestImage((al && al.images) || t.images, 600),
     ok: t.is_playable !== false && !t.is_local,
+    e: Boolean(t.explicit),
+    disco: t.disc_number || 1,
   };
 }
-export const albumBreve = (a) => a && ({ id: a.id, uri: a.uri, name: a.name || '', img: bestImage(a.images, 300), anno: String(a.release_date || '').slice(0, 4), data: a.release_date || '', artists: (a.artists || []).map((x) => ({ id: x.id, name: x.name })), tipo: a.album_type || '' });
-export const artistaBreve = (a) => a && ({ id: a.id, uri: a.uri, name: a.name || '', img: bestImage(a.images, 300) });
+export const albumBreve = (a) => a && a.id && ({ id: a.id, uri: a.uri, name: a.name || '', img: bestImage(a.images, 300), anno: String(a.release_date || '').slice(0, 4), data: a.release_date || '', precisione: a.release_date_precision || 'day', artists: (a.artists || []).map((x) => ({ id: x.id, name: x.name })), tipo: a.album_type || '', n: a.total_tracks || 0 });
+export const artistaBreve = (a) => a && a.id && ({ id: a.id, uri: a.uri, name: a.name || '', img: bestImage(a.images, 300) });
 export function playlistBreve(p, io = '') {
   return p && {
     id: p.id, uri: p.uri, name: p.name || '', img: bestImage(p.images, 300),
@@ -629,8 +645,8 @@ export async function cercaSu(q, tipi = TIPI, offset = 0) {
   const io = await mioId();
   return {
     track: registra(tutti(j.tracks).map((t) => brano(t)).filter(Boolean)),
-    artist: tutti(j.artists).map(artistaBreve),
-    album: tutti(j.albums).map(albumBreve),
+    artist: tutti(j.artists).map(artistaBreve).filter(Boolean),
+    album: tutti(j.albums).map(albumBreve).filter(Boolean),
     playlist: tutti(j.playlists).map((p) => playlistBreve(p, io)),
     altri: Object.fromEntries(TIPI.map((t) => [t, Boolean(j[`${t}s`] && j[`${t}s`].next)])),
   };
@@ -661,18 +677,105 @@ export async function playlist(id, offset = 0) {
   };
 }
 
+/** Un album con tutti i suoi brani (oltre i primi 50 a pagine), data di uscita e diritti. */
 export async function album(id) {
   const a = await call(`albums/${encodeURIComponent(id)}?market=from_token`);
   const tracce = a.tracks || a.items || {};
-  return { info: { ...albumBreve(a), big: bestImage(a.images, 600) }, list: registra(tutti(tracce).map((t) => brano(t, a)).filter(Boolean)) };
+  const list = tutti(tracce).map((t) => brano(t, a)).filter(Boolean);
+  let next = tracce.next;
+  for (let i = 0; next && i < 8; i++) {
+    const j = await call(`albums/${encodeURIComponent(id)}/tracks?limit=50&offset=${list.length}&market=from_token`);
+    list.push(...tutti(j).map((t) => brano(t, a)).filter(Boolean));
+    next = j.next;
+  }
+  const diritti = [...new Set((a.copyrights || []).map((c) => `${c.type === 'P' ? '℗' : '©'} ${String(c.text || '').replace(/^\s*[©℗(][CcPp)]?\)?\s*/, '')}`))].slice(0, 2);
+  return { info: { ...albumBreve(a), big: bestImage(a.images, 600), diritti }, list: registra(list) };
 }
 
+/** Un artista (nome, foto, generi). La discografia e i brani arrivano a parte. */
 export async function artista(id) {
-  const [a, al] = await Promise.all([
-    call(`artists/${encodeURIComponent(id)}`),
-    call(`artists/${encodeURIComponent(id)}/albums?include_groups=album,single,compilation&limit=30&market=from_token`).catch(() => null),
-  ]);
-  return { info: { ...artistaBreve(a), big: bestImage(a.images, 600) }, albums: tutti(al).map(albumBreve) };
+  const a = await call(`artists/${encodeURIComponent(id)}`);
+  return { info: { ...artistaBreve(a), big: bestImage(a.images, 600), generi: (a.genres || []).slice(0, 3) } };
+}
+
+/** Album, singoli ed EP, compilation, "appare in": i gruppi della discografia di un artista. */
+export const GRUPPI = ['album', 'single', 'compilation', 'appears_on'];
+/** Un gruppo della discografia, 10 alla volta (dal 2026 Spotify non ne dà di più per richiesta). */
+export async function discografia(id, gruppo, offset = 0) {
+  const j = await call(`artists/${encodeURIComponent(id)}/albums?include_groups=${gruppo}&limit=10&offset=${offset}&market=from_token`);
+  return { list: tutti(j).map(albumBreve).filter(Boolean), totale: j.total || 0, altri: Boolean(j.next) };
+}
+
+/**
+ * I brani di un artista. Spotify non dà più "i più ascoltati" alle app nuove: la sua ricerca per artista li
+ * mette comunque per primi. Solo i brani suoi (anche in collaborazione), senza doppioni dello stesso titolo.
+ */
+export async function braniArtista(id, nome) {
+  const out = [];
+  const visti = new Set();
+  for (let o = 0; o < 30 && out.length < 10; o += 10) {
+    const j = await call(`search?type=track&limit=10&offset=${o}&market=from_token&q=${encodeURIComponent(`artist:"${nome}"`)}`);
+    tutti(j.tracks).map((t) => brano(t)).filter((t) => t && t.artists.some((x) => x.id === id)).forEach((t) => {
+      const k = t.name.toLowerCase().replace(/\s*[-(].*$/, '');
+      if (!visti.has(k)) { visti.add(k); out.push(t); }
+    });
+    if (!j.tracks || !j.tracks.next) break;
+  }
+  return registra(out.slice(0, 10));
+}
+
+// ---------------------------------------------------------------------------
+// La libreria come su Spotify: album salvati e artisti seguiti
+// ---------------------------------------------------------------------------
+export async function albumSalvati(offset = 0) {
+  const j = await call(`me/albums?limit=50&offset=${offset}&market=from_token`);
+  return { list: tutti(j).map((x) => albumBreve(x.album || x.item)).filter(Boolean), totale: j.total || 0, altri: Boolean(j.next) };
+}
+export async function artistiSeguiti(dopo = '') {
+  const j = await call(`me/following?type=artist&limit=50${dopo ? `&after=${encodeURIComponent(dopo)}` : ''}`);
+  const a = j.artists || {};
+  return { list: tutti(a).map(artistaBreve).filter(Boolean), dopo: (a.cursors && a.cursors.after) || '', altri: Boolean(a.next) };
+}
+
+// ---------------------------------------------------------------------------
+// In cima a Musica, come su Spotify: ascoltati di recente e i tuoi artisti del momento
+// ---------------------------------------------------------------------------
+/** Le ultime cose ascoltate (album, playlist, artisti, "Brani che ti piacciono"), senza doppioni. */
+export async function ascoltatiDiRecente() {
+  const j = await call('me/player/recently-played?limit=50');
+  const out = [];
+  const visti = new Set();
+  for (const x of tutti(j)) {
+    const t = x.track || x.item;
+    if (!t || !t.uri) continue;
+    const ctx = (x.context && x.context.uri) || '';
+    const [, tipo, id] = ctx.split(':');
+    let v = null;
+    if (/:collection$/.test(ctx)) v = { tipo: 'preferiti', uri: ctx, id: 'preferiti', name: 'Brani che ti piacciono' };
+    else if (tipo === 'playlist' && id) v = { tipo: 'playlist', uri: ctx, id };
+    else if (tipo === 'artist' && id) v = { tipo: 'artist', uri: ctx, id, name: ((t.artists || []).find((a) => a.id === id) || {}).name || '' };
+    else if (t.album && t.album.id) v = { tipo: 'album', uri: t.album.uri, id: t.album.id, name: t.album.name || '', img: bestImage(t.album.images, 300), artists: (t.album.artists || t.artists || []).map((a) => ({ id: a.id, name: a.name })) };
+    if (!v || visti.has(v.uri)) continue;
+    visti.add(v.uri);
+    out.push(v);
+    if (out.length >= 10) break;
+  }
+  // nomi e foto che il "recente" non porta: playlist e artisti, uno alla volta (sono pochi)
+  for (const v of out) {
+    if (v.tipo === 'playlist') {
+      const p = await call(`playlists/${encodeURIComponent(v.id)}?fields=name,images,owner(display_name)`).catch(tranneTroppe);
+      if (p) { v.name = p.name || 'Playlist'; v.img = bestImage(p.images, 300); v.owner = (p.owner && p.owner.display_name) || ''; }
+    } else if (v.tipo === 'artist') {
+      const a = await call(`artists/${encodeURIComponent(v.id)}`).catch(tranneTroppe);
+      if (a) { v.name = a.name || v.name; v.img = bestImage(a.images, 300); }
+    }
+  }
+  return out.filter((v) => v.name);
+}
+/** Gli artisti che ascolti di più nelle ultime settimane. */
+export async function artistiDelMomento() {
+  const j = await call('me/top/artists?limit=10&time_range=short_term');
+  return tutti(j).map(artistaBreve).filter(Boolean);
 }
 
 // ---------------------------------------------------------------------------
@@ -701,6 +804,8 @@ export async function salva(uri, si = true) {
     await call(`me/library?uris=${encodeURIComponent(uri)}`, { method: si ? 'PUT' : 'DELETE' });
   } catch (e) { salvatiMap.set(uri, prima); rerender(); throw e; }
   dimentica(chiave('preferiti'));
+  if (uri.startsWith('spotify:album:')) dimentica(chiave('mieialbum'));
+  if (uri.startsWith('spotify:artist:')) dimentica(chiave('seguiti'));
   if (uri.startsWith('spotify:playlist:')) caricaPlaylist(chi(), true).catch(() => {});
 }
 
@@ -835,6 +940,7 @@ export function preparaQui() {
         p.is_playing = !st.paused;
         p.progress_ms = st.position || 0;
         p.shuffle_state = Boolean(st.shuffle);
+        p.repeat_state = ['off', 'context', 'track'][st.repeat_mode] || 'off';
         if (st.context && st.context.uri) p.context = { uri: st.context.uri };
         if (tr && (!p.item || p.item.uri !== tr.uri)) p.item = daSdk(tr, st.duration);
         sp.playerAt = Date.now();

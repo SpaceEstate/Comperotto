@@ -1,7 +1,7 @@
 // Spotify nella pagina Musica: cosa suona e dove (iPhone, iPad, Echo… o dentro l'app), ricerca,
 // preferiti, playlist (crearle, rinominarle, aggiungere e togliere brani), album, artisti, coda.
 // Sottopagine: #/musica/cerca, #/musica/preferiti, #/musica/pl/<id>, #/musica/album/<id>, #/musica/artista/<id>
-import { html, raw, vibrate, lsGet, lsSet, isIPad, cap } from '../utils.js';
+import { html, raw, vibrate, lsGet, lsSet, isIPad, cap, norm, MONTHS } from '../utils.js';
 import { icon } from '../icons.js';
 import { openSheet, closeSheet, toast, val, ui, setUi, me, isSynced, nameOf, sheetError, rerender, confirmSheet, state, cancella, settings, saveSettings } from '../core.js';
 import { periodoMusica } from '../season.js';
@@ -51,18 +51,18 @@ function trackRow(t, ctxKey, { numero = false } = {}) {
   return html`<div class="row sp-track ${on ? 'on' : ''} ${t.ok ? '' : 'off'}">
     <button class="sp-track-main" data-action="sp-brano" data-uri="${t.uri}" data-ctx="${ctxKey}" aria-label="Fai partire ${t.name}">
       ${numero ? html`<span class="sp-num">${on ? eq(sp.player.is_playing) : t.n || ''}</span>` : cover(t.img, 'music', 'sp-tcover')}
-      <span class="row-main"><span class="row-title">${t.name}</span><span class="row-sub">${nomiArtisti(t)}</span></span>
+      <span class="row-main"><span class="row-title">${t.name}</span><span class="row-sub">${t.e ? html`<i class="sp-e" title="Esplicito">E</i>` : ''}${nomiArtisti(t)}</span></span>
     </button>
     <button class="sp-ic ${saved ? 'on' : ''}" data-action="sp-cuore" data-uri="${t.uri}" aria-label="${saved ? 'Togli dai preferiti' : 'Aggiungi ai preferiti'}">${icon('heart', saved ? 'sm filled' : 'sm')}</button>
     <button class="sp-ic" data-action="sp-menu" data-uri="${t.uri}" data-ctx="${ctxKey}" aria-label="Altro">${icon('dots', 'sm')}</button>
   </div>`;
 }
 
-function tile(p, href, { sub = '', ph = 'headphones', round = false, play = '' } = {}) {
+function tile(p, href, { sub = '', ph = 'headphones', round = false, play = '', cls = '' } = {}) {
   const on = play && play === ctxOra();
   return html`<div class="sp-tile ${on ? 'on' : ''} ${round ? 'round' : ''}">
     <a class="sp-tile-link" href="${href}">
-      ${cover(p.img, ph, 'sp-tile-img')}
+      ${cover(p.img, ph, `sp-tile-img ${cls}`)}
       <b>${p.name}</b>${sub ? html`<span>${sub}</span>` : ''}
     </a>
     ${play ? html`<span class="sp-tile-over"><button class="sp-tile-play" data-action="sp-suona" data-ctx="${play}" aria-label="Fai partire ${p.name}">${on && sp.player.is_playing ? eq(true) : icon('play', 'filled')}</button></span>` : ''}
@@ -70,6 +70,34 @@ function tile(p, href, { sub = '', ph = 'headphones', round = false, play = '' }
 }
 const plSub = (p) => (p.n != null ? plural(p.n, 'brano', 'brani') : p.owner || '');
 const alSub = (a) => [nomiArtisti(a), a.anno].filter(Boolean).join(' · ');
+
+// uscite: "Album", "Singolo", "EP" (per Spotify un EP è un singolo con 4 brani o più), "Compilation"
+const tipoUscita = (a) => (a.tipo === 'compilation' ? 'Compilation' : a.tipo === 'single' ? (a.n >= 4 ? 'EP' : 'Singolo') : 'Album');
+const GRUPPO_LABEL = { album: 'Album', single: 'Singoli ed EP', compilation: 'Compilation', appears_on: 'Appare in' };
+/** "12 marzo 2025", "marzo 2025" o "2025", secondo quanto è precisa la data che dà Spotify. */
+function dataLunga(a) {
+  const [y, m, d] = String(a.data || '').split('-').map(Number);
+  if (!y) return '';
+  if (!m || a.precisione === 'year') return String(y);
+  if (!d || a.precisione === 'month') return `${MONTHS[m - 1]} ${y}`;
+  return `${d} ${MONTHS[m - 1]} ${y}`;
+}
+/** 2712000 → "45 min", 4500000 → "1 h 15 min" */
+function durataLunga(ms) {
+  const min = Math.round((ms || 0) / 60000);
+  return min >= 60 ? `${Math.floor(min / 60)} h ${min % 60} min` : `${min} min`;
+}
+/** Una riga di un'uscita (ultima uscita, discografia): copertina, nome, anno · tipo · brani, e "fai partire". */
+function rigaAlbum(x, { lunga = false } = {}) {
+  const on = x.uri === ctxOra();
+  return html`<div class="row sp-uscita ${on ? 'on' : ''}">
+    <a class="sp-track-main" href="#/musica/album/${x.id}">
+      ${cover(x.img, 'disc', 'sp-ucover')}
+      <span class="row-main"><span class="row-title">${x.name}</span><span class="row-sub">${[lunga ? dataLunga(x) : x.anno, tipoUscita(x), x.n ? plural(x.n, 'brano', 'brani') : ''].filter(Boolean).join(' · ')}</span></span>
+    </a>
+    <button class="sp-ic" data-action="sp-suona" data-ctx="${x.uri}" aria-label="Fai partire ${x.name}">${on && sp.player && sp.player.is_playing ? eq(true) : icon('play', 'sm filled')}</button>
+  </div>`;
+}
 
 // ---------------------------------------------------------------------------
 // In riproduzione: scheda grande in Musica, barretta in basso nelle sottopagine
@@ -133,9 +161,16 @@ function nowCard() {
         <button class="sp-btn" data-action="sp-indietro" aria-label="Precedente">${icon('prev', 'filled')}</button>
         <button class="sp-play" data-action="sp-playpausa" aria-label="${playing ? 'Pausa' : 'Riproduci'}">${icon(playing ? 'pause' : 'play', 'filled')}</button>
         <button class="sp-btn" data-action="sp-avanti" aria-label="Successivo">${icon('next', 'filled')}</button>
-        <button class="sp-btn" data-action="sp-dispositivi" aria-label="Dove ascoltare">${icon(dev ? devIcon(dev) : 'speaker', 'sm')}</button>
+        ${bottoneRipeti(p, 'sp-btn', 'sm')}
       </div>` : ''}
   </div>`;
+}
+
+/** Ripeti: spento, tutto (playlist o album), solo questo brano (con il piccolo "1"). */
+function bottoneRipeti(p, cls, size) {
+  const r = (p && p.repeat_state) || 'off';
+  const nome = r === 'track' ? 'Ripeti: solo questo brano' : r === 'context' ? 'Ripeti: tutto' : 'Ripeti: spento';
+  return html`<button class="${cls} sp-rep ${r !== 'off' ? 'on' : ''} ${r === 'track' ? 'uno' : ''}" type="button" data-action="sp-ripeti" aria-label="${nome}" title="${nome}">${icon('repeat', size)}</button>`;
 }
 
 /** 83000 → "1:23" */
@@ -318,7 +353,7 @@ export function grandeLettore() {
         <button class="np-icon np-skip" type="button" data-action="sp-indietro" aria-label="Precedente">${icon('prev', 'filled')}</button>
         <button class="np-big" type="button" data-action="sp-playpausa" aria-label="${playing ? 'Pausa' : 'Riproduci'}">${icon(playing ? 'pause' : 'play', 'filled')}</button>
         <button class="np-icon np-skip" type="button" data-action="sp-avanti" aria-label="Successivo">${icon('next', 'filled')}</button>
-        <button class="np-icon np-side" type="button" data-action="sp-dispositivi" aria-label="Dove ascoltare">${icon(dev ? devIcon(dev) : 'speaker')}</button>
+        ${bottoneRipeti(p, 'np-icon np-side', '')}
       </div>
       <button class="np-dev" type="button" data-action="sp-dispositivi">${icon(dev ? devIcon(dev) : 'speaker', 'xs')}<span>${dev ? `Su ${devNome(dev)}` : 'Scegli dove ascoltare'}</span>${icon('down', 'xs')}</button>
       ${dopo && dopo.length ? html`<div class="np-queue"><div class="np-qt">${icon('queue', 'xs')} Dopo</div>
@@ -456,19 +491,71 @@ export function blocco() {
   return html`
     ${nowCard()}
     ${a.completo === false ? html`<div class="card sp-ricollega">${icon('sparkles')}<div class="row-main"><b>Spotify ha cose nuove</b><span>Per salvare brani, creare playlist e ascoltare dentro l’app va ricollegato una volta.</span></div>
+      <button class="btn primary" data-action="sp-collega" data-v="${k}">Ricollega</button></div>`
+      : a.extra === false ? html`<div class="card sp-ricollega">${icon('sparkles')}<div class="row-main"><b>Ascoltati di recente e i tuoi artisti</b><span>Per vederli qui, come su Spotify, va ricollegato una volta.</span></div>
       <button class="btn primary" data-action="sp-collega" data-v="${k}">Ricollega</button></div>` : ''}
     <a class="sp-search" href="#/musica/cerca">${icon('search', 'sm')}<span>Cerca brani, artisti, album</span></a>
+    ${recentiSezione()}
+    ${artistiSezione()}
     ${temaSezione()}
     ${perTeSezione()}
     <div class="section-title"><span>${acc.length > 1 ? 'Libreria' : `La libreria di ${nameOf(k)}`}</span><button class="card-link" data-action="sp-account">Spotify ${icon('right', 'xs')}</button></div>
     ${acc.length > 1 ? html`<div class="segmented sp-who">${acc.map((x) => html`<button class="${x === k ? 'on' : ''}" data-action="sp-chi" data-v="${x}">${nameOf(x)}</button>`)}</div>` : ''}
+    <div class="chips sp-chips">${LIBRERIA.map(([v, l]) => html`<button class="chip ${vistaLibreria() === v ? 'on' : ''}" data-action="sp-lib" data-v="${v}">${l}</button>`)}</div>
+    ${vistaLibreria() === 'album' ? libreriaAlbum() : vistaLibreria() === 'artisti' ? libreriaArtisti() : html`
     <div class="sp-grid">
       <div class="sp-tile special"><a class="sp-tile-link" href="#/musica/preferiti"><span class="sp-img sp-tile-img sp-fav">${icon('heart', 'filled')}</span><b>Brani che ti piacciono</b><span>Preferiti</span></a></div>
       <div class="sp-tile special"><button class="sp-tile-link" data-action="sp-nuova-pl"><span class="sp-img sp-tile-img sp-new">${icon('plus')}</span><b>Nuova playlist</b><span>Creane una</span></button></div>
       ${shown.map((p) => tile(p, `#/musica/pl/${p.id}`, { sub: plSub(p), play: p.uri }))}
     </div>
     ${!pl ? html`<p class="muted small sp-wait">Cerco le playlist…</p>` : ''}
-    ${list.length > 10 ? html`<button class="card-link sp-more" data-action="sp-tutte">${tutte ? 'Mostra meno' : `Mostra tutte (${list.length})`}</button>` : ''}`;
+    ${list.length > 10 ? html`<button class="card-link sp-more" data-action="sp-tutte">${tutte ? 'Mostra meno' : `Mostra tutte (${list.length})`}</button>` : ''}`}`;
+}
+
+// La libreria a schede, come su Spotify: playlist, album salvati, artisti seguiti (ogni dispositivo ricorda la sua)
+const LIBRERIA = [['playlist', 'Playlist'], ['album', 'Album'], ['artisti', 'Artisti']];
+const vistaLibreria = () => { const v = ui('sp.lib', null) || lsGet('casa.spotify.lib'); return LIBRERIA.some(([x]) => x === v) ? v : 'playlist'; };
+function libreriaAlbum() {
+  const pagine = ui('sp.pag.mieialbum', 1);
+  const keys = Array.from({ length: pagine }, (_, i) => S.chiave('mieialbum', i * 50));
+  const ok = keys.map((x) => S.letto(x)).filter(Boolean);
+  const list = ok.flatMap((x) => x.list);
+  const ultimo = ok[ok.length - 1];
+  return html`${list.length ? html`<div class="sp-grid">${list.map((x) => tile(x, `#/musica/album/${x.id}`, { sub: alSub(x), ph: 'disc', play: x.uri }))}</div>`
+      : ok.length === pagine ? html`<p class="muted small sp-wait">Nessun album salvato: tocca ♥ in un album per tenerlo qui.</p>` : ''}
+    ${ok.length < pagine ? caricamento(keys[ok.length]) : ''}
+    ${ok.length === pagine && ultimo && ultimo.altri ? html`<button class="card-link sp-more" data-action="sp-altri" data-k="mieialbum">Altri album</button>` : ''}`;
+}
+function libreriaArtisti() {
+  const pagine = ui('sp.pag.seguiti', 1);
+  const keys = Array.from({ length: pagine }, (_, i) => S.chiave('seguiti', i));
+  const ok = keys.map((x) => S.letto(x)).filter(Boolean);
+  const list = ok.flatMap((x) => x.list);
+  const ultimo = ok[ok.length - 1];
+  return html`${list.length ? html`<div class="sp-grid">${list.map((x) => tile(x, `#/musica/artista/${x.id}`, { ph: 'user', round: true, play: x.uri, sub: 'Artista' }))}</div>`
+      : ok.length === pagine ? html`<p class="muted small sp-wait">Nessun artista seguito: tocca «Segui» nella pagina di un artista.</p>` : ''}
+    ${ok.length < pagine ? caricamento(keys[ok.length]) : ''}
+    ${ok.length === pagine && ultimo && ultimo.altri ? html`<button class="card-link sp-more" data-action="sp-altri" data-k="seguiti">Altri artisti</button>` : ''}`;
+}
+
+/** In cima, come su Spotify: le ultime cose ascoltate (album, playlist, artisti, preferiti). */
+function recentiSezione() {
+  const r = S.letto(S.chiave('recenti'));
+  if (!r || !r.length) return '';
+  const href = (v) => (v.tipo === 'album' ? `#/musica/album/${v.id}` : v.tipo === 'playlist' ? `#/musica/pl/${v.id}` : v.tipo === 'artist' ? `#/musica/artista/${v.id}` : '#/musica/preferiti');
+  return html`<div class="section-title"><span>Ascoltati di recente</span></div>
+    <div class="sp-hs">${r.map((v) => tile(v, href(v), {
+      sub: v.tipo === 'album' ? nomiArtisti(v) : v.tipo === 'playlist' ? ['Playlist', v.owner].filter(Boolean).join(' · ') : v.tipo === 'artist' ? 'Artista' : 'Preferiti',
+      ph: v.tipo === 'artist' ? 'user' : v.tipo === 'album' ? 'disc' : v.tipo === 'preferiti' ? 'heart' : 'headphones',
+      round: v.tipo === 'artist', cls: v.tipo === 'preferiti' ? 'sp-fav' : '', play: v.uri,
+    }))}</div>`;
+}
+/** Gli artisti che ascolti di più nelle ultime settimane. */
+function artistiSezione() {
+  const r = S.letto(S.chiave('topartisti'));
+  if (!r || !r.length) return '';
+  return html`<div class="section-title"><span>I tuoi artisti</span></div>
+    <div class="sp-hs">${r.map((x) => tile(x, `#/musica/artista/${x.id}`, { ph: 'user', round: true, play: x.uri, sub: 'Artista' }))}</div>`;
 }
 
 /** Riquadro di un brano: tocco = parte (con gli altri della stessa fila dopo), ⋯ = foglio del brano. */
@@ -511,7 +598,20 @@ function perTeSezione() {
 // ---------------------------------------------------------------------------
 // Sottopagine
 // ---------------------------------------------------------------------------
-const back = html`<a class="back-link" href="#/svago/musica">${icon('left', 'sm')} Musica</a>`;
+// Indietro come su Spotify: torna alla pagina di Musica di prima (artista → album → indietro = artista);
+// entrando da fuori (Musica, la Home, il lettore) riporta a Musica.
+const storia = [];
+function segnaStoria() {
+  const h = location.hash;
+  if (!/^#\/musica\//.test(h)) { storia.length = 0; return; }
+  if (storia.length >= 2 && storia[storia.length - 2] === h) storia.pop();
+  else if (storia[storia.length - 1] !== h) storia.push(h);
+}
+window.addEventListener('hashchange', segnaStoria);
+segnaStoria();
+const back = () => (storia.length >= 2
+  ? html`<button class="back-link" type="button" data-action="sp-back">${icon('left', 'sm')} Indietro</button>`
+  : html`<a class="back-link" href="#/svago/musica">${icon('left', 'sm')} Musica</a>`);
 const caricamento = (key) => (S.fallito(key)
   ? html`<div class="sp-wait-box"><p class="muted">Spotify non ha risposto.</p><button class="btn" data-action="sp-riprova">${icon('refresh', 'sm')} Riprova</button></div>`
   : html`<p class="muted small sp-wait">Un attimo…</p>`);
@@ -540,11 +640,14 @@ function cercaPage() {
     const r = S.letto(key);
     if (!r) corpo = caricamento(key);
     else {
-      contesti.set('cerca', {});
+      // un brano trovato parte con dopo gli altri brani trovati
+      contesti.set('cerca', { uris: r.track.map((t) => t.uri) });
       const nessuno = !r.track.length && !r.artist.length && !r.album.length && !r.playlist.length;
+      const top = migliore(r, qq);
       corpo = nessuno ? html`<p class="muted sp-wait">Niente per «${qq}».</p>` : html`
-        ${r.track.length ? html`<div class="section-title"><span>Brani</span>${r.track.length > 5 ? html`<button class="card-link" data-action="sp-tipo" data-v="track">Tutti ${icon('right', 'xs')}</button>` : ''}</div>
-          <div class="list">${r.track.slice(0, 5).map((t) => trackRow(t, 'cerca'))}</div>` : ''}
+        ${top ? html`<div class="section-title"><span>Risultato migliore</span></div>${schedaMigliore(top)}` : ''}
+        ${r.track.length ? html`<div class="section-title"><span>Brani</span>${r.track.length > 4 ? html`<button class="card-link" data-action="sp-tipo" data-v="track">Tutti ${icon('right', 'xs')}</button>` : ''}</div>
+          <div class="list">${r.track.slice(0, 4).map((t) => trackRow(t, 'cerca'))}</div>` : ''}
         ${r.artist.length ? html`<div class="section-title"><span>Artisti</span></div>
           <div class="sp-hs">${r.artist.map((x) => tile(x, `#/musica/artista/${x.id}`, { ph: 'user', round: true, play: x.uri }))}</div>` : ''}
         ${r.album.length ? html`<div class="section-title"><span>Album</span></div>
@@ -559,9 +662,9 @@ function cercaPage() {
     const ok = parti.filter(Boolean);
     const items = ok.flatMap((r) => r[tipo] || []);
     const altri = ok.length === pagine && ok[ok.length - 1].altri[tipo];
-    contesti.set('cerca', {});
+    if (tipo !== 'track') contesti.set('cerca', {});
     let lista = '';
-    if (tipo === 'track') lista = html`<div class="list">${items.map((t) => trackRow(t, 'cerca'))}</div>`;
+    if (tipo === 'track') { contesti.set('cerca', { uris: items.map((t) => t.uri) }); lista = html`<div class="list">${items.map((t) => trackRow(t, 'cerca'))}</div>`; }
     else if (tipo === 'artist') lista = html`<div class="sp-grid">${items.map((x) => tile(x, `#/musica/artista/${x.id}`, { ph: 'user', round: true, play: x.uri }))}</div>`;
     else if (tipo === 'album') lista = html`<div class="sp-grid">${items.map((x) => tile(x, `#/musica/album/${x.id}`, { sub: alSub(x), ph: 'disc', play: x.uri }))}</div>`;
     else lista = html`<div class="sp-grid">${items.map((x) => tile(x, `#/musica/pl/${x.id}`, { sub: plSub(x), play: x.uri }))}</div>`;
@@ -569,7 +672,7 @@ function cercaPage() {
       ${ok.length < pagine ? caricamento(keys[ok.length]) : ''}
       ${altri ? html`<button class="card-link sp-more" data-action="sp-altri" data-k="cerca.${tipo}.${qq}">Altri risultati</button>` : ''}`;
   }
-  return html`${back}
+  return html`${back()}
     <header class="page-head"><div><p class="eyebrow">Spotify</p><h1>Cerca</h1></div></header>
     <form class="sp-q" data-form="sp-cerca" role="search">
       ${icon('search', 'sm')}
@@ -580,19 +683,54 @@ function cercaPage() {
     ${corpo}`;
 }
 
+/** Il risultato migliore: l'artista, il brano, l'album o la playlist che somiglia di più a quello che si cerca. */
+function migliore(r, q) {
+  const qq = norm(q);
+  const vicino = (x) => { const n = x && norm(x.name); return Boolean(n) && (n === qq || n.startsWith(qq) || qq.startsWith(n)); };
+  const [a, t, al, pl] = [r.artist[0], r.track[0], r.album[0], r.playlist[0]];
+  if (vicino(a)) return { tipo: 'artist', x: a };
+  if (vicino(t)) return { tipo: 'track', x: t };
+  if (vicino(al)) return { tipo: 'album', x: al };
+  if (vicino(pl)) return { tipo: 'playlist', x: pl };
+  return a ? { tipo: 'artist', x: a } : t ? { tipo: 'track', x: t } : null;
+}
+function schedaMigliore({ tipo, x }) {
+  const href = tipo === 'artist' ? `#/musica/artista/${x.id}` : tipo === 'album' ? `#/musica/album/${x.id}` : tipo === 'playlist' ? `#/musica/pl/${x.id}` : x.album && x.album.id ? `#/musica/album/${x.album.id}` : '#/musica/cerca';
+  const sotto = tipo === 'artist' ? 'Artista' : tipo === 'album' ? `${tipoUscita(x)} · ${nomiArtisti(x)}` : tipo === 'playlist' ? ['Playlist', x.owner].filter(Boolean).join(' · ') : `Brano · ${nomiArtisti(x)}`;
+  const parti = tipo === 'track' ? `data-action="sp-brano" data-uri="${x.uri}" data-ctx="cerca"` : `data-action="sp-suona" data-ctx="${x.uri}"`;
+  const on = tipo === 'track' ? x.uri === suonaOra() : x.uri === ctxOra();
+  return html`<div class="sp-best ${on ? 'on' : ''}">
+    <a class="sp-best-link" href="${href}">
+      ${cover(tipo === 'track' ? x.big || x.img : x.img, tipo === 'artist' ? 'user' : tipo === 'album' ? 'disc' : 'music', `sp-best-img ${tipo === 'artist' ? 'round' : ''}`)}
+      <b>${x.name}</b><span>${tipo === 'track' && x.e ? html`<i class="sp-e">E</i>` : ''}${sotto}</span>
+    </a>
+    <button class="sp-best-play" ${raw(parti)} aria-label="Fai partire ${x.name}">${on && sp.player && sp.player.is_playing ? eq(true) : icon('play', 'filled')}</button>
+  </div>`;
+}
+
 function hero(info, { eyebrow, sub, ph = 'music', round = false }) {
   return html`<div class="sp-hero">
     ${cover(info.big || info.img, ph, `sp-hero-img ${round ? 'round' : ''} ${ph === 'heart' ? 'sp-fav' : ''}`)}
     <div class="sp-hero-txt"><p class="eyebrow">${eyebrow}</p><h1>${info.name}</h1>${sub ? html`<p class="muted small">${sub}</p>` : ''}</div>
   </div>`;
 }
-function azioni(ctxKey, { salva = '', menu = '' } = {}) {
+/**
+ * I comandi di una pagina, come su Spotify: a sinistra ♥ (o «Segui») e ⋯, a destra «casuale» e il grande play.
+ * Ci stanno anche sull'iPhone più piccolo.
+ */
+function azioni(ctxKey, { salva = '', menu = '', altro = '', segui = null } = {}) {
   const saved = salva ? S.salvato(salva) : false;
-  return html`<div class="sp-actions">
-    <button class="btn primary" data-action="sp-suona" data-ctx="${ctxKey}">${icon('play', 'sm filled')} Riproduci</button>
-    <button class="btn" data-action="sp-suona" data-ctx="${ctxKey}" data-casuale="1">${icon('shuffle', 'sm')} Casuale</button>
-    ${salva ? html`<button class="icon-btn sp-save ${saved ? 'on' : ''}" data-action="sp-cuore" data-uri="${salva}" aria-label="${saved ? 'Togli dalla libreria' : 'Salva nella libreria'}">${icon('heart', saved ? 'filled' : '')}</button>` : ''}
-    ${menu ? html`<button class="icon-btn" data-action="sp-pl-menu" data-id="${menu}" aria-label="Modifica playlist">${icon('dots')}</button>` : ''}
+  return html`<div class="sp-actions sp-azioni">
+    <div class="sp-az">
+      ${segui ? html`<button class="btn sp-segui ${segui.on ? 'on' : ''}" data-action="sp-segui" data-uri="${segui.uri}" data-nome="${segui.nome}" aria-pressed="${segui.on ? 'true' : 'false'}">${segui.on ? html`${icon('check', 'xs')} Segui già` : 'Segui'}</button>` : ''}
+      ${salva ? html`<button class="icon-btn sp-save ${saved ? 'on' : ''}" data-action="sp-cuore" data-uri="${salva}" aria-label="${saved ? 'Togli dalla libreria' : 'Salva nella libreria'}">${icon('heart', saved ? 'filled' : '')}</button>` : ''}
+      ${menu ? html`<button class="icon-btn" data-action="sp-pl-menu" data-id="${menu}" aria-label="Modifica playlist">${icon('dots')}</button>` : ''}
+      ${altro ? html`<button class="icon-btn" data-action="sp-altro" data-uri="${altro}" aria-label="Altro">${icon('dots')}</button>` : ''}
+    </div>
+    <div class="sp-az">
+      <button class="icon-btn sp-casuale" data-action="sp-suona" data-ctx="${ctxKey}" data-casuale="1" aria-label="Casuale" title="Casuale">${icon('shuffle')}</button>
+      <button class="sp-gioca" data-action="sp-suona" data-ctx="${ctxKey}" aria-label="Riproduci" title="Riproduci">${icon('play', 'filled')}</button>
+    </div>
   </div>`;
 }
 
@@ -611,7 +749,7 @@ function listaPaginata(base, ctxKey, opts = {}) {
 function preferitiPage() {
   const first = S.letto(S.chiave('preferiti', 0));
   contesti.set('preferiti', { lista: true, uris: [] });
-  return html`${back}
+  return html`${back()}
     ${hero({ name: 'Brani che ti piacciono', big: '' }, { eyebrow: 'Preferiti', sub: first ? plural(first.totale, 'brano', 'brani') : '', ph: 'heart' })}
     ${first && first.list.length ? azioni('preferiti') : ''}
     ${first && !first.list.length ? html`<div class="empty">${icon('heart', 'lg')}<p><b>Ancora nessun preferito</b></p><p class="small">Tocca il cuore accanto a un brano per salvarlo qui.</p></div>` : ''}
@@ -621,11 +759,11 @@ function preferitiPage() {
 function playlistPage(id) {
   const first = S.letto(S.chiave('pl', id, 0));
   const ctxKey = `pl:${id}`;
-  if (!first) return html`${back}${caricamento(S.chiave('pl', id, 0))}`;
+  if (!first) return html`${back()}${caricamento(S.chiave('pl', id, 0))}`;
   const info = first.info || {};
   contesti.set(ctxKey, { context: info.uri, own: info.own ? id : null });
   const sub = [info.own ? '' : info.owner, info.n != null ? plural(info.n, 'brano', 'brani') : ''].filter(Boolean).join(' · ');
-  return html`${back}
+  return html`${back()}
     ${hero(info, { eyebrow: info.own ? 'La tua playlist' : 'Playlist', sub, ph: 'headphones' })}
     ${info.descr ? html`<p class="muted small sp-descr">${info.descr}</p>` : ''}
     ${azioni(ctxKey, { salva: info.own ? '' : info.uri, menu: info.own ? id : '' })}
@@ -636,47 +774,106 @@ function playlistPage(id) {
           <a class="btn" href="#/musica/cerca">${icon('search', 'sm')} Cerca</a></div>`}`;
 }
 
+/** Un album: copertina, artisti (si toccano), brani (con i dischi), data, durata, diritti e "Altro di…". */
 function albumPage(id) {
   const key = S.chiave('album', id);
   const r = S.letto(key);
-  if (!r) return html`${back}${caricamento(key)}`;
+  if (!r) return html`${back()}${caricamento(key)}`;
+  const a = r.info;
   const ctxKey = `album:${id}`;
-  contesti.set(ctxKey, { context: r.info.uri });
-  return html`${back}
-    ${hero(r.info, { eyebrow: r.info.tipo === 'single' ? 'Singolo' : 'Album', sub: [nomiArtisti(r.info), r.info.anno, plural(r.list.length, 'brano', 'brani')].filter(Boolean).join(' · '), ph: 'disc' })}
-    ${r.info.artists && r.info.artists[0] ? html`<a class="mini-btn sp-artlink" href="#/musica/artista/${r.info.artists[0].id}">${icon('user', 'xs')} ${r.info.artists[0].name}</a>` : ''}
-    ${azioni(ctxKey, { salva: r.info.uri })}
-    <div class="list">${r.list.map((t) => trackRow(t, ctxKey, { numero: true }))}</div>`;
+  contesti.set(ctxKey, { context: a.uri });
+  const dischi = new Set(r.list.map((t) => t.disco)).size > 1;
+  const durata = r.list.reduce((tot, t) => tot + (t.ms || 0), 0);
+  const a0 = (a.artists || [])[0];
+  const altro = a0 ? ['album', 'single'].flatMap((g) => (S.letto(S.chiave('disco', a0.id, g, 0)) || { list: [] }).list).filter((x) => x.id !== id) : [];
+  let disco = 0;
+  return html`${back()}
+    <div class="sp-album">
+      ${cover(a.big || a.img, 'disc', 'sp-album-img')}
+      <div class="sp-album-txt">
+        <h1>${a.name}</h1>
+        <p class="sp-album-art">${(a.artists || []).map((x, i) => html`${i ? ', ' : ''}<a href="#/musica/artista/${x.id}">${x.name}</a>`)}</p>
+        <p class="muted small">${[tipoUscita(a), a.anno].filter(Boolean).join(' · ')}</p>
+      </div>
+    </div>
+    ${azioni(ctxKey, { salva: a.uri, altro: a.uri })}
+    <div class="list sp-album-list">${r.list.map((t) => {
+      const testa = dischi && t.disco !== disco ? html`<div class="sp-disco-h">${icon('disc', 'xs')} Disco ${t.disco}</div>` : '';
+      disco = t.disco;
+      return html`${testa}${trackRow(t, ctxKey, { numero: true })}`;
+    })}</div>
+    <p class="sp-album-foot">${dataLunga(a)}<br>${plural(r.list.length, 'brano', 'brani')}, ${durataLunga(durata)}${(a.diritti || []).map((d) => html`<br><span>${d}</span>`)}</p>
+    ${altro.length ? html`<div class="section-title"><span>Altro di ${a0.name}</span><a class="card-link" href="#/musica/artista/${a0.id}/discografia/album">Discografia ${icon('right', 'xs')}</a></div>
+      <div class="sp-hs">${altro.slice(0, 12).map((x) => tile(x, `#/musica/album/${x.id}`, { sub: [x.anno, tipoUscita(x)].join(' · '), ph: 'disc', play: x.uri }))}</div>` : ''}`;
 }
 
+/** Un artista: segui, brani, ultima uscita, discografia (album, singoli ed EP, compilation) e dove appare. */
 function artistaPage(id) {
   const key = S.chiave('artista', id);
   const r = S.letto(key);
-  if (!r) return html`${back}${caricamento(key)}`;
+  if (!r) return html`${back()}${caricamento(key)}`;
+  const a = r.info;
   const ctxKey = `artista:${id}`;
-  contesti.set(ctxKey, { context: r.info.uri });
-  const album = r.albums.filter((a) => a.tipo !== 'single');
-  const singoli = r.albums.filter((a) => a.tipo === 'single');
-  return html`${back}
-    ${hero(r.info, { eyebrow: 'Artista', ph: 'user', round: true })}
-    <div class="sp-actions">
-      <button class="btn primary" data-action="sp-suona" data-ctx="${ctxKey}">${icon('play', 'sm filled')} Riproduci</button>
-      <button class="btn" data-action="sp-suona" data-ctx="${ctxKey}" data-casuale="1">${icon('shuffle', 'sm')} Casuale</button>
+  contesti.set(ctxKey, { context: a.uri });
+  const segui = S.salvato(a.uri);
+  const gr = Object.fromEntries(S.GRUPPI.map((g) => [g, S.letto(S.chiave('disco', id, g, 0))]));
+  const kb = S.chiave('artista-brani', id);
+  const brani = S.letto(kb);
+  if (brani) contesti.set(`brani:${id}`, { uris: brani.map((t) => t.uri) });
+  const tutti = ui(`sp.ab.${id}`, false);
+  // l'ultima uscita: la più recente tra album e singoli
+  const ultima = [...(gr.album ? gr.album.list : []), ...(gr.single ? gr.single.list : [])].sort((x, y) => String(y.data).localeCompare(String(x.data)))[0];
+  const gruppi = ['album', 'single', 'compilation'].filter((g) => gr[g] && gr[g].list.length);
+  const sel = gruppi.includes(ui(`sp.disco.${id}`, '')) ? ui(`sp.disco.${id}`, '') : gruppi[0];
+  const carica = ['album', 'single', 'compilation'].some((g) => !gr[g] && !S.fallito(S.chiave('disco', id, g, 0)));
+  return html`${back()}
+    <div class="sp-artist">
+      ${cover(a.big || a.img, 'user', 'sp-artist-img')}
+      <div class="sp-artist-txt"><p class="eyebrow">Artista</p><h1>${a.name}</h1>${a.generi && a.generi.length ? html`<p class="sp-generi">${a.generi.join(' · ')}</p>` : ''}</div>
     </div>
-    ${album.length ? html`<div class="section-title"><span>Album</span></div><div class="sp-grid">${album.map((x) => tile(x, `#/musica/album/${x.id}`, { sub: x.anno, ph: 'disc', play: x.uri }))}</div>` : ''}
-    ${singoli.length ? html`<div class="section-title"><span>Singoli</span></div><div class="sp-grid">${singoli.map((x) => tile(x, `#/musica/album/${x.id}`, { sub: x.anno, ph: 'disc', play: x.uri }))}</div>` : ''}`;
+    ${azioni(ctxKey, { altro: a.uri, segui: { uri: a.uri, nome: a.name, on: segui } })}
+    <div class="section-title"><span>Brani</span></div>
+    ${brani ? brani.length ? html`<div class="list">${(tutti ? brani : brani.slice(0, 5)).map((t) => trackRow(t, `brani:${id}`))}</div>
+      ${brani.length > 5 ? html`<button class="card-link sp-more" data-action="sp-ab" data-id="${id}">${tutti ? 'Mostra meno' : 'Mostra altri'}</button>` : ''}`
+      : html`<p class="muted small sp-wait">Nessun brano trovato.</p>` : caricamento(kb)}
+    ${ultima ? html`<div class="section-title"><span>Ultima uscita</span></div><div class="list">${rigaAlbum(ultima, { lunga: true })}</div>` : ''}
+    ${gruppi.length ? html`<div class="section-title"><span>Discografia</span><a class="card-link" href="#/musica/artista/${id}/discografia/${sel}">Mostra tutto ${icon('right', 'xs')}</a></div>
+      ${gruppi.length > 1 ? html`<div class="chips sp-chips">${gruppi.map((g) => html`<button class="chip ${sel === g ? 'on' : ''}" data-action="sp-disco" data-id="${id}" data-v="${g}">${GRUPPO_LABEL[g]}</button>`)}</div>` : ''}
+      <div class="sp-hs">${gr[sel].list.map((x) => tile(x, `#/musica/album/${x.id}`, { sub: [x.anno, tipoUscita(x)].join(' · '), ph: 'disc', play: x.uri }))}</div>`
+      : carica ? html`<div class="section-title"><span>Discografia</span></div><p class="muted small sp-wait">Un attimo…</p>` : ''}
+    ${gr.appears_on && gr.appears_on.list.length ? html`<div class="section-title"><span>Appare in</span>${gr.appears_on.altri ? html`<a class="card-link" href="#/musica/artista/${id}/discografia/appears_on">Tutto ${icon('right', 'xs')}</a>` : ''}</div>
+      <div class="sp-hs">${gr.appears_on.list.map((x) => tile(x, `#/musica/album/${x.id}`, { sub: [x.anno, nomiArtisti(x)].filter(Boolean).join(' · '), ph: 'disc', play: x.uri }))}</div>` : ''}`;
+}
+
+/** Tutta la discografia di un artista, un gruppo alla volta (10 per volta: il massimo che Spotify concede). */
+function discografiaPage(id, gruppo) {
+  const r = S.letto(S.chiave('artista', id));
+  const g = S.GRUPPI.includes(gruppo) ? gruppo : 'album';
+  const pagine = ui(`sp.pag.disco.${id}.${g}`, 1);
+  const keys = Array.from({ length: pagine }, (_, i) => S.chiave('disco', id, g, i * 10));
+  const ok = keys.map((k) => S.letto(k)).filter(Boolean);
+  const list = ok.flatMap((x) => x.list);
+  const ultimo = ok[ok.length - 1];
+  const primi = Object.fromEntries(S.GRUPPI.map((x) => [x, S.letto(S.chiave('disco', id, x, 0))]));
+  const gruppi = S.GRUPPI.filter((x) => x === g || !primi[x] || primi[x].totale);
+  return html`${back()}
+    <header class="page-head"><div><p class="eyebrow">${r ? r.info.name : 'Artista'}</p><h1>Discografia</h1></div></header>
+    <div class="chips sp-chips">${gruppi.map((x) => html`<button class="chip ${x === g ? 'on' : ''}" data-action="sp-disco-vai" data-id="${id}" data-v="${x}">${GRUPPO_LABEL[x]}${primi[x] && primi[x].totale ? html` <span class="sp-n">${primi[x].totale}</span>` : ''}</button>`)}</div>
+    ${list.length ? html`<div class="list sp-disco">${list.map((x) => rigaAlbum(x, { lunga: true }))}</div>` : ok.length === pagine ? html`<p class="muted sp-wait">Niente qui.</p>` : ''}
+    ${ok.length < pagine ? caricamento(keys[ok.length]) : ''}
+    ${ok.length === pagine && ultimo && ultimo.altri ? html`<button class="card-link sp-more" data-action="sp-altri" data-k="disco.${id}.${g}">Altri</button>` : ''}`;
 }
 
 /** Le sottopagine di Musica. */
 export function render(r) {
-  if (!isSynced() || !S.chi()) return html`${back}<div class="empty"><p><b>Spotify non è collegato</b></p></div>`;
+  if (!isSynced() || !S.chi()) return html`${back()}<div class="empty"><p><b>Spotify non è collegato</b></p></div>`;
   const [, sub, id] = r;
   if (sub === 'cerca') return cercaPage();
   if (sub === 'preferiti') return preferitiPage();
   if (sub === 'pl' && id) return playlistPage(id);
   if (sub === 'album' && id) return albumPage(id);
-  if (sub === 'artista' && id) return artistaPage(id);
-  return html`${back}`;
+  if (sub === 'artista' && id) return r[3] === 'discografia' ? discografiaPage(id, r[4]) : artistaPage(id);
+  return html`${back()}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -712,12 +909,24 @@ function caricaPagine(base, fn) {
   }
 }
 const uriDi = (list) => (list || []).map((t) => t.uri);
+/** Una pagina della discografia (se non c'è già). false = sta ancora arrivando (le pagine dopo aspettano). */
+function caricaDisco(id, g, offset) {
+  const key = S.chiave('disco', id, g, offset);
+  if (S.letto(key)) return true;
+  if (!S.fallito(key)) S.leggi(key, () => S.discografia(id, g, offset), { maxAge: 30 * 60000 }).catch(muto);
+  return false;
+}
 
 let suggerimenti = false;
 window.addEventListener('hashchange', () => { if (!S.inMusica()) suggerimenti = false; });
 /** La lista a tema vale per tutti (una settimana), "per te" è del proprio account (qualche ora). */
 async function caricaSuggerimenti() {
   if (!S.chi()) return;
+  const acc = (sp.info && sp.info.account && sp.info.account[S.chi()]) || {};
+  if (acc.extra !== false) {
+    try { await S.leggi(S.chiave('recenti'), () => S.ascoltatiDiRecente(), { maxAge: 5 * 60000, conserva: true }); } catch { /* alla prossima */ }
+    try { await S.leggi(S.chiave('topartisti'), () => S.artistiDelMomento(), { maxAge: 12 * 3600000, conserva: true }); } catch { /* idem */ }
+  }
   const kp = S.chiave('perte');
   try {
     const d = await S.leggi(kp, () => S.perTe(), { maxAge: 6 * 3600000, conserva: { dopo: (x) => S.registra(x.scelti) } });
@@ -743,6 +952,8 @@ export async function precarica() {
   const pt = S.letto(S.chiave('perte'));
   await S.scaldaCopertine([
     ora && ora.big, ora && ora.xl,
+    ...(S.letto(S.chiave('recenti')) || []).map((x) => x.img),
+    ...(S.letto(S.chiave('topartisti')) || []).map((x) => x.img),
     ...((sp.playlists[k] || {}).list || []).slice(0, 10).map((p) => p.img),
     ...tema.map((t) => t.big || t.img),
     ...(pt ? [...pt.scelti.slice(0, 5).map((t) => t.img), ...pt.novita.map((x) => x.img)] : []),
@@ -759,6 +970,17 @@ export function after(r) {
   if (!sub) {
     // suggerimenti: dopo il lettore e uno alla volta (Spotify non ama le raffiche di richieste)
     if (!suggerimenti && sp.playerAt && sp.playlists[S.chi()]) { suggerimenti = true; setTimeout(caricaSuggerimenti, 600); }
+    if (vistaLibreria() === 'album') caricaPagine('mieialbum', (o) => S.albumSalvati(o));
+    if (vistaLibreria() === 'artisti') {
+      const pagine = ui('sp.pag.seguiti', 1);
+      for (let i = 0; i < pagine; i++) {
+        const key = S.chiave('seguiti', i);
+        if (S.letto(key)) continue;
+        const prima = i ? S.letto(S.chiave('seguiti', i - 1)) : null;
+        if (!S.fallito(key)) S.leggi(key, () => S.artistiSeguiti(prima ? prima.dopo : '')).catch(muto);
+        break;
+      }
+    }
   } else if (sub === 'cerca') {
     const q = ui('sp.q', '').trim();
     const tipo = ui('sp.tipo', 'tutto');
@@ -781,10 +1003,25 @@ export function after(r) {
     caricaPagine(`pl:${id}`, (o) => S.playlist(id, o).then((x) => { S.controllaSalvati(uriDi(x.list).concat(x.info && !x.info.own ? [x.info.uri] : [])); return x; }));
   } else if (sub === 'album' && id) {
     const key = S.chiave('album', id);
-    if (!S.letto(key) && !S.fallito(key)) S.leggi(key, () => S.album(id)).then((x) => S.controllaSalvati([x.info.uri, ...uriDi(x.list)])).catch(muto);
+    if (!S.letto(key) && !S.fallito(key)) S.leggi(key, () => S.album(id), { maxAge: 30 * 60000 }).then((x) => S.controllaSalvati([x.info.uri, ...uriDi(x.list)])).catch(muto);
+    // "Altro di…": album e singoli dell'artista principale
+    const x = S.letto(key);
+    const a0 = x && x.info.artists && x.info.artists[0];
+    if (a0 && a0.id) ['album', 'single'].forEach((g) => caricaDisco(a0.id, g, 0));
   } else if (sub === 'artista' && id) {
     const key = S.chiave('artista', id);
-    if (!S.letto(key) && !S.fallito(key)) S.leggi(key, () => S.artista(id)).catch(muto);
+    if (!S.letto(key) && !S.fallito(key)) S.leggi(key, () => S.artista(id), { maxAge: 30 * 60000 }).then((x) => S.controllaSalvati([x.info.uri])).catch(muto);
+    const x = S.letto(key);
+    if (r[3] === 'discografia') {
+      const g = S.GRUPPI.includes(r[4]) ? r[4] : 'album';
+      S.GRUPPI.forEach((y) => caricaDisco(id, y, 0)); // i numeri sui bottoni
+      const pagine = ui(`sp.pag.disco.${id}.${g}`, 1);
+      for (let i = 1; i < pagine; i++) if (!caricaDisco(id, g, i * 10)) break;
+    } else {
+      S.GRUPPI.forEach((g) => caricaDisco(id, g, 0));
+      const kb = S.chiave('artista-brani', id);
+      if (x && !S.letto(kb) && !S.fallito(kb)) S.leggi(kb, () => S.braniArtista(id, x.info.name), { maxAge: 30 * 60000 }).then((l) => S.controllaSalvati(uriDi(l))).catch(muto);
+    }
   }
 }
 window.addEventListener('hashchange', () => { if (!location.hash.startsWith('#/musica/cerca')) messoFuoco = false; });
@@ -976,7 +1213,6 @@ function menuBrano(uri, ctxKey) {
   if (!t) return;
   const c = contesti.get(ctxKey) || {};
   const saved = S.salvato(uri);
-  const a0 = t.artists && t.artists[0];
   const riga = (ic, label, attrs) => html`<button class="set-row" type="button" ${raw(attrs)}>${icon(ic)}<div class="row-main"><b>${label}</b></div></button>`;
   const link = (ic, label, href) => html`<a class="set-row" href="${href}">${icon(ic)}<div class="row-main"><b>${label}</b></div></a>`;
   openSheet({
@@ -989,8 +1225,29 @@ function menuBrano(uri, ctxKey) {
         ${riga('plus', 'Aggiungi a una playlist', `data-action="sp-aggiungi" data-uri="${uri}"`)}
         ${c.own ? riga('trash', 'Togli da questa playlist', `data-action="sp-togli" data-uri="${uri}" data-id="${c.own}"`) : ''}
         ${t.album && t.album.id ? link('disc', 'Vai all’album', `#/musica/album/${t.album.id}`) : ''}
-        ${a0 && a0.id ? link('user', `Vai a ${a0.name}`, `#/musica/artista/${a0.id}`) : ''}
+        ${(t.artists || []).filter((x) => x.id).map((x) => link('user', `Vai a ${x.name}`, `#/musica/artista/${x.id}`))}
+        ${t.id ? html`<button class="set-row" type="button" data-action="sp-condividi" data-url="https://open.spotify.com/track/${t.id}" data-nome="${t.name}">${icon('share')}<div class="row-main"><b>Condividi</b></div></button>` : ''}
       </div>`,
+  });
+}
+
+/** "⋯" di un album o di un artista: vai all'artista, condividi, apri in Spotify. */
+function menuAltro(uri) {
+  const [, tipo, id] = String(uri || '').split(':');
+  const al = tipo === 'album' ? S.letto(S.chiave('album', id)) : null;
+  const ar = tipo === 'artist' ? S.letto(S.chiave('artista', id)) : null;
+  const info = (al && al.info) || (ar && ar.info);
+  if (!info) return;
+  const url = `https://open.spotify.com/${tipo}/${id}`;
+  const link = (ic, label, href, extra = '') => html`<a class="set-row" href="${href}" ${raw(extra)}>${icon(ic)}<div class="row-main"><b>${label}</b></div></a>`;
+  openSheet({
+    title: info.name,
+    body: html`<div class="list">
+      ${tipo === 'album' ? (info.artists || []).map((x) => link('user', `Vai a ${x.name}`, `#/musica/artista/${x.id}`)) : ''}
+      ${tipo === 'artist' ? link('disc', 'Discografia', `#/musica/artista/${id}/discografia/album`) : ''}
+      <button class="set-row" type="button" data-action="sp-condividi" data-url="${url}" data-nome="${info.name}">${icon('share')}<div class="row-main"><b>Condividi</b></div></button>
+      ${link('link', 'Apri in Spotify', url, 'target="_blank" rel="noopener"')}
+    </div>`,
   });
 }
 
@@ -1119,6 +1376,32 @@ export const actions = {
   'sp-avanti': prova(async () => { vibrate(); await S.salta(true); }),
   'sp-indietro': prova(async () => { vibrate(); await S.salta(false); }),
   'sp-casuale': prova(async () => { vibrate(); await S.casuale(); }),
+  'sp-ripeti': prova(async () => {
+    vibrate();
+    await S.ripeti();
+    const r = sp.player && sp.player.repeat_state;
+    toast(r === 'track' ? 'Ripeto questo brano' : r === 'context' ? 'Ripeto tutto' : 'Niente ripetizione', { ms: 1400 });
+  }),
+  'sp-back': () => { history.back(); },
+  'sp-segui': prova(async ({ el }) => {
+    vibrate();
+    const si = !S.salvato(el.dataset.uri);
+    await S.salva(el.dataset.uri, si);
+    S.dimentica(S.chiave('seguiti'));
+    toast(si ? `Segui ${el.dataset.nome}` : `Non segui più ${el.dataset.nome}`);
+  }),
+  'sp-ab': ({ el }) => setUi(`sp.ab.${el.dataset.id}`, !ui(`sp.ab.${el.dataset.id}`, false)),
+  'sp-disco': ({ el }) => setUi(`sp.disco.${el.dataset.id}`, el.dataset.v),
+  // i gruppi della discografia non riempiono la storia: "indietro" torna all'artista
+  'sp-disco-vai': ({ el }) => { location.replace(`#/musica/artista/${el.dataset.id}/discografia/${el.dataset.v}`); window.scrollTo(0, 0); },
+  'sp-lib': ({ el }) => { lsSet('casa.spotify.lib', el.dataset.v); setUi('sp.lib', el.dataset.v); },
+  'sp-altro': ({ el }) => menuAltro(el.dataset.uri),
+  'sp-condividi': prova(async ({ el }) => {
+    closeSheet();
+    const url = el.dataset.url;
+    if (navigator.share) { try { await navigator.share({ title: el.dataset.nome || 'Spotify', url }); } catch { /* annullato */ } return; }
+    try { await navigator.clipboard.writeText(url); toast('Link copiato'); } catch { toast('Non riesco a copiare il link'); }
+  }),
   'sp-seek': prova(async ({ el }) => {
     const ms = Number(el.value);
     try { await S.vaiA(ms); } finally { sp.trascino = null; el._busy = false; rerender(); }

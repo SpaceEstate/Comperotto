@@ -35,6 +35,12 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
 - **Viaggi** (`js/views/viaggi.js`, `#/viaggi`, `#/viaggi/<id>`): liste per la valigia (raccolta `viaggi`) e le cose da portare, una per
   documento (`valigia`, così si spunta in due insieme). Modelli Mare, Montagna, Weekend o copia di un'altra lista; aggiunta veloce
   anche a virgole (le doppie si saltano); «Ricomincia» toglie le spunte per il viaggio dopo.
+  Le cose da portare sono divise in sezioni (`SEZIONI` in `viaggi.js`: Giacche e felpe, Magliette e camicie, Pantaloni e gonne,
+  Intimo e pigiama, Scarpe, Accessori, Mare, Bagno, Elettronica, Documenti, Altro), indovinate dal nome con le parole di `KW`
+  (`indovinaSezione()`, come i reparti della spesa). `sezione` si salva solo se scelta a mano (foglio Modifica, + accanto a una sezione,
+  «Nuova sezione» nel menu ⋯): l'id di una delle nostre o il nome di una sezione vostra (es. «Sci»; si vede tra Documenti e Altro e
+  sparisce quando è vuota). La stessa cosa aggiunta poi in qualsiasi lista va nella sezione scelta l'ultima volta (`imparata()`);
+  copie e duplicati tengono le sezioni. Le cose già in valigia restano in fondo, tutte insieme.
 - **Spesa:** sopra solo la linea di avanzamento (i conti sono sulla scheda Cibo e in alto); niente aggiunte rapide (`freq` resta).
 - **Dov'è, mappa:** più alta; un tocco (o il pulsante) la apre a tutto schermo (`ui('dove.grande')`, `.map-card.grande`), X o Esc la chiudono.
 - **Auto ("Ho parcheggiato"):** il pulsante è un comando rapido sulla schermata Home dell'iPhone (istruzioni nel README), non un tasto

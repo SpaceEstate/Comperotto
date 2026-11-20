@@ -84,7 +84,9 @@ let current = null;
 /**
  * openSheet({ title, body, submit, onSubmit(fd, form) → false per tenerlo aperto, extra, onOpen(root) })
  */
+let tornaA = null; // chi aveva il focus prima del foglio (ci si torna alla chiusura)
 export function openSheet(opts) {
+  if (!current) tornaA = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
   current = opts;
   const content = document.getElementById('sheet-content');
   const body = html`
@@ -122,7 +124,15 @@ export function closeSheet() {
   current = null;
   l.classList.remove('open');
   document.body.style.overflow = '';
-  setTimeout(() => { if (!current) { l.hidden = true; document.getElementById('sheet-content').innerHTML = ''; } }, 300);
+  const prima = tornaA;
+  tornaA = null;
+  setTimeout(() => {
+    if (current) return;
+    l.hidden = true;
+    document.getElementById('sheet-content').innerHTML = '';
+    // con tastiera e lettori di schermo il focus torna al pulsante che aveva aperto il foglio
+    if (prima && prima.isConnected && matchMedia('(hover: hover)').matches) { try { prima.focus({ preventScroll: true }); } catch {} }
+  }, 300);
 }
 
 export const sheetOpen = () => Boolean(current);
@@ -183,6 +193,20 @@ export function pageHead(title, { eyebrow = '', actions = '' } = {}) {
     <div>${eyebrow ? html`<p class="eyebrow">${eyebrow}</p>` : ''}<h1>${title}</h1></div>
     ${actions ? html`<div class="head-actions">${actions}</div>` : ''}
   </header>`;
+}
+
+/** Le schede in cima a una pagina con più zone (es. Cibo: Spesa | Ricette), con i conti accanto alle icone. */
+export function schede(base, zone, cur, { conti = {}, etichetta = '' } = {}) {
+  return html`<nav class="segmented seg-icons" aria-label="${etichetta}">${Object.entries(zone).map(([k, v]) => html`<a href="#/${base}/${k}" class="${cur === k ? 'on' : ''}" ${cur === k ? raw('aria-current="page"') : ''}>
+    <span class="seg-ico">${icon(v.icon, 'sm')}${conti[k] ? html`<span class="count soft">${conti[k]}</span>` : ''}</span><span>${v.label}</span></a>`)}</nav>`;
+}
+
+/**
+ * La X in fondo a una casella di ricerca: cancella tutto con un tocco e rimette il cursore lì.
+ * Si vede solo quando c'è scritto qualcosa (CSS); "poi" = azione da fare dopo (es. chiudere i risultati).
+ */
+export function cancella(id, poi = '') {
+  return html`<button type="button" class="search-x" data-action="search-x" data-for="${id}" ${poi ? raw(`data-poi="${poi}"`) : ''} aria-label="Cancella la ricerca">${icon('x', 'sm')}</button>`;
 }
 
 export function emptyState(title, text, art = '') {

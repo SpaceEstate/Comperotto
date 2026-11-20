@@ -50,7 +50,7 @@ function onStart(ev) {
   if (sheetOpen()) {
     const sheet = target.closest('.sheet');
     if (sheet && !target.closest('input[type=range], .no-drag')) c.sheet = sheet;
-  } else if (!target.closest('.sheet-layer, .map-card, .embed, iframe, .no-gesture')) {
+  } else if (!target.closest('.sheet-layer, .np, #mini, .map-card, .embed, iframe, .no-gesture') && !document.documentElement.classList.contains('np-open')) {
     if (t.clientX <= EDGE && isStandalone()) { const b = backLink(); if (b) c.back = b; }
     const row = target.closest('[data-swipe-id]');
     if (row && !row.classList.contains('checking')) c.row = row;

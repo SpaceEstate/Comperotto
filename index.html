@@ -54,17 +54,25 @@
   <link rel="modulepreload" href="js/season.js">
   <link rel="modulepreload" href="js/gestures.js">
   <link rel="modulepreload" href="js/notifiche.js">
+  <link rel="modulepreload" href="js/spotify.js">
+  <link rel="modulepreload" href="js/precarica.js">
   <link rel="modulepreload" href="js/config.js">
+  <link rel="modulepreload" href="js/aggiorna.js">
   <link rel="modulepreload" href="js/seed.js">
   <link rel="modulepreload" href="js/views/home.js">
+  <link rel="modulepreload" href="js/views/zone.js">
+  <link rel="modulepreload" href="js/views/cibo.js">
+  <link rel="modulepreload" href="js/views/svago.js">
   <link rel="modulepreload" href="js/views/casa.js">
   <link rel="modulepreload" href="js/views/spesa.js">
   <link rel="modulepreload" href="js/views/ricette.js">
   <link rel="modulepreload" href="js/views/film.js">
   <link rel="modulepreload" href="js/views/musica.js">
+  <link rel="modulepreload" href="js/views/spotify.js">
   <link rel="modulepreload" href="js/views/desideri.js">
   <link rel="modulepreload" href="js/views/gatti.js">
   <link rel="modulepreload" href="js/views/dove.js">
+  <link rel="modulepreload" href="js/views/viaggi.js">
   <link rel="modulepreload" href="js/mappa.js">
   <link rel="modulepreload" href="js/views/impostazioni.js">
   <link rel="modulepreload" href="js/views/login.js">
@@ -79,6 +87,8 @@
       var s = ov && ov !== 'auto' ? (ov === 'casa' ? '' : ov) : (ev[0] === oggi ? ev[1] : '');
       if (s) r.dataset.season = s;
     } catch (e) {}
+    // iPad: barra laterale stretta (solo icone) o aperta, come l'ultima volta su questo dispositivo
+    try { document.documentElement.dataset.side = localStorage.getItem('casa.side') === 'aperta' ? 'aperta' : 'stretta'; } catch (e) { document.documentElement.dataset.side = 'stretta'; }
   </script>
 </head>
 <body>
@@ -90,6 +100,11 @@
         <p>Apro la porta di casa…</p>
       </div>
     </main>
+    <div id="mini" class="mini-layer"></div>
+    <div id="np" class="np">
+      <div class="np-backdrop" data-action="np-chiudi"></div>
+      <section class="np-full" role="dialog" aria-modal="true" aria-label="Lettore musicale"><div id="np-body" class="np-body"></div></section>
+    </div>
     <nav id="tabbar" class="tabbar" aria-label="Sezioni" hidden></nav>
   </div>
 

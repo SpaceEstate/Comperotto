@@ -2,7 +2,7 @@
 // Cerca un film o una serie e restituisce copertina e dove vederlo in Italia,
 // senza chiavi da configurare: dati pubblici di JustWatch (con le copertine di
 // Apple TV come riserva). Protetto dal codice di famiglia.
-import { checkAuth, send, sleep } from './_lib.js';
+import { respingi, send } from './_lib.js';
 
 const JW = 'https://apis.justwatch.com/graphql';
 const IMG = 'https://images.justwatch.com';
@@ -18,6 +18,7 @@ const QUERY = `query CercaTitoli($filter: TitleFilter!, $country: Country!, $lan
           fullPath
           originalReleaseYear
           posterUrl(profile: S718, format: JPG)
+          genres { shortName }
         }
         offers(country: $country, platform: WEB, filter: $offerFilter) {
           monetizationType
@@ -32,6 +33,12 @@ const QUERY = `query CercaTitoli($filter: TitleFilter!, $country: Country!, $lan
 }`;
 
 const TYPES = { FLATRATE: 'flatrate', FREE: 'free', ADS: 'free', FAST: 'free', RENT: 'rent', BUY: 'buy' };
+
+// Generi di JustWatch → categorie dei film dell'app (Natale e Halloween non sono generi: li sceglie la famiglia)
+const GENERI = { fml: 'famiglia', act: 'azione', trl: 'thriller', hrr: 'horror', ani: 'cartoni' };
+const categorie = (gs) => [...new Set((gs || []).map((g) => g && GENERI[g.shortName]).filter(Boolean))];
+// lo stesso per i generi di Apple (in inglese o in italiano)
+const daGenere = (g) => { const x = String(g || ''); return [/horror|orrore/i.test(x) && 'horror', /thriller/i.test(x) && 'thriller', /action|azione/i.test(x) && 'azione', /family|kids|famiglia|bambini/i.test(x) && 'famiglia', /anima|cartoni/i.test(x) && 'cartoni'].filter(Boolean); };
 const QUALITY = { _4K: 3, HD: 2, SD: 1 };
 
 function offersFrom(list) {
@@ -77,6 +84,8 @@ async function justwatch(q) {
     poster: n.content && n.content.posterUrl ? IMG + n.content.posterUrl : '',
     link: n.content && n.content.fullPath ? `https://www.justwatch.com${n.content.fullPath}` : '',
     offers: offersFrom(n.offers),
+    categorie: categorie(n.content && n.content.genres),
+    generi: ((n.content && n.content.genres) || []).map((g) => g && g.shortName).filter((g) => typeof g === 'string').slice(0, 8),
   })).filter((x) => x.title);
 }
 
@@ -94,11 +103,13 @@ async function itunes(q, kind) {
     poster: (x.artworkUrl100 || '').replace(/\/\d+x\d+bb\./, '/600x900bb.'),
     link: '',
     offers: null,
+    categorie: daGenere(x.primaryGenreName),
+    generi: typeof x.primaryGenreName === 'string' && x.primaryGenreName ? [x.primaryGenreName.slice(0, 40)] : [],
   })).filter((x) => x.title);
 }
 
 export default async function handler(req, res) {
-  if (!(await checkAuth(req))) { await sleep(400); return send(res, 401, { error: 'Codice di famiglia sbagliato' }); }
+  if (await respingi(req, res)) return;
   const p = new URL(req.url, 'http://x').searchParams;
   const q = String(p.get('q') || '').trim().slice(0, 120);
   if (!q) return send(res, 400, { error: 'Manca il titolo' });

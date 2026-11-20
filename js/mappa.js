@@ -109,7 +109,9 @@ const coppie = (fn) => Object.entries(TIPI).flatMap(([k, v]) => { const x = fn(k
 const perCat = (i) => Object.keys(CAT).flatMap((c) => [Object.keys(TIPI).filter((k) => TIPI[k][0] === c), CAT[c][i]]);
 const Z_TIPO = ['match', TIPO, ...coppie((k, v) => v[1]), 99];
 // zoom effettivo: uno su tre dei "tanti" anticipa di un livello
-const Z_VERO = ['case', ['all', ['match', TIPO, TANTI, true, false], ['==', ['%', ['get', 'rank'], 3], 0]], ['-', Z_TIPO, 1], Z_TIPO];
+// (rank e altezze mancano in qualche punto: senza un valore di riserva MapLibre riempie la console di avvisi)
+const RANK = ['coalesce', ['get', 'rank'], 99];
+const Z_VERO = ['case', ['all', ['match', TIPO, TANTI, true, false], ['==', ['%', RANK, 3], 0]], ['-', Z_TIPO, 1], Z_TIPO];
 const ICONA = ['match', TIPO, ...coppie((k, v) => v[2] || null), TIPO];
 
 function stratiAttivita(sat, scuro = false) {
@@ -137,7 +139,7 @@ function stratiAttivita(sat, scuro = false) {
       'text-justify': 'auto',
       'text-padding': ['interpolate', ['linear'], ['zoom'], 14, 8, 17, 3, 19, 1],
       'text-optional': true,
-      'symbol-sort-key': ['get', 'rank'],
+      'symbol-sort-key': RANK,
     },
     paint: sat
       ? { 'text-color': '#fff', 'text-halo-color': 'rgba(15, 15, 15, .8)', 'text-halo-width': 1.3, 'text-halo-blur': 0.4 }
@@ -186,6 +188,15 @@ const stratoPosti = (chiara) => ({
     : { 'text-color': '#fff', 'text-halo-color': 'rgba(15, 15, 15, .85)', 'text-halo-width': 1.5 },
 });
 
+// Confronti numerici su proprietà che in qualche punto mancano (es. "ref_length" dei cartelli, "rank"):
+// MapLibre li considera falsi ma riempie la console di avvisi. Con un valore neutro il risultato è lo stesso.
+const NEUTRO = { '<': 1e9, '<=': 1e9, '>': -1e9, '>=': -1e9 };
+function sana(x) {
+  if (!Array.isArray(x)) return x;
+  if (x.length === 3 && NEUTRO[x[0]] !== undefined && Array.isArray(x[1]) && x[1][0] === 'get' && typeof x[2] === 'number') return [x[0], ['coalesce', x[1], NEUTRO[x[0]]], x[2]];
+  return x.map(sana);
+}
+
 // nomi in italiano dove esistono ("Monaco di Baviera", non "Munich")
 function italiano(x) {
   if (!Array.isArray(x)) return x;
@@ -201,15 +212,20 @@ function stileMappa(b, posti, scuro) {
   s.layers = s.layers.filter((l) => l['source-layer'] !== 'poi');
   s.layers.splice(i < 0 ? s.layers.length : i, 0, ...stratiAttivita(false, scuro));
   s.layers.forEach((l) => {
+    if (l.filter) l.filter = sana(l.filter);
     if (scuro) {
-      if (NOTTE[l.id]) l.paint = { ...l.paint, ...NOTTE[l.id] };
+      if (NOTTE[l.id]) {
+        l.paint = { ...l.paint, ...NOTTE[l.id] };
+        // un colore pieno al posto del disegno (es. "wood-pattern", che nella mappa scura manca e dà avvisi)
+        if (NOTTE[l.id]['fill-color']) delete l.paint['fill-pattern'];
+      }
       const c = l.type === 'symbol' && SCRITTE_NOTTE[l['source-layer']];
       if (c) l.paint = { ...l.paint, 'text-color': c, 'text-halo-color': 'rgba(18, 15, 12, .85)', 'text-halo-width': 1.2, 'text-halo-blur': 0.4 };
     }
     if (l.layout && l.layout['text-field']) l.layout['text-field'] = italiano(l.layout['text-field']);
     // palazzi in rilievo: da vicino i muri diventerebbero enormi, quindi li abbasso man mano
     if (l.type === 'fill-extrusion') {
-      const h = (k) => ['interpolate', ['exponential', 0.5], ['zoom'], 16, ['get', k], 19.5, ['*', 0.09, ['get', k]]];
+      const h = (k) => ['interpolate', ['exponential', 0.5], ['zoom'], 16, ['coalesce', ['get', k], 0], 19.5, ['*', 0.09, ['coalesce', ['get', k], 0]]];
       l.paint = { ...l.paint, 'fill-extrusion-height': h('render_height'), 'fill-extrusion-base': h('render_min_height') };
     }
   });
@@ -227,6 +243,7 @@ function stileSatellite(b, posti) {
     .filter((l) => l.type === 'symbol' && l['source-layer'] !== 'poi' && !/one_way/.test(l.id))
     .map((l) => {
       const c = copia(l);
+      if (c.filter) c.filter = sana(c.filter);
       c.layout['text-field'] = italiano(c.layout['text-field']);
       if (!/shield/.test(c.id)) c.paint = { ...c.paint, 'text-color': '#fff', 'text-halo-color': 'rgba(15, 15, 15, .8)', 'text-halo-width': 1.3, 'text-halo-blur': 0.4 };
       return c;

@@ -47,7 +47,6 @@ export function seedData() {
       .map((name, i) => ({ id: name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-'), name, count: 12 - i })),
 
     ricette: RICETTE,
-    musica: MUSICA,
     film: FILM,
   };
 }
@@ -78,7 +77,7 @@ const RICETTE = [
     note: 'Servilo dentro una zucca svuotata per l’effetto Halloween.',
   },
   {
-    title: 'Biscotti speziati di Natale', themes: ['natale'], time: 60, servings: 30, fav: true,
+    title: 'Biscotti speziati di Natale', themes: ['natale', 'dolci'], time: 60, servings: 30, fav: true,
     ingredients: ['350 g farina 00', '120 g burro morbido', '100 g zucchero di canna', '1 uovo', '80 g miele', '2 cucchiaini zenzero in polvere', '1 cucchiaino cannella', '1 pizzico noce moscata', '1/2 cucchiaino bicarbonato', '1 pizzico sale'],
     steps: [
       'Lavora burro, zucchero e miele fino ad avere una crema, poi aggiungi l’uovo.',
@@ -90,7 +89,7 @@ const RICETTE = [
     note: 'Con un foro in alto prima di infornare diventano decorazioni per l’albero.',
   },
   {
-    title: 'Cotechino con lenticchie', themes: ['capodanno'], time: 60, servings: 4,
+    title: 'Cotechino con lenticchie', themes: ['natale'], time: 60, servings: 4,
     ingredients: ['1 cotechino precotto', '300 g lenticchie secche', '1 cipolla', '1 carota', '1 costa di sedano', '2 cucchiai concentrato di pomodoro', '1 l brodo vegetale', '3 cucchiai olio extravergine', 'Sale q.b.'],
     steps: [
       'Sciacqua le lenticchie (se non sono decorticate lasciale in ammollo qualche ora).',
@@ -101,7 +100,7 @@ const RICETTE = [
     ],
   },
   {
-    title: 'Tiramisù', themes: ['sanvalentino', 'compleanni'], time: 30, servings: 6, fav: true,
+    title: 'Tiramisù', themes: ['dolci'], time: 30, servings: 6, fav: true,
     ingredients: ['500 g mascarpone', '4 uova freschissime', '100 g zucchero', '300 g savoiardi', '300 ml caffè', 'Cacao amaro q.b.'],
     steps: [
       'Prepara il caffè e lascialo raffreddare.',
@@ -113,7 +112,7 @@ const RICETTE = [
     note: 'Per San Valentino: in due bicchieri con un cuore di cacao fatto con uno stencil di carta.',
   },
   {
-    title: 'Torta pasqualina', themes: ['pasqua'], time: 75, servings: 6,
+    title: 'Torta pasqualina', themes: ['sempre'], time: 75, servings: 6,
     ingredients: ['2 rotoli pasta sfoglia', '500 g spinaci', '250 g ricotta', '50 g parmigiano', '5 uova', '1 spicchio aglio', '2 cucchiai olio extravergine', 'Noce moscata q.b.', 'Sale q.b.'],
     steps: [
       'Salta gli spinaci in padella con olio e aglio, poi strizzali bene e tritali.',
@@ -144,7 +143,7 @@ const RICETTE = [
     ],
   },
   {
-    title: 'Crêpes come a Parigi', themes: ['aprile', 'sempre'], time: 45, servings: 8, fav: true,
+    title: 'Crêpes come a Parigi', themes: ['colazione', 'dolci', 'sempre'], time: 45, servings: 8, fav: true,
     ingredients: ['125 g farina 00', '250 ml latte', '2 uova', '20 g burro fuso', '1 cucchiaio zucchero', '1 pizzico sale', 'Nutella q.b.', 'Fragole q.b.'],
     steps: [
       'Sbatti le uova con lo zucchero e il sale, poi aggiungi il latte.',
@@ -156,7 +155,7 @@ const RICETTE = [
     note: 'Per il compleanno: torre di crêpes alternate a crema e fragole, con le candeline sopra.',
   },
   {
-    title: 'Papas arrugadas con mojo rojo', themes: ['aprile', 'estate'], time: 40, servings: 4,
+    title: 'Papas arrugadas con mojo rojo', themes: ['estate'], time: 40, servings: 4,
     ingredients: ['1 kg patate piccole novelle', '150 g sale grosso', '3 spicchi aglio', '1 cucchiaino cumino', '2 cucchiaini paprika dolce', '1 peperoncino secco', '100 ml olio extravergine', '2 cucchiai aceto di vino'],
     steps: [
       'Lava bene le patate senza sbucciarle e mettile in una pentola con acqua appena a filo e il sale grosso.',
@@ -168,33 +167,17 @@ const RICETTE = [
   },
 ];
 
-const MUSICA = [
-  { title: 'All I Want for Christmas Is You', artist: 'Mariah Carey', type: 'brano', themes: ['natale'], link: '' },
-  { title: 'Last Christmas', artist: 'Wham!', type: 'brano', themes: ['natale'], link: '' },
-  { title: 'Jingle Bell Rock', artist: 'Bobby Helms', type: 'brano', themes: ['natale'], link: '' },
-  { title: 'This Is Halloween', artist: 'Danny Elfman', type: 'brano', themes: ['halloween'], link: '' },
-  { title: 'Thriller', artist: 'Michael Jackson', type: 'brano', themes: ['halloween'], link: '' },
-  { title: 'Ghostbusters', artist: 'Ray Parker Jr.', type: 'brano', themes: ['halloween'], link: '' },
-  { title: 'Azzurro', artist: 'Adriano Celentano', type: 'brano', themes: ['estate'], link: '' },
-  { title: 'Sapore di sale', artist: 'Gino Paoli', type: 'brano', themes: ['estate'], link: '' },
-  { title: 'Una vita in vacanza', artist: 'Lo Stato Sociale', type: 'brano', themes: ['estate'], link: '' },
-  { title: 'La Vie en rose', artist: 'Édith Piaf', type: 'brano', themes: ['aprile'], link: '' },
-  { title: 'Les Champs-Élysées', artist: 'Joe Dassin', type: 'brano', themes: ['aprile'], link: '' },
-  { title: 'Bailando', artist: 'Enrique Iglesias', type: 'brano', themes: ['aprile', 'estate'], link: '' },
-  { title: 'Vivir mi vida', artist: 'Marc Anthony', type: 'brano', themes: ['aprile'], link: '' },
-];
-
 const FILM = [
-  { title: 'Mamma, ho perso l’aereo', year: 1990, kind: 'movie', themes: ['natale'], watched: false, fav: false },
-  { title: 'Love Actually - L’amore davvero', year: 2003, kind: 'movie', themes: ['natale'], watched: false, fav: false },
-  { title: 'Il Grinch', year: 2000, kind: 'movie', themes: ['natale'], watched: false, fav: false },
-  { title: 'Nightmare Before Christmas', year: 1993, kind: 'movie', themes: ['halloween', 'natale'], watched: false, fav: false },
-  { title: 'Hocus Pocus', year: 1993, kind: 'movie', themes: ['halloween'], watched: false, fav: false },
-  { title: 'La famiglia Addams', year: 1991, kind: 'movie', themes: ['halloween'], watched: false, fav: false },
-  { title: 'Luca', year: 2021, kind: 'movie', themes: ['estate'], watched: false, fav: false },
-  { title: 'Mamma Mia!', year: 2008, kind: 'movie', themes: ['estate'], watched: false, fav: false },
-  { title: 'Il favoloso mondo di Amélie', year: 2001, kind: 'movie', themes: ['aprile'], watched: false, fav: false },
-  { title: 'Midnight in Paris', year: 2011, kind: 'movie', themes: ['aprile'], watched: false, fav: false },
-  { title: 'Ratatouille', year: 2007, kind: 'movie', themes: ['aprile', 'sempre'], watched: false, fav: false },
-  { title: 'Gli Aristogatti', year: 1970, kind: 'movie', themes: ['sempre'], watched: false, fav: true },
+  { title: 'Mamma, ho perso l’aereo', year: 1990, kind: 'movie', themes: ['natale', 'famiglia'], watched: false },
+  { title: 'Love Actually - L’amore davvero', year: 2003, kind: 'movie', themes: ['natale'], watched: false },
+  { title: 'Il Grinch', year: 2000, kind: 'movie', themes: ['natale', 'famiglia'], watched: false },
+  { title: 'Nightmare Before Christmas', year: 1993, kind: 'movie', themes: ['halloween', 'natale'], watched: false },
+  { title: 'Hocus Pocus', year: 1993, kind: 'movie', themes: ['halloween', 'famiglia'], watched: false },
+  { title: 'La famiglia Addams', year: 1991, kind: 'movie', themes: ['halloween'], watched: false },
+  { title: 'Luca', year: 2021, kind: 'movie', themes: ['famiglia', 'cartoni'], watched: false },
+  { title: 'Mamma Mia!', year: 2008, kind: 'movie', themes: ['sempre'], watched: false },
+  { title: 'Il favoloso mondo di Amélie', year: 2001, kind: 'movie', themes: ['sempre'], watched: false },
+  { title: 'Midnight in Paris', year: 2011, kind: 'movie', themes: ['sempre'], watched: false },
+  { title: 'Ratatouille', year: 2007, kind: 'movie', themes: ['famiglia', 'cartoni'], watched: false },
+  { title: 'Gli Aristogatti', year: 1970, kind: 'movie', themes: ['famiglia', 'cartoni'], watched: false },
 ];

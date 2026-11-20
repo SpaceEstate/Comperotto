@@ -1,7 +1,7 @@
 // Atmosfere delle feste: colori, testata della Home, riquadri e decorazioni di tutto il sito cambiano
 // con il calendario (Capodanno, San Valentino, Carnevale, 8 marzo, Pasqua, aprile, mare, Halloween, Natale)
-// e nei giorni di festa di casa: compleanni di Patrick, Serena, Thor e Minù (l'anniversario ha i colori dell'amore).
-import { SEASONS, THEMES, seasonFor, upcomingDates } from './data.js';
+// e nei giorni di festa di casa: compleanni di Patrick, Serena, Thor e Minù e il vostro anniversario (18 luglio).
+import { SEASONS, THEMES, MUSICA_TEMA, seasonFor, upcomingDates } from './data.js';
 import { lsGet, lsSet, html, todayIso, addDays, parseIso } from './utils.js';
 import { state, settings } from './core.js';
 
@@ -10,7 +10,7 @@ export const setSeasonOverride = (v) => { lsSet('casa.season', v === 'auto' ? nu
 
 /** Solo le feste di famiglia cambiano il sito (non le ricorrenze di amici e parenti). */
 const isFamily = (d) => d.personal && (d.who || d.cats || d.anniversary);
-const eventSeason = (d) => (d.anniversary ? 'sanvalentino' : 'compleanno');
+const eventSeason = (d) => (d.anniversary ? 'anniversario' : 'compleanno');
 const familyDates = () => upcomingDates(settings(), state.data.gatti || []).filter(isFamily);
 
 function current() {
@@ -40,6 +40,20 @@ export function seasonInfo() {
   const info = { id, ...SEASONS[id], sub: SEASONS[id].sub.replace('{p2}', settings().names.p2) };
   if (event) Object.assign(info, eventText(event), { theme: event.anniversary ? 'sanvalentino' : 'compleanni', event });
   return info;
+}
+
+/**
+ * La musica del periodo: quella della festa o della stagione (Natale, Halloween, San Valentino…),
+ * altrimenti quella del mese (autunno, inverno, primavera, estate). A novembre si aspetta già il Natale.
+ */
+export function periodoMusica(d = new Date()) {
+  const cur = currentTheme();
+  const id = cur && (cur.id === 'pasqua' ? 'primavera' : cur.id === 'capodanno' ? 'natale' : cur.id);
+  if (id && MUSICA_TEMA[id]) return { id, ...MUSICA_TEMA[id], label: cur.days ? `Aspettando ${MUSICA_TEMA[id].label}` : MUSICA_TEMA[id].label };
+  const m = d.getMonth() + 1;
+  if (m === 11 && d.getDate() >= 8) return { id: 'natale', ...MUSICA_TEMA.natale, label: 'Aspettando il Natale' };
+  const per = m >= 9 && m <= 11 ? 'autunno' : m === 12 || m <= 2 ? 'inverno' : m <= 5 ? 'primavera' : 'estate';
+  return { id: per, ...MUSICA_TEMA[per] };
 }
 
 /** Il tema "del periodo": quello dell'atmosfera attiva, altrimenti la prossima festa entro 30 giorni. */
@@ -159,6 +173,12 @@ const DECO = {
   halloween: () => html`
     <span class="moon"></span>
     ${[[50, 6], [66, 38], [82, 104]].map(([x, y], i) => html`<svg class="bat" viewBox="0 0 64 28" style="left:${x}%;top:${y}px;animation-delay:-${i * 1.3}s"><path d="M32 10c-2-4-5-5-8-4 1 2 0 4-2 4-3-6-11-8-20-4 5 1 8 5 8 10 3-2 7-2 9 1 2-2 5-2 7 0 1-3 3-4 6-4s5 1 6 4c2-2 5-2 7 0 2-3 6-3 9-1 0-5 3-9 8-10-9-4-17-2-20 4-2 0-3-2-2-4-3-1-6 0-8 4z" fill="currentColor"/></svg>`)}`,
+
+  anniversario: () => html`
+    ${bits(16, 'petal', ['#F4B6C2', '#E8899B', '#FBD9DF', '#F3C9A8'])}
+    <svg class="rings" viewBox="0 0 64 48"><g fill="none" stroke-width="3.2"><circle cx="24" cy="28" r="14" stroke="#F3D9A4"/><circle cx="40" cy="28" r="14" stroke="#E9BE7C"/></g>
+      <path d="M36 9.5 40 4.5l4 5-4 5z" fill="#FFFFFF" opacity=".95"/><path d="M36 9.5h8" stroke="#E9EEF5" stroke-width=".8"/></svg>
+    ${[[46, 26], [60, 108], [88, 116], [96, 34]].map(([x, y], i) => html`<svg class="twinkle" viewBox="0 0 24 24" style="left:${x}%;top:${y}px;animation-delay:-${(i * 0.6).toFixed(1)}s;--s:${0.7 + (i % 2) * 0.3}"><path d="${HEART}" fill="#FBD9DF"/></svg>`)}`,
 
   compleanno: () => html`
     ${bits(16, 'confetto', CONFETTI)}

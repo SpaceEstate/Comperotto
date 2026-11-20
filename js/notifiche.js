@@ -1,5 +1,5 @@
 // Notifiche su questo dispositivo. Su iPhone e iPad funzionano con l'app messa sulla schermata Home (iOS 16.4 o più recente).
-// Le manda il server: quando l'altro arriva o va via (Dov'è), la sera per i rifiuti, per i biglietti e per le scadenze.
+// Le manda il server: quando l'altro arriva o va via (Dov'è), la sera per i rifiuti e per le scadenze.
 import { store, me } from './core.js';
 import { isIOS, isStandalone, lsGet, lsSet } from './utils.js';
 
@@ -7,7 +7,6 @@ import { isIOS, isStandalone, lsGet, lsSet } from './utils.js';
 export const TIPI = [
   ['arrivi', 'Arrivi e partenze', 'Quando l’altro arriva o va via da casa o dal lavoro'],
   ['rifiuti', 'Stasera si butta', 'Verso sera, se c’è qualcosa da portare fuori'],
-  ['biglietti', 'Biglietti sulla lavagnetta', 'Quando l’altro ne attacca uno nuovo'],
   ['scadenze', 'Compleanni e gatti', 'Il giorno prima di compleanni, anniversario e richiami di Thor e Minù'],
 ];
 

@@ -1,5 +1,4 @@
-// Casa: faccende ricorrenti, lavori da fare, calendario rifiuti
-import { render as spesaRender, tidyShopping } from './spesa.js';
+// Casa: faccende ricorrenti e lavori da fare (la spesa è in Cibo, il calendario dei rifiuti in Impostazioni)
 import { html, raw, lsGet, lsSet, todayIso, shortDate, parseIso, WEEKDAYS, WEEKDAYS_SHORT, addDays, vibrate, cap, timeAgo } from '../utils.js';
 import { icon, catFace } from '../icons.js';
 import { ROOMS, CHORE_ICONS, CHORE_TONES, BINS, BIN_IDS, choreStatus, freqLabel } from '../data.js';
@@ -64,6 +63,22 @@ function renderRoutine() {
     <button class="fab" data-action="chore-new">${icon('plus')} Faccenda</button>`;
 }
 
+/** Un lavoro da fare (anche in Home, più compatto). */
+export function lavoroRow(l, { compact = false } = {}) {
+  return html`
+      <div class="row" id="l-${l.id}"${swipe(l.id, ['lavoro-toggle', 'Fatto'], ['lavoro-del', 'Elimina'])}>
+        <button class="check sq" data-action="lavoro-toggle" data-id="${l.id}" aria-label="Completa ${l.title}">${icon('check')}</button>
+        <button class="row-edit" data-action="lavoro-edit" data-id="${l.id}">
+          <div class="row-title"><span class="prio p${l.prio || 1}"></span>${l.title}</div>
+          ${l.room ? html`<div class="row-sub"><span>${icon('door', 'xs')} ${l.room}</span></div>` : ''}
+          ${l.note && !compact ? html`<div class="row-sub">${l.note}</div>` : ''}
+        </button>
+        ${whoBadge(l.who)}
+      </div>`;
+}
+/** I lavori ancora da fare, prima i più urgenti. */
+export const lavoriAperti = () => state.data.lavori.filter((l) => !l.done).sort((a, b) => (b.prio || 1) - (a.prio || 1) || (a.createdAt || 0) - (b.createdAt || 0));
+
 function renderLavori() {
   const room = ui('lavori.room', 'Tutte');
   const all = state.data.lavori;
@@ -73,16 +88,7 @@ function renderLavori() {
   const showDone = ui('lavori.showDone', false);
   return html`
     ${rooms.length > 2 ? html`<div class="chips" style="margin-top:0">${rooms.map((r) => html`<button class="chip ${r === room ? 'on' : ''}" data-action="lavori-room" data-room="${r}">${r}</button>`)}</div>` : ''}
-    ${open.length ? html`<div class="list" style="margin-top:8px">${open.map((l) => html`
-      <div class="row" id="l-${l.id}"${swipe(l.id, ['lavoro-toggle', 'Fatto'], ['lavoro-del', 'Elimina'])}>
-        <button class="check sq" data-action="lavoro-toggle" data-id="${l.id}" aria-label="Completa ${l.title}">${icon('check')}</button>
-        <button class="row-edit" data-action="lavoro-edit" data-id="${l.id}">
-          <div class="row-title"><span class="prio p${l.prio || 1}"></span>${l.title}</div>
-          ${l.room ? html`<div class="row-sub"><span>${icon('door', 'xs')} ${l.room}</span></div>` : ''}
-          ${l.note ? html`<div class="row-sub">${l.note}</div>` : ''}
-        </button>
-        ${whoBadge(l.who)}
-      </div>`)}</div>`
+    ${open.length ? html`<div class="list" style="margin-top:8px">${open.map((l) => lavoroRow(l))}</div>`
       : emptyState('Tutto sistemato!', 'Nessun lavoro in sospeso. Goditi il divano.', catFace('a'))}
     ${done.length ? html`
       <div class="section-title"><span>Completati · ${done.length}</span><button class="card-link" data-action="lavori-showdone">${showDone ? 'Nascondi' : 'Mostra'}</button></div>
@@ -94,7 +100,8 @@ function renderLavori() {
     <button class="fab" data-action="lavoro-new">${icon('plus')} Lavoro</button>`;
 }
 
-function renderRifiuti() {
+/** Il calendario dei rifiuti (in Impostazioni): le sere in cui si porta fuori il sacchetto. */
+export function renderRifiuti() {
   const s = settings();
   const today = parseIso(todayIso()).getDay();
   const order = [1, 2, 3, 4, 5, 6, 0];
@@ -117,26 +124,23 @@ function renderRifiuti() {
 }
 
 const SECTIONS = {
-  spesa: { label: 'Spesa', icon: 'basket', eyebrow: 'La lista della spesa' },
   faccende: { label: 'Faccende', icon: 'repeat', eyebrow: 'Le cose di tutti i giorni' },
   lavori: { label: 'Lavori', icon: 'hammer', eyebrow: 'Da sistemare in casa' },
-  rifiuti: { label: 'Rifiuti', icon: 'bin', eyebrow: 'Il calendario della raccolta' },
 };
 
 export function render(route) {
   let tab = route[1];
   if (SECTIONS[tab]) lsSet('casa.tab', tab);
-  else tab = SECTIONS[lsGet('casa.tab')] ? lsGet('casa.tab') : 'spesa';
+  else tab = SECTIONS[lsGet('casa.tab')] ? lsGet('casa.tab') : 'faccende';
   const due = dueChores().filter((c) => c.lastDone !== todayIso()).length;
-  const shop = state.data.spesa.filter((i) => !i.done).length;
-  const counts = { spesa: shop, faccende: due };
+  const counts = { faccende: due };
   return html`
     ${pageHead('Casa', { eyebrow: SECTIONS[tab].eyebrow })}
     <nav class="segmented seg-icons" aria-label="Sezioni casa">
       ${Object.entries(SECTIONS).map(([k, v]) => html`<a href="#/casa/${k}" class="${tab === k ? 'on' : ''}">
-        <span class="seg-ico">${icon(v.icon, 'sm')}${counts[k] ? html`<span class="count ${k === 'spesa' ? 'soft' : ''}">${counts[k]}</span>` : ''}</span><span>${v.label}</span></a>`)}
+        <span class="seg-ico">${icon(v.icon, 'sm')}${counts[k] ? html`<span class="count">${counts[k]}</span>` : ''}</span><span>${v.label}</span></a>`)}
     </nav>
-    ${tab === 'spesa' ? spesaRender() : tab === 'lavori' ? renderLavori() : tab === 'rifiuti' ? renderRifiuti() : renderRoutine()}`;
+    ${tab === 'lavori' ? renderLavori() : renderRoutine()}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -163,7 +167,7 @@ function choreSheet(c = null) {
       </div>
       <div class="field"><span>Di solito chi la fa</span>${whoChoices('who', c ? c.who : '')}</div>
       ${c && c.history && c.history.length ? html`<div class="field"><span>Ultime volte</span><p class="small muted" style="margin:0">${c.history.slice(-6).reverse().map((h) => `${shortDate(h.date)}${h.by ? ` (${nameOf(h.by)})` : ''}`).join(' · ')}</p></div>` : ''}`,
-    extra: c ? html`<button class="btn danger" type="button" data-action="chore-del" data-id="${c.id}">${icon('trash', 'sm')}</button>` : '',
+    extra: c ? html`<button class="btn danger" aria-label="Elimina" type="button" data-action="chore-del" data-id="${c.id}">${icon('trash', 'sm')}</button>` : '',
     // "Ogni N giorni" mostra il numero, "Giorni fissi" mostra i giorni della settimana
     onOpen: (root) => root.querySelectorAll('input[name=ftype]').forEach((r) => r.addEventListener('change', () => {
       const fissi = root.querySelector('input[name=ftype]:checked').value === 'weekdays';
@@ -195,7 +199,7 @@ function lavoroSheet(l = null) {
       </div></div>
       <div class="field"><span>Chi</span>${whoChoices('who', l ? l.who : '')}</div>
       <label class="field"><span>Note</span><textarea name="note" placeholder="Misure, cosa serve, link…" style="min-height:80px">${l ? l.note || '' : ''}</textarea></label>`,
-    extra: l ? html`<button class="btn danger" type="button" data-action="lavoro-del" data-id="${l.id}">${icon('trash', 'sm')}</button>` : '',
+    extra: l ? html`<button class="btn danger" aria-label="Elimina" type="button" data-action="lavoro-del" data-id="${l.id}">${icon('trash', 'sm')}</button>` : '',
     onSubmit: (fd) => {
       const title = cap(val(fd, 'title'));
       if (!title) return false;
@@ -271,9 +275,3 @@ export const actions = {
 };
 
 export const badge = () => dueChores().filter((c) => c.lastDone !== todayIso()).length;
-
-// in Spesa: unisce eventuali doppioni e sistema le maiuscole
-export function after(route) {
-  const tab = route[1] || lsGet('casa.tab') || 'spesa';
-  if (tab === 'spesa') tidyShopping();
-}

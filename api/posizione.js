@@ -12,6 +12,7 @@
 //
 // POST /api/posizione?auto — l'auto: «Ho parcheggiato», il comando rapido sulla schermata Home dell'iPhone (più sotto).
 import crypto from 'node:crypto';
+import { waitUntil } from '@vercel/functions';
 import { autorizza, backend, body, respingi, send, sleep } from './_lib.js';
 import { avvisa, origineDi } from './_push.js';
 import { indirizzo } from './_luogo.js';
@@ -243,9 +244,10 @@ async function parcheggio(req, res) {
   try {
     let sett = null;
     const impostazioni = async () => (sett ||= (await db.collection('settings')).items.main || {});
-    // chi ha parcheggiato: "p1"/"p2" oppure il nome (es. "serena"); se manca o non torna, pazienza
+    // chi ha parcheggiato: "p1"/"p2" oppure il nome (es. "serena"); se manca o non torna, pazienza.
+    // I nomi di sempre si riconoscono senza leggere le impostazioni (una lettura in meno: risposta più svelta)
     const raw = String(campo(b, ['chi']) || auth.user || '').trim();
-    let chi = ['p1', 'p2'].includes(raw) ? raw : null;
+    let chi = ['p1', 'p2'].includes(raw) ? raw : ({ patrick: 'p1', serena: 'p2' })[norm(raw)] || null;
     if (!chi && raw) {
       const names = { p1: 'Patrick', p2: 'Serena', ...((await impostazioni()).names || {}) };
       chi = ['p1', 'p2'].find((k) => norm(names[k]) === norm(raw)) || null;
@@ -257,10 +259,19 @@ async function parcheggio(req, res) {
       lat = p.lat; lon = p.lon;
     }
     const acc = coordinata(campo(b, ['acc', 'precisione']));
-    // l'indirizzo con poca attesa (la risposta deve essere svelta): se non arriva lo cerca poi l'app
-    const place = await indirizzo(lat, lon, { preciso: true, attesa: 1500 });
-    await db.apply([{ op: 'set', col: 'posizioni', id: 'auto', data: { lat, lon, acc: acc > 0 ? Math.round(acc) : null, at: Date.now(), chi, place, nota: '', src: 'comando' } }]);
+    const at = Date.now();
+    await db.apply([{ op: 'set', col: 'posizioni', id: 'auto', data: { lat, lon, acc: acc > 0 ? Math.round(acc) : null, at, chi, place: '', nota: '', src: 'comando' } }]);
+    // si risponde subito: il comando rapido non aspetta l'indirizzo. Quello lo cerco dopo la risposta
+    // (se non arriva lo cerca l'app, come prima) e lo scrivo solo se nel frattempo l'auto non si è spostata
     testo(res, 200, 'Posizione inviata');
+    waitUntil((async () => {
+      try {
+        const place = await indirizzo(lat, lon, { preciso: true, attesa: 6000 });
+        if (!place) return;
+        const ora = (await db.collection('posizioni')).items.auto;
+        if (ora && ora.at === at && !ora.place) await db.apply([{ op: 'update', col: 'posizioni', id: 'auto', data: { place } }]);
+      } catch (e) { console.error(e); }
+    })());
   } catch (e) {
     console.error(e);
     testo(res, 500, 'Database non raggiungibile: riprova tra poco');

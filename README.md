@@ -157,7 +157,9 @@ Da fare una volta su ogni iPhone, nell'app **Comandi** → **+**:
 3. Aggiungi **Mostra notifica** e al posto del testo metti **Contenuti dell'URL**: dirà «Posizione inviata» (oppure cosa non va, es. «Codice di famiglia sbagliato»).
 4. Chiamalo **Ho parcheggiato**, scegli l'icona dell'auto e poi **Aggiungi alla schermata Home**.
 
-La prima volta l'iPhone chiede i permessi (posizione, invio a comperotto.vercel.app, notifiche): rispondete **Consenti sempre**, così dalle volte dopo basta un tocco. Se il segnaposto risulta lontano: Impostazioni → Privacy e sicurezza → Localizzazione → **Comandi** → *Posizione esatta* attiva. Lo stesso comando si può mettere anche sul tasto Azione o nel Centro di Controllo. Il codice resta solo sul telefono, mai nel repository.
+La prima volta l'iPhone chiede i permessi (posizione, invio a comperotto.vercel.app, notifiche): rispondete **Consenti sempre**, così dalle volte dopo basta un tocco.
+
+**Per farlo partire più svelto.** Il server risponde subito (l'indirizzo lo cerca dopo); il tempo che resta lo prende soprattutto l'iPhone per trovare la posizione con il GPS. Due cose aiutano: mettete il comando sul **tasto Azione** (iPhone 15 Pro e successivi), nel **Centro di Controllo**, tra i **widget della schermata di blocco** o su **Tocca il retro** (Impostazioni → Accessibilità → Tocco → Tocca il retro → doppio tocco → Ho parcheggiato): così parte senza aprire l'app Comandi, che dalla schermata Home si apre e si chiude ogni volta; e premetelo appena spento il motore, quando l'iPhone ha ancora il segnale GPS (in un garage sotterraneo la posizione arriva più lenta e meno precisa). Se il segnaposto risulta lontano: Impostazioni → Privacy e sicurezza → Localizzazione → **Comandi** → *Posizione esatta* attiva. Lo stesso comando si può mettere anche sul tasto Azione o nel Centro di Controllo. Il codice resta solo sul telefono, mai nel repository.
 
 ## 6. Notifiche
 

@@ -7,6 +7,7 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@vercel/functions": "^2.2.13",
     "pg": "^8.13.1"
   }
 }

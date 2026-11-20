@@ -1918,6 +1918,7 @@ html.mappa-grande body { overflow: hidden; }
 
 /* Natale: abete, bacca rossa, oro e neve */
 :root[data-season="natale"] {
+  --tA: #1F6B43; --tB: #2E7D4F; --tC: #C42F37; --tD: #A8761C;
   --pattern: url('../assets/feste/natale.svg');
   --hdr: linear-gradient(180deg, #13442A 0%, #1A5636 70%, #1F6440 100%); --hdr-ink: #FFFFFF; --hdr-sub: rgba(255,255,255,.75); --hdr-em: #FFB3A8; --hdr-brand: #F6D58A;
   --hdr-edge: repeating-linear-gradient(135deg, #C42F37 0 12px, #FFFFFF 12px 24px);
@@ -1928,17 +1929,18 @@ html.mappa-grande body { overflow: hidden; }
   --bg: #F7F4EC; --bg-2: #EDE8DB; --surface: #FFFEFA; --surface-2: #F8F4EA; --line: #E6DFCF; --line-2: #D6CDB8;
   --text: #26302A; --text-2: #5C665D; --text-3: #7D857B;
   --oak: #1F6B43; --oak-deep: #1B5E3B; --oak-soft: #E1EEE3; --oak-ink: #FFFFFF;
-  --rose: #B8302F; --rose-soft: #F8DEDC; --sage: #2E7D4F; --sage-soft: #E0EFE4; --sage-pastel: #2E7D4F; --sage-ink: #FFFFFF;
+  --sage-pastel: #2E7D4F; --sage-ink: #FFFFFF;
 }
 :root[data-season="natale"][data-mode="dark"] {
   --bg: #0F1813; --bg-2: #15211A; --surface: #19261E; --surface-2: #1E2D24; --line: #2A3B31; --line-2: #385043;
   --text: #F1ECE0; --text-2: #C4C9BC; --text-3: #8E978A;
   --oak: #E0B85C; --oak-deep: #EBCB7E; --oak-soft: #2F2F1E; --oak-ink: #121B16;
-  --rose: #E07A72; --rose-soft: #3A2220; --sage: #8FC09E; --sage-soft: #22332A; --sage-pastel: #4FA36F; --sage-ink: #0C1A11;
+  --sage-pastel: #4FA36F; --sage-ink: #0C1A11;
 }
 
 /* Capodanno: nero, oro e argento */
 :root[data-season="capodanno"] {
+  --tA: #3D3D5C; --tB: #8F6B1F; --tC: #A04050; --tD: #6E6E85;
   --pattern: url('../assets/feste/capodanno.svg'); --pattern-o: .18;
   --hdr: linear-gradient(180deg, #0D0D12 0%, #17172A 65%, #222240 100%); --hdr-ink: #FFF4D8; --hdr-sub: rgba(255,244,216,.7); --hdr-em: #EBC765;
   --hdr-edge: linear-gradient(90deg, #A97E2C, #F7E6A8 18%, #C9A24A 36%, #F7E6A8 54%, #A97E2C 72%, #F7E6A8 90%, #C9A24A);
@@ -1961,6 +1963,7 @@ html.mappa-grande body { overflow: hidden; }
 
 /* San Valentino: rosso, rosa e bianco */
 :root[data-season="sanvalentino"] {
+  --tA: #8E1630; --tB: #D04A6A; --tC: #C8243F; --tD: #B0477A;
   --pattern: url('../assets/feste/sanvalentino.svg');
   --hdr: linear-gradient(180deg, #86122C 0%, #A81B39 70%, #C2243F 100%); --hdr-ink: #FFFFFF; --hdr-sub: rgba(255,255,255,.78); --hdr-em: #FFC2CE; --hdr-brand: #FFD9E0;
   --hdr-edge: repeating-linear-gradient(135deg, #FFFFFF 0 12px, #F49AAE 12px 24px);
@@ -1971,17 +1974,18 @@ html.mappa-grande body { overflow: hidden; }
   --bg: #FDF5F5; --bg-2: #F7E5E6; --surface: #FFFCFC; --surface-2: #FBF0F1; --line: #F2DCDE; --line-2: #E6C3C7;
   --text: #3A2328; --text-2: #7A5A60; --text-3: #957379;
   --oak: #C8243F; --oak-deep: #A51F38; --oak-soft: #FCE1E5; --oak-ink: #FFFFFF;
-  --rose: #C8243F; --rose-soft: #FCE1E5; --sage-pastel: #E05A75; --sage-ink: #FFFFFF;
+  --sage-pastel: #E05A75; --sage-ink: #FFFFFF;
 }
 :root[data-season="sanvalentino"][data-mode="dark"] {
   --bg: #190E11; --bg-2: #221418; --surface: #26161B; --surface-2: #2E1B21; --line: #3E252C; --line-2: #53323B;
   --text: #F8E9EC; --text-2: #D1B3BA; --text-3: #9C7E85;
   --oak: #F0647E; --oak-deep: #F79AAD; --oak-soft: #3D1C25; --oak-ink: #1A0F12;
-  --rose: #F0647E; --rose-soft: #3D1C25; --sage-pastel: #E05A75; --sage-ink: #FFFFFF;
+  --sage-pastel: #E05A75; --sage-ink: #FFFFFF;
 }
 
 /* Carnevale: i rombi di Arlecchino e tutti i colori dei coriandoli */
 :root[data-season="carnevale"] {
+  --tA: #2D6FD9; --tB: #179258; --tC: #D62E6E; --tD: #7B2FBE;
   --pattern: url('../assets/feste/carnevale.svg'); --pattern-o: .17;
   --hdr: repeating-conic-gradient(from 45deg, rgba(255,255,255,.08) 0 25%, transparent 0 50%) 0 0 / 34px 50px, linear-gradient(160deg, #42177A 0%, #6E28B4 55%, #B52F86 115%);
   --hdr-ink: #FFFFFF; --hdr-sub: rgba(255,255,255,.8); --hdr-em: #FFD23F;
@@ -2004,6 +2008,7 @@ html.mappa-grande body { overflow: hidden; }
 
 /* 8 marzo: giallo mimosa e verde foglia */
 :root[data-season="donna"] {
+  --tA: #6B8C30; --tB: #5E7D2A; --tC: #C97500; --tD: #8F7A00;
   --pattern: url('../assets/feste/donna.svg'); --pattern-o: .2;
   --hdr: linear-gradient(180deg, #3F5A16 0%, #4F6B1C 65%, #5E7D24 100%); --hdr-ink: #FFFBE0; --hdr-sub: rgba(255,251,224,.75); --hdr-em: #FFD83D;
   --hdr-edge: repeating-linear-gradient(135deg, #F7C600 0 12px, #FFF6C9 12px 24px);
@@ -2014,17 +2019,18 @@ html.mappa-grande body { overflow: hidden; }
   --bg: #FCFAEF; --bg-2: #F5F0DA; --surface: #FFFEF8; --surface-2: #FAF7E7; --line: #EFE8CA; --line-2: #E0D6A8;
   --text: #33301C; --text-2: #6B6750; --text-3: #8A8568;
   --oak: #F2C200; --oak-deep: #7F6500; --oak-soft: #FCF0BE; --oak-ink: #3A3000;
-  --sage: #5E7D2A; --sage-soft: #EAF2D8; --sage-pastel: #8DB04A; --sage-ink: #1F2A0B;
+  --sage-pastel: #8DB04A; --sage-ink: #1F2A0B;
 }
 :root[data-season="donna"][data-mode="dark"] {
   --bg: #15160C; --bg-2: #1C1D10; --surface: #212213; --surface-2: #282917; --line: #36371F; --line-2: #48482A;
   --text: #F7F2D9; --text-2: #D0C9A6; --text-3: #99926F;
   --oak: #F2C94C; --oak-deep: #F7DA7A; --oak-soft: #38331A; --oak-ink: #1A1700;
-  --sage: #A8C76A; --sage-soft: #263018; --sage-pastel: #8DB04A; --sage-ink: #1F2A0B;
+  --sage-pastel: #8DB04A; --sage-ink: #1F2A0B;
 }
 
 /* Pasqua: lilla, giallo pulcino, verde prato e cielo */
 :root[data-season="pasqua"] {
+  --tA: #3F8FC0; --tB: #4E9A44; --tC: #D0607E; --tD: #8A63C7;
   --pattern: url('../assets/feste/pasqua.svg'); --pattern-o: .22; --pattern-o-dark: .12;
   --hdr: linear-gradient(170deg, #7452B8 0%, #9473D2 55%, #6AAFD8 125%); --hdr-ink: #FFFFFF; --hdr-sub: rgba(255,255,255,.85); --hdr-em: #FFF1A8;
   --hdr-edge: repeating-linear-gradient(90deg, #F7D74A 0 14px, #8CCB7E 14px 28px, #F4A3B5 28px 42px, #7EC3E6 42px 56px);
@@ -2046,6 +2052,7 @@ html.mappa-grande body { overflow: hidden; }
 
 /* aprile, il mese di Serena: Parigi al tramonto (rosa macaron, blu notte) e le Canarie (oceano, sole) */
 :root[data-season="aprile"] {
+  --tA: #2F8FA0; --tB: #3B8F86; --tC: #C2607A; --tD: #2E3A5C;
   --pattern: url('../assets/feste/aprile.svg');
   --hdr: linear-gradient(180deg, #24304F 0%, #3B3C63 45%, #8E4562 88%, #C8686B 118%); --hdr-ink: #FFF6F3; --hdr-sub: rgba(255,246,243,.75); --hdr-em: #FFC6D3; --hdr-brand: #FFD7A8;
   --hdr-edge: repeating-linear-gradient(135deg, #F3C9D3 0 12px, #2F8FA0 12px 24px, #F2B84B 24px 36px);
@@ -2056,18 +2063,19 @@ html.mappa-grande body { overflow: hidden; }
   --bg: #FBF4F2; --bg-2: #F3E6E3; --surface: #FFFCFB; --surface-2: #FAF1EF; --line: #EEDDD9; --line-2: #E0C8C3;
   --text: #3A2C33; --text-2: #76616A; --text-3: #927C84;
   --oak: #C2607A; --oak-deep: #9E4660; --oak-soft: #F8E1E7; --oak-ink: #FFFFFF;
-  --sky: #2F8FA0; --sky-soft: #DCEFF1; --plum: #2E3A5C; --plum-soft: #E3E6EF; --sage-pastel: #2F8FA0; --sage-ink: #FFFFFF;
+  --sage-pastel: #2F8FA0; --sage-ink: #FFFFFF;
 }
 :root[data-season="aprile"][data-mode="dark"] {
   --bg: #1C1520; --bg-2: #241C29; --surface: #271E2C; --surface-2: #2F2535; --line: #3D3044; --line-2: #4F3F57;
   --text: #F7EEF2; --text-2: #D2C0C9; --text-3: #9D8A94;
   --oak: #E8A0B4; --oak-deep: #F2B8C8; --oak-soft: #3D2632; --oak-ink: #1C1520;
-  --sky: #7CC7D3; --sky-soft: #1E3439; --plum: #B9C3E3; --plum-soft: #2B2F44; --sage-pastel: #4FB3C2; --sage-ink: #0B2328;
+  --sage-pastel: #4FB3C2; --sage-ink: #0B2328;
   --k2: #3A4A75; --k6: #3A4A75;
 }
 
 /* mare (luglio e agosto): blu, sabbia, ombrellone a righe e sole */
 :root[data-season="mare"] {
+  --tA: #1580AC; --tB: #23897E; --tC: #E0553E; --tD: #0E5F86;
   --pattern: url('../assets/feste/mare.svg');
   --hdr: linear-gradient(180deg, #0B5F86 0%, #1580AC 55%, #34A1C8 100%); --hdr-ink: #FFFFFF; --hdr-sub: rgba(255,255,255,.82); --hdr-em: #FFE08A;
   --hdr-edge: none;
@@ -2079,18 +2087,19 @@ html.mappa-grande body { overflow: hidden; }
   --bg: #F7F1E6; --bg-2: #EFE6D4; --surface: #FFFDF8; --surface-2: #F9F3E8; --line: #E9DFCB; --line-2: #DBCDB1;
   --text: #33302B; --text-2: #6F685E; --text-3: #8D8578;
   --oak: #1580AC; --oak-deep: #126A90; --oak-soft: #DCEEF5; --oak-ink: #FFFFFF;
-  --sky: #2C7FA3; --sky-soft: #DCEEF5; --sage: #2E9488; --sage-soft: #DAF0EC; --sage-pastel: #2BA89A; --sage-ink: #FFFFFF;
+  --sage-pastel: #2BA89A; --sage-ink: #FFFFFF;
 }
 :root[data-season="mare"][data-mode="dark"] {
   --bg: #0E1B23; --bg-2: #12232D; --surface: #162A35; --surface-2: #1B323F; --line: #24404F; --line-2: #2F5163;
   --text: #EEF5F7; --text-2: #BFD0D6; --text-3: #85A0AA;
   --oak: #6BC1DF; --oak-deep: #8FD2EA; --oak-soft: #173847; --oak-ink: #0F1C24;
-  --sky: #6BC1DF; --sky-soft: #173847; --sage: #6FD0C2; --sage-soft: #15363A; --sage-pastel: #3BB3A5; --sage-ink: #06201D;
+  --sage-pastel: #3BB3A5; --sage-ink: #06201D;
   --hdr: linear-gradient(180deg, #08344A 0%, #0C4A68 60%, #11607F 100%);
 }
 
 /* Halloween: nero e arancione, un tocco di viola */
 :root[data-season="halloween"] {
+  --tA: #5B3A75; --tB: #5E7D2A; --tC: #D9661F; --tD: #6B3F8F;
   --pattern: url('../assets/feste/halloween.svg');
   --hdr: linear-gradient(180deg, #0E0C0B 0%, #23170E 75%, #34200F 100%); --hdr-ink: #FFE6CC; --hdr-sub: rgba(255,230,204,.7); --hdr-em: #F59440;
   --hdr-edge: repeating-linear-gradient(135deg, #EE7A1F 0 12px, #111111 12px 24px);
@@ -2101,18 +2110,19 @@ html.mappa-grande body { overflow: hidden; }
   --bg: #FAF3EA; --bg-2: #F1E5D5; --surface: #FFFCF7; --surface-2: #F9EFE2; --line: #EEDFCB; --line-2: #DEC8AC;
   --text: #2B2320; --text-2: #6E5F55; --text-3: #8C7B6E;
   --oak: #EE7A1F; --oak-deep: #B4520E; --oak-soft: #FDE4CF; --oak-ink: #111111;
-  --plum: #5B3A75; --plum-soft: #EAE0F0; --sage-pastel: #EE7A1F; --sage-ink: #111111;
+  --sage-pastel: #EE7A1F; --sage-ink: #111111;
 }
 :root[data-season="halloween"][data-mode="dark"] {
   --bg: #100E0D; --bg-2: #181412; --surface: #1C1816; --surface-2: #241F1B; --line: #312923; --line-2: #42372F;
   --text: #F5EBE0; --text-2: #C9B9A8; --text-3: #8F8073;
   --oak: #F08A3C; --oak-deep: #F7A764; --oak-soft: #3A2414; --oak-ink: #111111;
-  --plum: #C3A1E0; --plum-soft: #2E2440; --sage-pastel: #F08A3C; --sage-ink: #111111;
+  --sage-pastel: #F08A3C; --sage-ink: #111111;
   --k2: #2B2119; --k4: #2B2119;
 }
 
 /* anniversario (18 luglio): rosa antico, oro champagne e petali di rosa */
 :root[data-season="anniversario"] {
+  --tA: #9A4A62; --tB: #B07A4E; --tC: #C9677D; --tD: #7A3A55;
   --pattern: url('../assets/feste/anniversario.svg'); --pattern-o: .2;
   --hdr: linear-gradient(170deg, #4A2436 0%, #7A3A55 45%, #B06A78 88%, #DDAA8C 125%); --hdr-ink: #FFF6EE; --hdr-sub: rgba(255,246,238,.78); --hdr-em: #F6D7A7;
   --hdr-edge: linear-gradient(90deg, #B76E79, #F3D1C2 18%, #D9A08E 36%, #F7E3D3 54%, #B76E79 72%, #F3D1C2 90%, #D9A08E);
@@ -2123,17 +2133,18 @@ html.mappa-grande body { overflow: hidden; }
   --bg: #FCF6F3; --bg-2: #F4E7E2; --surface: #FFFDFC; --surface-2: #FAF1EE; --line: #EFDFD9; --line-2: #E2C9C0;
   --text: #3B2A2E; --text-2: #77605F; --text-3: #937B7A;
   --oak: #A34A62; --oak-deep: #8A3A50; --oak-soft: #F7E3E7; --oak-ink: #FFFFFF;
-  --rose: #A34A62; --rose-soft: #F7E3E7; --sage-pastel: #C47F72; --sage-ink: #FFFFFF;
+  --sage-pastel: #C47F72; --sage-ink: #FFFFFF;
 }
 :root[data-season="anniversario"][data-mode="dark"] {
   --bg: #1A1215; --bg-2: #22181C; --surface: #271B20; --surface-2: #2F2127; --line: #3F2C33; --line-2: #553B44;
   --text: #FAEFEF; --text-2: #D6C0C0; --text-3: #A08888;
   --oak: #E8A3B0; --oak-deep: #F2BEC8; --oak-soft: #40252E; --oak-ink: #1A1215;
-  --rose: #E8A3B0; --rose-soft: #40252E; --sage-pastel: #D9A08E; --sage-ink: #2A1612;
+  --sage-pastel: #D9A08E; --sage-ink: #2A1612;
 }
 
 /* compleanno: festa! palloncini, coriandoli e tutti i colori */
 :root[data-season="compleanno"] {
+  --tA: #1F9DB0; --tB: #2FA477; --tC: #E0457B; --tD: #6A4CE0;
   --pattern: url('../assets/feste/compleanno.svg'); --pattern-o: .17;
   --hdr: linear-gradient(165deg, #5B34C4 0%, #B93D9B 55%, #FF7F5C 115%); --hdr-ink: #FFFFFF; --hdr-sub: rgba(255,255,255,.82); --hdr-em: #FFE066;
   --hdr-edge: repeating-linear-gradient(90deg, #FFD23F 0 16px, #3EC1D3 16px 32px, #FF5C8A 32px 48px, #7A5CFA 48px 64px, #46D39A 64px 80px);
@@ -2162,3 +2173,24 @@ html.mappa-grande body { overflow: hidden; }
 .r-ph.th-donna { background: radial-gradient(circle at 30% 20%, #FBF2C8, #EFDD8A); color: #6B5A00; }
 .poster-ph.th-carnevale { background: linear-gradient(160deg, #EDE0F8, #D3BDEB); color: #4B1C7A; }
 .poster-ph.th-donna { background: linear-gradient(160deg, #FBF0C4, #EAD57E); color: #5A4A00; }
+
+/* colori secondari nei colori della festa: icone delle faccende e dei posti, pillole, liste dei desideri, viaggi,
+   cuori, tasti «+»… (azzurro → A, salvia → B, rosa → C, lilla → D; le versioni tenui si ricavano da sole) */
+:root[data-season]:not([data-mode="dark"]) {
+  --sky: var(--tA); --sky-soft: color-mix(in srgb, var(--tA) 14%, #fff);
+  --sage: var(--tB); --sage-soft: color-mix(in srgb, var(--tB) 14%, #fff);
+  --rose: var(--tC); --rose-soft: color-mix(in srgb, var(--tC) 14%, #fff);
+  --plum: var(--tD); --plum-soft: color-mix(in srgb, var(--tD) 14%, #fff);
+  --taupe-soft: color-mix(in srgb, var(--oak) 9%, var(--bg-2));
+}
+:root[data-season][data-mode="dark"] {
+  --sky: color-mix(in srgb, var(--tA) 62%, #fff); --sky-soft: color-mix(in srgb, var(--tA) 26%, var(--surface));
+  --sage: color-mix(in srgb, var(--tB) 62%, #fff); --sage-soft: color-mix(in srgb, var(--tB) 26%, var(--surface));
+  --rose: color-mix(in srgb, var(--tC) 62%, #fff); --rose-soft: color-mix(in srgb, var(--tC) 26%, var(--surface));
+  --plum: color-mix(in srgb, var(--tD) 62%, #fff); --plum-soft: color-mix(in srgb, var(--tD) 26%, var(--surface));
+  --taupe-soft: color-mix(in srgb, var(--oak) 12%, var(--surface));
+}
+/* numerino sulle schede, scheda scelta e scelte nei fogli nel colore della festa */
+:root[data-season] .tab .badge { background: var(--oak); color: var(--oak-ink); }
+:root[data-season] .segmented .on { color: var(--oak-deep); }
+:root[data-season] .radio-chips input:checked + span { border-color: var(--oak); color: var(--oak-deep); background: var(--oak-soft); }

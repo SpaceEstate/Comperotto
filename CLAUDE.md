@@ -47,7 +47,7 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   dell'app: si preme e basta. Manda `POST /api/posizione?auto` con JSON `{ codice, chi, lat, lon }` (il codice nel corpo, mai nell'indirizzo;
   vanno bene anche x-famiglia o Basic; `coordinata()` legge anche "45,07" con la virgola, i gradi "45° 4′ 13″ N", liste e dizionari, e i nomi
   dei campi non badano a maiuscole e spazi; l'iPhone in italiano nel campo Numero perde la virgola, 46,0677… arriva 460677…: `possibili()`
-  prova le posizioni della virgola e `piuVicino()` tiene il punto più vicino alle ultime posizioni, a casa, ai posti, all'auto di prima) e riceve in testo semplice «Posizione inviata», che il comando mostra come notifica (gli errori
+  prova le posizioni della virgola e `piuVicino()` tiene il punto più vicino alle ultime posizioni, a casa, ai posti, all'auto di prima) e riceve in testo semplice «Posizione inviata» (subito dopo il salvataggio: l'indirizzo si cerca dopo la risposta con `waitUntil` di `@vercel/functions` e si scrive solo se l'auto non si è spostata; «patrick»/«serena» si riconoscono senza leggere le impostazioni), che il comando mostra come notifica (gli errori
   sono frasi brevi; se lat/lon non si leggono la risposta dice cosa è arrivato, mai il codice). Si salva in `posizioni/auto` (`{ lat, lon, acc, at, chi, place, nota, src }`: non è una
   persona, niente avvisi né zone); indirizzo con civico e nome del parcheggio da `api/_luogo.js` (se non arriva in 1,5 s lo cerca l'app con
   `/api/geocodifica?lat&lon`). Nell'app si vede e basta: riga Auto nel riquadro Dov'è della Home (→ `#/dove/auto`, la mappa parte
@@ -200,7 +200,8 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   Halloween nero/arancione, Capodanno nero/oro, San Valentino, Carnevale, 8 marzo, Pasqua, aprile, mare, compleanni di casa, anniversario del 18 luglio).
   Calendario in `js/data.js` (`SEASONS`, `seasonFor`), compleanni/anniversario e decorazioni animate in `js/season.js`,
   colori nella sezione "Atmosfere delle feste" in fondo a `css/style.css` (ogni festa dà solo le sue variabili, chiaro e scuro
-  con `data-mode`), motivi di sfondo in `assets/feste/`. Pensata per iPhone e iPad.
+  con `data-mode`; i colori secondari `--sky/--sage/--rose/--plum` e le loro versioni tenui si ricavano dai 4 toni `--tA…--tD`
+  di ogni festa, così tasti, icone e pillole nuove si colorano da sole), motivi di sfondo in `assets/feste/`. Pensata per iPhone e iPad.
 - **iPad, barra laterale:** di base stretta (solo icone, `--side-w: 76px`); il tasto in alto la allarga/stringe e ogni dispositivo
   ricorda la scelta (`localStorage` `casa.side`, applicata subito dallo script in `index.html`).
 - **Gesti iPhone** (`js/gestures.js`): fogli da trascinare giù, indietro dal bordo sinistro (solo app installata),

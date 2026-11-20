@@ -69,8 +69,16 @@
   <link rel="modulepreload" href="js/views/impostazioni.js">
   <link rel="modulepreload" href="js/views/login.js">
   <script>
-    // Applica subito il tema scelto su questo dispositivo (evita il "lampo" chiaro/scuro).
-    try { var t = localStorage.getItem('casa.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+    // Applica subito tema (chiaro/scuro) e atmosfera della festa di oggi: niente "lampo" di colori sbagliati all'apertura.
+    try {
+      var r = document.documentElement, t = localStorage.getItem('casa.theme');
+      if (t === 'light' || t === 'dark') r.dataset.theme = t;
+      r.dataset.mode = t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+      var d = new Date(), oggi = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+      var ov = localStorage.getItem('casa.season'), ev = (localStorage.getItem('casa.ev') || '').split('|');
+      var s = ov && ov !== 'auto' ? (ov === 'casa' ? '' : ov) : (ev[0] === oggi ? ev[1] : '');
+      if (s) r.dataset.season = s;
+    } catch (e) {}
   </script>
 </head>
 <body>

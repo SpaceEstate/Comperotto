@@ -5,7 +5,7 @@ import { THEMES, upcomingDates, CAT_EVENTS } from '../data.js';
 import { state, store, settings, me, nameOf, myName, openSheet, toast, val, confirmSheet, rerender, ui, isSynced } from '../core.js';
 import { dueChores, choreRow, trashFor, binChips } from './casa.js';
 import { cats, catAvatar, upcomingFor, lastWeight } from './gatti.js';
-import { seasonInfo, currentTheme, seasonDeco } from '../season.js';
+import { seasonInfo, currentTheme, seasonDeco, eventText } from '../season.js';
 import { badge as shopBadge } from './spesa.js';
 import { statusOf, personBadge, pillOf, iconOf } from './dove.js';
 
@@ -43,20 +43,13 @@ function seasonCard(s) {
   </section>`;
 }
 
+/** Auguri del giorno (quando il sito non è già vestito per quella festa: es. ricorrenze o atmosfera scelta a mano). */
 function birthdayCard(b) {
-  const isP2 = b.who === 'p2';
-  const title = b.anniversary ? `Buon anniversario, ${b.name}!` : `Buon compleanno, ${b.name}!`;
-  const sub = b.anniversary
-    ? `${b.age ? `${b.age} ${b.age === 1 ? 'anno' : 'anni'} insieme ♡ ` : ''}Stasera si festeggia: cena romantica?`
-    : b.cats
-    ? `${b.age ? `${b.age} ${b.age === 1 ? 'anno' : 'anni'} di fusa. ` : ''}Oggi croccantini extra per tutti.`
-    : isP2
-      ? `${b.age ? `${b.age} anni! ` : ''}Joyeux anniversaire · ¡Feliz cumpleaños! ✦`
-      : `${b.age ? `${b.age} anni! ` : ''}Tanti auguri da tutta la famiglia (gatti compresi).`;
+  const t = eventText(b);
   return html`<section class="bday-card">
     <div class="confetti" aria-hidden="true">${Array.from({ length: 14 }, (_, i) => html`<i style="left:${(i * 29) % 100}%;animation-delay:-${(i * 0.7) % 4}s;background:${['#E7A3B5', '#F2C14E', '#5FB3C4', '#B57F45'][i % 4]}"></i>`)}</div>
-    <span class="sc-ico">${icon(b.anniversary ? 'heart' : b.cats ? 'cat' : 'cake', 'lg')}</span>
-    <div><b>${title}</b><span>${sub}</span></div>
+    <span class="sc-ico">${icon(t.icon, 'lg')}</span>
+    <div><b>${t.title}</b><span>${t.sub}</span></div>
   </section>`;
 }
 
@@ -131,7 +124,8 @@ export function render() {
   const season = seasonInfo();
   const name = myName();
   const dates = upcomingDates(s, state.data.gatti);
-  const bdays = dates.filter((d) => d.days === 0 && d.personal);
+  // la festa di oggi che veste già il sito ha i suoi auguri nel riquadro della festa
+  const bdays = dates.filter((d) => d.days === 0 && d.personal && !(season && season.event && season.event.label === d.label));
   const t = todayIso();
   const due = dueChores().filter((c) => c.lastDone !== t);
   const doneToday = state.data.routine.filter((c) => c.lastDone === t).length;
@@ -163,6 +157,7 @@ export function render() {
     <div class="stagger">
       ${installHint()}
       ${pushHint()}
+      ${season && season.event ? seasonCard(season) : ''}
       ${bdays.map(birthdayCard)}
 
       <div class="cats-strip">${cats().map((c) => html`
@@ -172,7 +167,7 @@ export function render() {
 
       <div class="home-grid">
         <div class="home-col">
-          ${season ? seasonCard(season) : ''}
+          ${season && !season.event ? seasonCard(season) : ''}
 
           <section class="card today-card">
             <div class="today-head">

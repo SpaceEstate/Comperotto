@@ -8,23 +8,30 @@ Un'app fatta su misura per **iPhone e iPad** (si installa dalla schermata Home e
   - **Faccende** che si ripetono (lettiera, lavatrice, lenzuola, bagno…) con scadenze e chi le ha fatte;
   - **Lavori** da fare (tagliare le tende, sistemare i mobili…) per stanza e priorità;
   - **Rifiuti**: il calendario della raccolta. Ogni sera la Home dice cosa portare fuori.
-- **Ricette** per tema (Tutti i giorni, Natale, Capodanno, San Valentino, Pasqua, Estate, Halloween, Compleanni, Parigi e Canarie): si aggiungono e si modificano dall'app (tasto **+ Ricetta**, e **Modifica ricetta** in fondo a ognuna), con foto. Si spuntano gli ingredienti e finiscono nella spesa; c'è il dado "cosa cuciniamo?" e il tasto **Tieni lo schermo acceso** mentre si cucina.
+- **Ricette** per tema (Tutti i giorni, Natale, Capodanno, San Valentino, Carnevale, 8 marzo, Pasqua, Estate, Halloween, Compleanni, Parigi e Canarie): si aggiungono e si modificano dall'app (tasto **+ Ricetta**, e **Modifica ricetta** in fondo a ognuna), con foto. Si spuntano gli ingredienti e finiscono nella spesa; c'è il dado "cosa cuciniamo?" e il tasto **Tieni lo schermo acceso** mentre si cucina.
 - **Film e serie**, a tema e non: copertina e **dove vederli in Italia** (abbonamento, noleggio, acquisto) arrivano da soli e si aggiornano ogni giorno; in cima un "Stasera guardiamo…".
 - **Desideri**: cose da comprare con prezzo, link e totale.
 - **Musica** a tema del periodo, con il lettore Spotify integrato (dalla Home o, su iPad, dalla barra laterale).
 - **Thor e Minù**: foto, età, peso, antiparassitari, vaccini e veterinario, con promemoria (dalla Home).
 - **Lavagnetta** in Home per lasciarsi biglietti, **conto alla rovescia** per le feste e i compleanni (Serena il 29/04, Patrick il 20/12, Thor e Minù il 04/10, il vostro anniversario il 18/07): il giorno giusto la Home fa festa.
-- **Atmosfere stagionali**: cambiano colori e decorazioni da sole.
+- **Atmosfere delle feste**: in ogni festa tutto il sito si veste da solo con i suoi colori e il suo stile (pagine, pulsanti, testata della Home, riquadri, nastrino sulla barra, sfondo a motivi e decorazioni animate).
 
-| Periodo | Atmosfera |
+| Quando | Atmosfera |
 |---|---|
-| Aprile | **Da Parigi alle Canarie**, il mese di Serena: rosa macaron, Tour Eiffel, oceano e palme |
-| Luglio e agosto | **Mare**: sabbia, onde e sole |
-| Ottobre | **Halloween**: zucca, notte viola e pipistrelli |
-| 20 novembre – 6 gennaio | **Natale**: abete, rosso bacca, oro e neve |
-| Il resto dell'anno | **Casa**: lino, rovere del parquet e tortora |
+| 30 dicembre – 1 gennaio | **Capodanno**: nero, oro e argento, fuochi d'artificio |
+| 10 – 14 febbraio | **San Valentino**: rosso e rosa, cuori che volano |
+| Le due settimane fino a martedì grasso | **Carnevale**: rombi di Arlecchino, coriandoli e stelle filanti |
+| 8 marzo | **Festa della donna**: giallo mimosa e verde foglia |
+| Dalle Palme a Pasquetta | **Pasqua**: lilla, giallo pulcino e verde prato, ovetti e farfalla |
+| Aprile | **Da Parigi alle Canarie**, il mese di Serena: Parigi al tramonto, oceano e palme |
+| Luglio e agosto | **Mare**: blu, sabbia, ombrellone a righe, sole e barchetta |
+| Ottobre | **Halloween**: nero e arancione, luna piena e pipistrelli |
+| 20 novembre – 6 gennaio | **Natale**: verde, rosso e bianco, neve e palline |
+| Compleanni di Patrick, Serena, Thor e Minù | **Festa**: palloncini, coriandoli e gli auguri in cima alla Home |
+| Il vostro anniversario | i colori di **San Valentino** con gli auguri |
+| Il resto dell'anno | **Casa**: il pastello di sempre |
 
-Tutto funziona sia in chiaro sia in scuro. In *Impostazioni → Atmosfera* si può anche forzarne una per provarla.
+Tutto funziona sia in chiaro sia in scuro. In *Impostazioni → Atmosfera* si vede quale festa c'è oggi e quali arrivano, e se ne può forzare una per provarla.
 
 ### Su misura per iPhone e iPad
 
@@ -146,18 +153,19 @@ Aggiungete brani, album o playlist con un tema (Natale, Halloween, Estate, Parig
 index.html              guscio dell'app
 manifest.webmanifest    installazione come app (icona, colori)
 sw.js                   funzionamento offline
-css/style.css           stile: palette di casa e atmosfere stagionali
+css/style.css           stile: palette di casa e atmosfere delle feste
 js/config.js            frase della skill Alexa
 js/store.js             dati: condivisi via Vercel (con coda offline) o solo sul dispositivo
 js/core.js              stato, fogli dal basso, avvisi
-js/data.js              reparti, temi, stagioni, rifiuti, faccende
-js/season.js            atmosfere stagionali e decorazioni
+js/data.js              reparti, temi, calendario delle feste, rifiuti, faccende
+js/season.js            atmosfera di oggi (anche compleanni) e decorazioni animate
 js/seed.js              esempi iniziali (ricette, film, musica, faccende)
 js/gestures.js          gesti dell'iPhone (fogli da trascinare, indietro dal bordo, righe da scorrere)
 js/mappa.js             stile della mappa di Dov'è (attività, i nostri posti, satellite, scuro)
 js/notifiche.js         notifiche di questo dispositivo
 js/views/*.js           le schermate
 assets/fonts/           i caratteri (dentro l'app: niente richieste esterne)
+assets/feste/           i motivi di sfondo delle feste
 api/                    funzioni Vercel: stato, setup del codice, dati (Neon/Postgres o Upstash Redis), film,
                         posizione, notifiche (push, promemoria della sera)
 alexa-skill/            skill Alexa (modello italiano + codice)

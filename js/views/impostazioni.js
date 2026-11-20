@@ -3,7 +3,7 @@ import { html, raw, cap, lsGet, lsSet, uid, parseDMY, fmtDMY, timeAgo } from '..
 import { icon } from '../icons.js';
 import { SEASONS } from '../data.js';
 import { state, store, isSynced, settings, saveSettings, me, setMe, nameOf, openSheet, closeSheet, sheetError, toast, val, pageHead, rerender, confirmSheet } from '../core.js';
-import { seasonOverride, setSeasonOverride } from '../season.js';
+import { seasonOverride, setSeasonOverride, seasonInfo, nextSeasons } from '../season.js';
 import { seedData } from '../seed.js';
 import * as notifiche from '../notifiche.js';
 import { ui, setUi } from '../core.js';
@@ -15,6 +15,17 @@ export function applyTheme() {
   const t = themeMode();
   if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
   else delete document.documentElement.dataset.theme;
+}
+
+const MESI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+const giornoMese = (iso) => `${Number(iso.slice(8))} ${MESI[Number(iso.slice(5, 7)) - 1]}`;
+
+/** Cosa c'è oggi e quali feste arrivano: i colori del sito cambiano da soli in quei giorni. */
+function atmosfereHelp(ov) {
+  if (ov !== 'auto') return html`<p class="help">Su questo telefono resta così finché non scegli «Segue il calendario».</p>`;
+  const oggi = seasonInfo();
+  const poi = nextSeasons(4);
+  return html`<p class="help">${oggi ? html`Oggi: <b>${oggi.event ? oggi.event.label : oggi.label}</b>. ` : ''}${poi.length ? html`In arrivo: ${poi.map((x, i) => html`${i ? ' · ' : ''}${x.label} (${giornoMese(x.date)})`)}` : ''}</p>`;
 }
 
 export function render() {
@@ -44,7 +55,7 @@ export function render() {
         <label><input type="radio" name="season" value="auto" data-change="set-season" ${ov === 'auto' ? raw('checked') : ''}><span>${icon('calendar', 'xs')} Segue il calendario</span></label>
         <label><input type="radio" name="season" value="casa" data-change="set-season" ${ov === 'casa' ? raw('checked') : ''}><span>${icon('home', 'xs')} Casa</span></label>
         ${Object.entries(SEASONS).map(([k, v]) => html`<label><input type="radio" name="season" value="${k}" data-change="set-season" ${ov === k ? raw('checked') : ''}><span>${icon(v.icon, 'xs')} ${v.label}</span></label>`)}
-      </div></div>
+      </div>${atmosfereHelp(ov)}</div>
     </div>
 
     ${notificheCard()}

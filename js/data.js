@@ -1,5 +1,5 @@
 // Costanti e logica "di casa": categorie della spesa, temi, stagioni, rifiuti, faccende.
-import { norm, todayIso, addDays, daysBetween, parseIso, easter, nextYearly } from './utils.js';
+import { norm, todayIso, addDays, daysBetween, parseIso, iso, easter, nextYearly } from './utils.js';
 
 // ---------------------------------------------------------------------------
 // Temi (ricette, musica, film)
@@ -13,29 +13,44 @@ export const THEMES = {
   estate: { label: 'Estate e mare', short: 'Estate', icon: 'wave' },
   halloween: { label: 'Halloween', icon: 'pumpkin' },
   compleanni: { label: 'Compleanni', icon: 'cake' },
+  carnevale: { label: 'Carnevale', icon: 'mask' },
+  donna: { label: 'Festa della donna', short: '8 marzo', icon: 'mimosa' },
   aprile: { label: 'Parigi e Canarie', short: 'Parigi e Canarie', icon: 'eiffel' },
 };
 export const THEME_IDS = Object.keys(THEMES);
 export const themeLabel = (id, short = false) => (THEMES[id] ? (short && THEMES[id].short) || THEMES[id].label : id);
 
 // ---------------------------------------------------------------------------
-// Stagioni: cambiano colori e atmosfera di tutto il sito
+// Atmosfere delle feste: cambiano colori, testata e decorazioni di tutto il sito
+// (in ordine di calendario; vince la più "stretta": Capodanno dentro Natale, Pasqua dentro aprile…)
 // ---------------------------------------------------------------------------
 export const SEASONS = {
+  capodanno: { label: 'Capodanno', theme: 'capodanno', icon: 'sparkles', title: 'Si brinda all’anno nuovo', sub: 'Bollicine, lenticchie e fuochi d’artificio', range: '30 dicembre – 1 gennaio' },
+  sanvalentino: { label: 'San Valentino', theme: 'sanvalentino', icon: 'heart', title: 'Settimana dell’amore', sub: 'Cena a lume di candela e film romantici', range: '10 – 14 febbraio' },
+  carnevale: { label: 'Carnevale', theme: 'carnevale', icon: 'mask', title: 'A Carnevale ogni scherzo vale', sub: 'Chiacchiere, coriandoli e stelle filanti', range: 'le due settimane fino a martedì grasso' },
+  donna: { label: '8 marzo', theme: 'donna', icon: 'mimosa', title: 'Festa della donna', sub: 'Un rametto di mimosa per {p2}', range: '8 marzo' },
+  pasqua: { label: 'Pasqua', theme: 'pasqua', icon: 'egg', title: 'Buona Pasqua', sub: 'Uova, colomba e la gita di Pasquetta', range: 'dalle Palme a Pasquetta' },
+  aprile: { label: 'Parigi e Canarie', theme: 'aprile', icon: 'eiffel', title: 'Da Parigi alle Canarie', sub: 'Aprile è il mese di {p2}', range: 'tutto aprile' },
+  mare: { label: 'Mare', theme: 'estate', icon: 'wave', title: 'Sole, sale e sabbia', sub: 'Playlist da spiaggia e cene leggere', range: 'luglio e agosto' },
   halloween: { label: 'Halloween', theme: 'halloween', icon: 'pumpkin', title: 'Ottobre stregato', sub: 'Zucche, dolcetti e film da brivido', range: 'tutto ottobre' },
   natale: { label: 'Natale', theme: 'natale', icon: 'tree', title: 'Aria di Natale', sub: 'Lucine, biscotti e film sotto la coperta', range: '20 novembre – 6 gennaio' },
-  mare: { label: 'Mare', theme: 'estate', icon: 'wave', title: 'Sole, sale e sabbia', sub: 'Playlist da spiaggia e cene leggere', range: 'luglio e agosto' },
-  aprile: { label: 'Parigi e Canarie', theme: 'aprile', icon: 'eiffel', title: 'Da Parigi alle Canarie', sub: 'Aprile è il mese di {p2}', range: 'tutto aprile' },
+  compleanno: { label: 'Compleanno', theme: 'compleanni', icon: 'cake', title: 'Oggi si festeggia', sub: 'Torta, candeline e musica a tutto volume', range: 'il giorno dei compleanni di casa' },
 };
 
-/** Stagione attiva per una data (o forzata da impostazione del dispositivo). */
+/** Atmosfera del calendario per una data (o quella scelta su questo dispositivo). I compleanni li aggiunge season.js. */
 export function seasonFor(date = new Date(), override = 'auto') {
   if (override && override !== 'auto') return override === 'casa' ? null : (SEASONS[override] ? override : null);
   const m = date.getMonth() + 1, d = date.getDate();
-  if (m === 10) return 'halloween';
-  if (m === 4) return 'aprile';
+  const e = daysBetween(easter(date.getFullYear()), iso(date)); // giorni da Pasqua (negativi prima)
+  if ((m === 12 && d >= 30) || (m === 1 && d === 1)) return 'capodanno';
   if ((m === 11 && d >= 20) || m === 12 || (m === 1 && d <= 6)) return 'natale';
+  if (m === 2 && d >= 10 && d <= 14) return 'sanvalentino';
+  if (m === 3 && d === 8) return 'donna';
+  if (e >= -59 && e <= -47) return 'carnevale'; // martedì grasso è 47 giorni prima di Pasqua
+  if (e >= -7 && e <= 1) return 'pasqua';
+  if (m === 4) return 'aprile';
   if (m === 7 || m === 8) return 'mare';
+  if (m === 10) return 'halloween';
   return null;
 }
 
@@ -54,6 +69,10 @@ export function upcomingDates(settings, cats = [], ref = todayIso()) {
   let e = easter(y);
   if (daysBetween(ref, e) < 0) e = easter(y + 1);
   list.push({ label: 'Pasqua', date: e, theme: 'pasqua', icon: 'egg' });
+  let mg = addDays(easter(y), -47); // martedì grasso
+  if (daysBetween(ref, mg) < 0) mg = addDays(easter(y + 1), -47);
+  list.push({ label: 'Carnevale', date: mg, theme: 'carnevale', icon: 'mask' });
+  list.push({ label: 'Festa della donna', date: nextYearly('03-08', ref), theme: 'donna', icon: 'mimosa' });
   (settings.ricorrenze || []).forEach((r) => {
     if (r && r.date && r.label) list.push({ label: r.label, date: nextYearly(r.date, ref), theme: r.theme || 'compleanni', icon: r.icon || 'cake', personal: true });
   });

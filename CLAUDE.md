@@ -26,8 +26,11 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
 - **Controllo delle pagine:** prima di pubblicare modifiche di aspetto, provarle su iPhone piccolo (320 px), iPhone, iPad verticale
   (colonna unica tra 700 e 999 px) e orizzontale, in chiaro e scuro e con le atmosfere delle feste.
 - **Sito pulito:** è un'app interna di famiglia: niente spiegazioni tecniche, crediti o link "obbligatori" nelle pagine (es. sulla mappa); le spiegazioni vanno date in chat.
-- **Stile:** pastello in tinta con la casa; le feste con i loro colori pieni (Natale verde/rosso/bianco,
-  Halloween nero/arancione). Pensata per iPhone e iPad.
+- **Stile:** pastello in tinta con la casa; in ogni festa **tutto il sito** cambia colori e stile (Natale verde/rosso/bianco,
+  Halloween nero/arancione, Capodanno nero/oro, San Valentino, Carnevale, 8 marzo, Pasqua, aprile, mare, compleanni di casa).
+  Calendario in `js/data.js` (`SEASONS`, `seasonFor`), compleanni/anniversario e decorazioni animate in `js/season.js`,
+  colori nella sezione "Atmosfere delle feste" in fondo a `css/style.css` (ogni festa dà solo le sue variabili, chiaro e scuro
+  con `data-mode`), motivi di sfondo in `assets/feste/`. Pensata per iPhone e iPad.
 - **Gesti iPhone** (`js/gestures.js`): fogli da trascinare giù, indietro dal bordo sinistro (solo app installata),
   tira giù per aggiornare, righe da scorrere (`swipe()` in `core.js`: destra = spunta, sinistra = elimina con Annulla).
 - Niente build: HTML/CSS/JS moderni (`index.html`, `css/`, `js/`), funzioni Vercel in `api/`.

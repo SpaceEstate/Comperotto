@@ -7,7 +7,7 @@
 //  tra tutti i dispositivi che conoscono il codice di famiglia.
 
 // Versione dell'app (a ogni pubblicazione, insieme a CACHE in sw.js)
-export const VERSIONE = '1.21.0';
+export const VERSIONE = '1.22.0';
 
 // Frase per la skill Alexa (deve coincidere con il nome di invocazione della skill).
 export const ALEXA_INVOCATION = 'casa mia';

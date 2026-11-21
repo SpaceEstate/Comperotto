@@ -32,7 +32,7 @@ function sceltoOAttivo() {
   if (a) return a;
   const dove = S.doveSuonare();
   if (dove === S.QUI) return { id: S.qui.id || S.QUI, name: questo() };
-  return (sp.devices || []).find((d) => d.id === dove) || null;
+  return S.trovaDispositivo(dove);
 }
 const suonaOra = () => (sp.player && sp.player.item && sp.player.item.uri) || '';
 const ctxOra = () => (sp.player && sp.player.context && sp.player.context.uri) || '';
@@ -1142,16 +1142,25 @@ export async function suonaQui(target, casuale = false) {
       await new Promise((ok) => setTimeout(ok, 1200));
       try { await parti(); return; } catch (e2) { err = e2; }
     }
+    if (err.reason === 'ADDORMENTATO') { inAttesa = { target, casuale }; devSheet(aRiposo(err.dispositivo)); return; }
     if (err.status === 404 || err.reason === 'NO_DEVICE' || err.reason === 'NO_ACTIVE_DEVICE') { inAttesa = { target, casuale }; devSheet('Quel dispositivo non risponde: scegline un altro.'); return; }
     throw err;
   }
 }
 
+/** Un Echo (o un altro altoparlante con Alexa)? */
+const eEcho = (d) => Boolean(d && (/echo|alexa|amazon/i.test(d.name || '') || d.type === 'Speaker'));
+/** Il dispositivo non ha risposto a nessun tentativo: per un Echo vuol dire che è a riposo e va svegliato a voce. */
+const aRiposo = (d) => (eEcho(d)
+  ? `«${devNome(d) || 'L’Echo'}» è a riposo: di’ «Alexa, Spotify Connect» e poi toccalo di nuovo.`
+  : `«${devNome(d) || 'Il dispositivo'}» non risponde: controlla che sia acceso e riprova.`);
+
 // i dispositivi che non si vogliono vedere (es. l'Echo di qualcun altro): per nome, uguali per tutta la casa
 const nascosti = () => (Array.isArray(settings().spotifyNascosti) ? settings().spotifyNascosti : []);
 
 function devList() {
-  const list = sp.devices;
+  // i miei dispositivi (se la musica va con lo Spotify dell'altro, sp.devices sono i suoi)
+  const list = S.chiLettore() === S.chi() ? sp.devices : sp.devPer[S.chi()] || null;
   const cur = sceltoOAttivo();
   const quiAcceso = list && S.qui.id && list.find((d) => d.id === S.qui.id);
   // un vecchio lettore di questo stesso dispositivo (tentativo precedente) non va mostrato due volte
@@ -1159,12 +1168,29 @@ function devList() {
   const via = nascosti();
   // quello che sta suonando si vede sempre, anche se è tra i nascosti
   const visibili = altri.filter((d) => d.is_active || !via.includes(d.name));
-  const celati = [...new Set(altri.filter((d) => !d.is_active && via.includes(d.name)).map((d) => d.name))];
+  const tutti = [...altri, ...S.collegati().filter((x) => x !== S.chi()).flatMap((x) => (sp.devPer[x] || []).filter((d) => !comperotto(d)))];
+  const celati = [...new Set(tutti.filter((d) => !d.is_active && via.includes(d.name)).map((d) => d.name))];
+  // gli altoparlanti di casa che vede solo lo Spotify dell'altro (gli Echo si collegano a un solo account, nell'app Alexa):
+  // si possono scegliere lo stesso, e la musica parte lì con il suo account
+  const miei = new Set(altri.map((d) => d.name));
+  const suoi = S.collegati().filter((x) => x !== S.chi()).map((x) => ({
+    k: x,
+    list: (sp.devPer[x] || []).filter((d) => d.id && !d.is_restricted && !comperotto(d) && !['Smartphone', 'Tablet', 'Computer'].includes(d.type)
+      && !miei.has(d.name) && (!via.includes(d.name) || (cur && cur.id === d.id))),
+  })).filter((g) => g.list.length);
   const tocco = matchMedia('(pointer: coarse)').matches;
-  const riga = (d, puoiNascondere = false) => html`<div class="sp-devline">
-    <button class="set-row sp-devrow ${d.is_restricted || !d.id ? 'off' : ''}" data-action="sp-dispositivo" data-id="${d.id || ''}" ${d.is_restricted || !d.id ? raw('disabled') : ''}>
+  const ora = S.attivo();
+  const sotto = (d, k) => {
+    if (ora && ora.id === d.id) return sp.player && sp.player.is_playing ? 'Sta suonando' : 'In pausa';
+    if (S.eQui(d.id) || comperotto(d)) return 'Dentro l’app';
+    if (d.is_restricted) return 'Non si comanda da qui';
+    if (k !== S.chi()) return d.is_active ? `In uso con lo Spotify di ${nameOf(k)}` : `${DEV_LABEL[d.type] || 'Dispositivo'} · con lo Spotify di ${nameOf(k)}`;
+    return DEV_LABEL[d.type] || 'Dispositivo';
+  };
+  const riga = (d, puoiNascondere = false, k = S.chi()) => html`<div class="sp-devline">
+    <button class="set-row sp-devrow ${d.is_restricted || !d.id ? 'off' : ''}" data-action="sp-dispositivo" data-id="${d.id || ''}" data-k="${k}" ${d.is_restricted || !d.id ? raw('disabled') : ''}>
       ${icon(devIcon(d))}
-      <div class="row-main"><b>${devNome(d)}</b><span>${d.is_active ? (sp.player && sp.player.is_playing ? 'Sta suonando' : 'In pausa') : S.eQui(d.id) || comperotto(d) ? 'Dentro l’app' : d.is_restricted ? 'Non si comanda da qui' : DEV_LABEL[d.type] || 'Dispositivo'}</span></div>
+      <div class="row-main"><b>${devNome(d)}</b><span>${sotto(d, k)}</span></div>
       ${cur && cur.id === d.id ? html`<span class="sp-check">${icon('check', 'sm')}</span>` : ''}
     </button>
     ${puoiNascondere && !d.is_active ? html`<button class="sp-ic sp-nascondi" type="button" data-action="sp-nascondi" data-nome="${d.name}" aria-label="Nascondi ${d.name}">${icon('eyeoff', 'sm')}</button>` : ''}
@@ -1173,10 +1199,11 @@ function devList() {
       ${quiAcceso ? riga(quiAcceso) : html`<button class="set-row sp-devrow" data-action="sp-qui">${icon(isIPad() ? 'tablet' : 'phone')}
         <div class="row-main"><b>Ascolta su ${questo()}</b><span>${sp.busy === 'qui' ? 'Accendo il lettore…' : 'Dentro l’app'}</span></div>${sp.busy === 'qui' ? icon('refresh', 'sm spin') : cur && cur.id === S.QUI ? html`<span class="sp-check">${icon('check', 'sm')}</span>` : ''}</button>`}
       ${visibili.map((d) => riga(d, true))}
+      ${suoi.map((g) => g.list.map((d) => riga(d, true, g.k)))}
     </div>
     ${!list ? html`<p class="muted small" style="padding:10px 4px 0">Cerco gli altri dispositivi…</p>` : ''}
     ${list ? html`<details class="sp-echo-aiuto" ${!visibili.length && !celati.length ? raw('open') : ''}><summary>${icon('speaker', 'xs')} Manca un Echo di casa?</summary>
-      <p class="small muted">Spotify fa vedere alle app solo gli Echo «svegli»: di’ all’Echo «Alexa, Spotify Connect» (o fagli mettere un brano da Spotify) e in pochi secondi compare qui. Se non compare nemmeno così, l’Alexa di casa è collegata a un altro Spotify: nell’app Alexa, Altro → Impostazioni → Musica e podcast → Spotify, collega quello di ${nameOf(S.chi())}.</p></details>` : ''}
+      <p class="small muted">Spotify fa vedere alle app solo gli Echo «svegli»: di’ all’Echo «Alexa, Spotify Connect» (o fagli mettere un brano da Spotify) e in pochi secondi compare qui. Gli Echo si collegano a un solo Spotify (nell’app Alexa, Altro → Impostazioni → Musica e podcast → Spotify): se è quello dell’altro compaiono qui lo stesso, «con lo Spotify di…», e la musica parte lì con il suo account.</p></details>` : ''}
     ${celati.length ? html`<p class="small muted sp-celati">${icon('eyeoff', 'xs')} Nascosti: ${celati.join(', ')} <button class="card-link" type="button" data-action="sp-mostra">Mostrali</button></p>` : ''}
     ${tocco ? html`<button class="card-link sp-apri" type="button" data-action="sp-apri-app">${icon('link', 'xs')} Apri l’app Spotify</button>` : ''}`;
 }
@@ -1229,12 +1256,13 @@ async function aggiornaDev() {
 // di ritorno dall'app Spotify: la lista si aggiorna da sola
 document.addEventListener('visibilitychange', () => { if (!document.hidden && document.getElementById('sp-devlist')) setTimeout(aggiornaDev, 600); });
 
-async function vaiSu(id) {
+/** Sceglie dove ascoltare (k: l'account del dispositivo, che può essere quello dell'altro, es. un Echo). */
+async function vaiSu(id, k = S.accountDi(id)) {
   const attesa = inAttesa;
   inAttesa = null;
-  if (attesa) { if (attesa.casuale) await S.suonaCasuale(attesa.target, id); else await S.suona(attesa.target, id); }
-  else if (sp.player) await S.sposta(id);
-  else { S.scegliDispositivo(id); rerender(); }
+  if (attesa) { if (attesa.casuale) await S.suonaCasuale(attesa.target, id, k); else await S.suona(attesa.target, id, k); }
+  else if (sp.player) await S.sposta(id, k);
+  else { S.scegliDispositivo(id, k); rerender(); }
 }
 
 // ---------------------------------------------------------------------------
@@ -1248,7 +1276,8 @@ export function errore(e) {
     return;
   }
   const r = e.reason;
-  if (r === 'PREMIUM_REQUIRED' || r === 'account_error') toast('Per questo serve Spotify Premium');
+  if (r === 'ADDORMENTATO') toast(aRiposo(e.dispositivo), { ms: 6000 });
+  else if (r === 'PREMIUM_REQUIRED' || r === 'account_error') toast('Per questo serve Spotify Premium');
   else if (r === 'initialization_error' || r === 'SDK') toast(`Su ${questo()} Spotify non suona dentro l’app: usa l’app Spotify o un Echo`);
   else if (r === 'authentication_error' || (e.status === 403 && /scope/i.test(e.message))) { toast('Va ricollegato Spotify: tocca «Ricollega» in Musica'); S.caricaInfo(); }
   else if (e.status === 429) toast('Spotify chiede una pausa: riprova tra poco');
@@ -1499,13 +1528,14 @@ export const actions = {
     toast(`«${nome}» nascosto`, { undo: () => { saveSettings({ spotifyNascosti: prima }); ridisegnaDev(); } });
   },
   'sp-mostra': () => { saveSettings({ spotifyNascosti: [] }); ridisegnaDev(); },
-  'sp-dispositivo': prova(async ({ id }) => {
+  'sp-dispositivo': prova(async ({ id, el }) => {
     if (!id) return;
     vibrate();
-    const d = (sp.devices || []).find((x) => x.id === id);
+    const d = S.trovaDispositivo(id);
+    const k = S.collegati().includes(el.dataset.k) ? el.dataset.k : S.accountDi(id);
     closeSheet();
-    await vaiSu(id);
-    if (d) toast(`Su ${devNome(d)}`);
+    await vaiSu(id, k);
+    if (d) toast(k !== S.chi() ? `Su ${devNome(d)}, con lo Spotify di ${nameOf(k)}` : `Su ${devNome(d)}`);
   }),
   // questo iPhone/iPad come altoparlante: il lettore va acceso dentro il tocco
   'sp-qui': prova(async () => {

@@ -93,8 +93,18 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   (seek), niente volume. In "Dove ascoltare?" ogni dispositivo si può nascondere (nomi in `settings.spotifyNascosti`, per tutta la casa;
   quello che suona si vede sempre). La Web API elenca solo i dispositivi "attivi e comandabili": gli Echo a riposo spesso mancano (l'app
   Spotify li vede anche sul Wi-Fi). Con il foglio aperto la lista si aggiorna da sola ogni 4 s per 2 minuti (`seguiDispositivi()`), così un
-  Echo svegliato con «Alexa, Spotify Connect» compare da solo; in fondo "Manca un Echo di casa?" (chiuso) lo spiega, e ricorda che gli
-  Echo compaiono solo per l'account Spotify collegato nell'app Alexa (Altro → Impostazioni → Musica e podcast). Suggerimenti: musica a tema del periodo (`MUSICA_TEMA` in `js/data.js`, periodo da `periodoMusica()` in
+  Echo svegliato con «Alexa, Spotify Connect» compare da solo; in fondo "Manca un Echo di casa?" (chiuso) lo spiega.
+  Gli Echo compaiono solo per l'account Spotify collegato nell'app Alexa (da noi quello di Patrick; uno solo per account Amazon):
+  in "Dove ascoltare?" di chi non lo vede ci sono anche gli altoparlanti dell'altro account (`sp.devPer[k]`, letti con il foglio aperto;
+  niente telefoni, tablet, computer né lettori dell'app) con "· con lo Spotify di …". Toccandone uno la musica parte lì con l'account
+  dell'altro (`scegliDispositivo(id, k)`: `casa.spotify.dev` = `{ id, at, k, vivo }`): stesso brano dallo stesso punto (playlist/album
+  come context, "Brani che ti piacciono" come brano + prossimi) e si ferma dov'era. `chiLettore()` = l'account con cui suona (quello
+  del dispositivo scelto finché lì suona o è stato scelto da meno di 30 min, altrimenti `chi()`): `call()` manda a lui tutti i
+  `me/player…` (tranne recently-played), `sp.devices` sono i suoi e del suo stato conta solo il dispositivo scelto (non il telefono
+  dell'altro). Attenzione: è lo Spotify dell'altro, quindi se intanto lui ascolta altrove uno interrompe l'altro.
+  Echo a riposo: Spotify lo elenca ma risponde 404 "Device not found". `insisti()` prova i modi uno dopo l'altro (play con
+  `device_id`, poi trasferisci senza play + play, poi solo il brano; per spostare: trasferisci, poi play dallo stesso punto); se
+  nessuno va l'errore è `ADDORMENTATO` e il messaggio dice di dire «Alexa, Spotify Connect» e toccarlo di nuovo. Suggerimenti: musica a tema del periodo (`MUSICA_TEMA` in `js/data.js`, periodo da `periodoMusica()` in
   `season.js`, trovata con la ricerca e tenuta una settimana) e "Scelti per te" (artisti dei brani salvati → loro brani non salvati e
   uscite dell'ultimo anno: le raccomandazioni di Spotify non ci sono più per le app nuove). "La nostra musica" non c'è più (i dati restano).
   Lettore (`js/spotify.js`): dopo un comando lo schermo cambia subito e le "attese" tengono lo stato chiesto finché Spotify non lo
@@ -103,7 +113,7 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   "Questo iPhone/iPad" = Web Playback SDK (`sdk.scdn.co`, caricato e preparato entrando in Musica; `activateElement()` dentro il tocco;
   vuole i permessi `streaming user-read-email user-read-private`, altrimenti "Invalid token scopes").
   Di base la musica parte qui (`doveSuonare()` → `QUI`): un altro dispositivo solo se scelto in "Dove ascoltare?" e ancora collegato
-  (è quello attivo o scelto da meno di 30 min; `casa.spotify.dev` = `{ id, at }`). Mini lettore fisso (`miniLettore()`, nel
+  (è quello attivo o scelto da meno di 30 min; `casa.spotify.dev` = `{ id, at, k }`). Mini lettore fisso (`miniLettore()`, nel
   `#mini` fuori dalla pagina, su tutte le pagine tranne `#/musica`); un tocco apre la finestra del lettore (`grandeLettore()` nel
   `#np`, fuori dalla pagina: sul telefono sale dal basso e si chiude trascinandola giù, su iPad è al centro; "Dopo" da
   `me/player/queue`, nome delle playlist altrui da `playlists/{id}?fields=name`). Scorrendo di lato sulla copertina della finestra o
@@ -141,12 +151,17 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   caricano quelli dell'altro) e, con pochi preferiti, guarda anche le playlist e gli ascolti recenti; le novità leggono singoli e
   album a parte. Quando non suona niente, in cima "Da ascoltare oggi" (`consiglioCard()`: da "Scelti per te", altrimenti dalla
   musica del periodo; una al giorno, il dado ne propone un'altra) che parte solo toccando «Ascolta», con dopo le altre.
+  I dadi (canzone del giorno, «Stasera guardiamo…») usano `aCasoDelGiorno()` di `utils.js`: ordine a caso uguale per tutto il giorno,
+  ogni elemento con la stessa probabilità, il dado scorre senza ripetersi finché non sono usciti tutti.
   La scheda in cima (consigliata o in riproduzione) è fatta come «Stasera guardiamo…» dei film: copertina sfocata dietro
   (`--copertina` sulla scheda, `.sp-now-bg`), testo chiaro, tasti tondi (dado o cuore) e le casse (`casse()`, icona `casse`) che
   aprono «Dove ascoltare?»: accese e con il nome accanto quando si ascolta su un altro dispositivo. Niente più linguetta del dispositivo.
 - **Film:** categorie in `FILM_CATS` (`js/data.js`): Famiglia, Natale, Halloween, Sempre, Thriller, Azione, Horror, Cartoni; dai generi
   di JustWatch (`ani` → cartoni) e di Apple si propongono da sole. Gli esempi si aggiornano una volta (`settings.filmCats`, ora 2).
-  «Stasera guardiamo…» (`stasera()`) è sempre in cima: con una categoria scelta propone un film di quella, altrimenti uno da vedere.
+  «Stasera guardiamo…» (`stasera()`) è sempre in cima: con una categoria scelta propone solo film di quella (se non ce n'è nessuno da
+  vedere, la scheda non c'è), altrimenti uno da vedere qualsiasi. Nessuna preferenza per il periodo (a Natale non escono solo quelli di
+  Natale) né per copertina o piattaforma. Il dado delle ricette («Cosa cuciniamo?») segue categoria, Preferite e ricerca scelte, senza
+  preferenze per il periodo e senza ripetersi finché non sono uscite tutte.
   Accanto a Da vedere · Visti · Tutti ci sono «Film» e «Serie TV» (`TIPI`, `ui('film.tipo')`: solo film o solo serie, toccando di nuovo
   si torna a tutti e due): si sommano alle categorie e valgono anche per «Stasera guardiamo…»; dalla Home si riparte da tutti e due.
 - **Caselle di ricerca:** la X per cancellare è `cancella(id, poi)` di `core.js` (si vede solo con del testo, via `:placeholder-shown`).

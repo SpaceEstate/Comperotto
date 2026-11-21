@@ -13,7 +13,8 @@ export const sp = {
   info: parse(lsGet('casa.spotify.info')), // { pronta, account: { p1: { nome } | null, p2 } }
   player: null, // cosa suona adesso (null = niente)
   playerAt: 0,
-  devices: null,
+  devices: null, // i dispositivi dell'account con cui suona la musica (vedi chiLettore)
+  devPer: {}, // i dispositivi di ogni account collegato (per "Dove ascoltare?")
   playlists: {}, // per account
   busy: '',
 };
@@ -35,7 +36,7 @@ export function chi() {
   if (c.includes(me())) return me();
   return c[0] || null;
 }
-export const scegliAccount = (k) => { lsSet('casa.spotify.chi', k); sp.player = null; sp.devices = null; salvatiMap.clear(); rerender(); aggiorna(); };
+export const scegliAccount = (k) => { lsSet('casa.spotify.chi', k); sp.player = null; sp.devices = null; sp.devicesDi = null; salvatiMap.clear(); rerender(); aggiorna(); };
 
 export async function caricaInfo() {
   if (!isSynced()) return;
@@ -86,7 +87,9 @@ async function token(k, nuovo = false) {
 
 // Spotify ogni tanto dice "troppe richieste": per un po' le letture in sottofondo aspettano
 let pausaFino = 0;
-export async function call(path, { method = 'GET', body } = {}, k = chi(), retry = true) {
+/** Per chi è la richiesta: i comandi del lettore vanno all'account con cui suona la musica, il resto a quello che si guarda. */
+const perChi = (path) => (/^me\/player(?!\/recently-played)/.test(path) ? chiLettore() : chi());
+export async function call(path, { method = 'GET', body } = {}, k = perChi(path), retry = true) {
   if (!k) throw new SpotifyError('Spotify non è collegato', 0);
   if (method === 'GET' && Date.now() < pausaFino) throw new SpotifyError('Spotify chiede una pausa', 429);
   const auth = await token(k, !retry);
@@ -170,15 +173,27 @@ export async function aggiorna({ dispositivi = false } = {}) {
   if (inCorso) return inCorso; // un'altra richiesta è partita nel frattempo
   inCorso = (async () => {
     const prima = sp.playerAt ? firma(sp.player) : null;
-    const devPrima = firmaDev(sp.devices);
+    const devPrima = firmaDev(sp.devices) + firmaDev(Object.values(sp.devPer).flat());
+    const k = chiLettore();
+    // la musica è passata all'altro account: i suoi dispositivi, se li ho già
+    if (sp.devicesDi !== k) { sp.devices = sp.devPer[k] || null; sp.devicesDi = k; }
     let cambia = false;
     try {
       const [p, d] = await Promise.all([
-        call('me/player?additional_types=track,episode'),
-        dispositivi || !sp.devices || (quiSuona() && Date.now() - devAt > 60000) ? call('me/player/devices') : null,
+        call('me/player?additional_types=track,episode', {}, k),
+        dispositivi || !sp.devices || (quiSuona() && Date.now() - devAt > 60000) ? call('me/player/devices', {}, k) : null,
+        // "Dove ascoltare?": anche i dispositivi degli altri account (gli Echo li vede solo lo Spotify collegato ad Alexa)
+        ...(dispositivi ? collegati().filter((x) => x !== k).map((x) => call('me/player/devices', {}, x)
+          .then((r) => { sp.devPer[x] = (r && r.devices) || []; }, () => {})) : []),
       ]);
       // nel frattempo un comando ha già cambiato lo stato sullo schermo: questa risposta è vecchia
-      const nuovo = conAttese(p && p.device ? p : null);
+      let nuovo = conAttese(p && p.device ? p : null);
+      if (k !== chi()) {
+        // con lo Spotify dell'altro conta solo il dispositivo scelto qui (non quello che l'altro ascolta sul suo telefono)
+        const s = scelta();
+        if (nuovo && s && nuovo.device.id === s.id) ancoraVivo();
+        else if (nuovo) nuovo = Object.keys(attese).length ? sp.player : null;
+      }
       const vecchio = sp.player;
       const stima = progresso();
       // stesso brano che suona e posizione quasi uguale alla mia stima (la rete fa ±qualche decimo):
@@ -188,8 +203,8 @@ export async function aggiorna({ dispositivi = false } = {}) {
       if (quasi) { nuovo.progress_ms = stima; }
       sp.player = nuovo;
       sp.playerAt = Date.now();
-      if (d) { sp.devices = d.devices || []; devAt = Date.now(); }
-      cambia = firma(sp.player) !== prima || firmaDev(sp.devices) !== devPrima;
+      if (d) { sp.devices = d.devices || []; sp.devPer[k] = sp.devices; devAt = Date.now(); }
+      cambia = firma(sp.player) !== prima || firmaDev(sp.devices) + firmaDev(Object.values(sp.devPer).flat()) !== devPrima;
     } catch {
       // senza rete o troppe richieste: ci riprovo al prossimo giro
       cambia = prima === null;
@@ -236,7 +251,8 @@ export function bestImage(images, min = 300) {
 // ---------------------------------------------------------------------------
 /** "Questo iPhone/iPad" come dispositivo: il lettore dentro l'app (il suo id cambia a ogni avvio). */
 export const QUI = 'qui';
-// l'ultima scelta fatta in "Dove ascoltare?": { id: 'qui' | id di un altro dispositivo, at }
+// l'ultima scelta fatta in "Dove ascoltare?": { id: 'qui' | id di un altro dispositivo, at, k: di quale account è,
+// vivo: l'ultima volta che lì suonava (o era in pausa) }
 function scelta() {
   const v = lsGet('casa.spotify.dev');
   if (!v) return null;
@@ -244,8 +260,44 @@ function scelta() {
   return o && typeof o === 'object' && o.id ? o : { id: String(v), at: 0 }; // prima era solo l'id
 }
 export const dispositivoScelto = () => { const s = scelta(); return s ? s.id : null; };
-export const scegliDispositivo = (id) => lsSet('casa.spotify.dev', JSON.stringify({ id: !id || id === QUI || eQui(id) ? QUI : id, at: Date.now() }));
-export const attivo = () => (sp.player && sp.player.device) || (sp.devices || []).find((d) => d.is_active) || null;
+export const scegliDispositivo = (id, k = chi()) => {
+  const q = !id || id === QUI || eQui(id);
+  lsSet('casa.spotify.dev', JSON.stringify({ id: q ? QUI : id, at: Date.now(), k: q ? qui.chi || chi() : k }));
+};
+/** Il dispositivo scelto suona ancora (con lo Spotify dell'altro): la scelta resta valida. */
+function ancoraVivo() {
+  const s = scelta();
+  if (s && Date.now() - (s.vivo || 0) > 60000) lsSet('casa.spotify.dev', JSON.stringify({ ...s, vivo: Date.now() }));
+}
+/**
+ * L'account con cui suona la musica: di base quello che si sta guardando. Un altro se si è scelto un suo dispositivo
+ * (gli Echo si collegano a un solo Spotify, nell'app Alexa: Serena li fa suonare con lo Spotify di Patrick) e lì
+ * suona ancora o è stato scelto da poco.
+ */
+export function chiLettore() {
+  const k = chi();
+  const s = scelta();
+  if (!k || !s || !s.k || s.k === k || s.id === QUI || !collegati().includes(s.k)) return k;
+  return Date.now() - Math.max(s.at || 0, s.vivo || 0) < SCELTA_VALE ? s.k : k;
+}
+/** Di quale account è un dispositivo (per mandargli i comandi con il permesso giusto). */
+export function accountDi(id) {
+  if (!id || id === QUI || eQui(id)) return qui.chi || chi();
+  const l = chiLettore();
+  if ((sp.devices || []).some((d) => d.id === id) || (sp.devPer[l] || []).some((d) => d.id === id)) return l;
+  const s = scelta();
+  if (s && s.id === id && s.k && collegati().includes(s.k)) return s.k;
+  return collegati().find((x) => (sp.devPer[x] || []).some((d) => d.id === id)) || l;
+}
+/** Tutti i dispositivi che conosco, di tutti gli account. */
+export const trovaDispositivo = (id) => [...(sp.devices || []), ...Object.values(sp.devPer).flat()].find((d) => d && d.id === id) || null;
+/** Dove suona adesso. Con lo Spotify dell'altro vale solo il dispositivo scelto qui (non il telefono dell'altro). */
+export function attivo() {
+  if (sp.player && sp.player.device) return sp.player.device;
+  const s = scelta();
+  const mio = chiLettore() === chi();
+  return (sp.devices || []).find((d) => d.is_active && (mio || (s && d.id === s.id))) || null;
+}
 
 // il lettore dentro l'app non va su questo dispositivo (browser senza il necessario, account senza Premium…)
 let quiGuasto = '';
@@ -265,7 +317,7 @@ const SCELTA_VALE = 30 * 60000;
 export function doveSuonare() {
   const s = scelta();
   const a = attivo();
-  const acceso = (id) => (sp.devices || []).some((d) => d.id === id);
+  const acceso = (id) => [...(sp.devices || []), ...((s && sp.devPer[s.k]) || [])].some((d) => d.id === id);
   if (s && s.id !== QUI) {
     if (a && a.id === s.id) return s.id;
     if (Date.now() - (s.at || 0) < SCELTA_VALE && acceso(s.id)) return s.id;
@@ -392,32 +444,101 @@ function guardaAvanti() {
   leggi(chiave('coda', it.uri), () => coda(), { maxAge: 60000 }).then((l) => (l || []).slice(0, 2).forEach(precaricaBrano)).catch(() => {});
 }
 
-/** Fa partire una playlist/album (context) o dei brani (uris) su un dispositivo. */
-export async function suona({ context, uris, offset }, device = doveSuonare()) {
+const pausa = (ms) => new Promise((ok) => setTimeout(ok, ms));
+/** Spotify non trova il dispositivo (un Echo a riposo) o non risponde: vale la pena riprovare in un altro modo. */
+const daRiprovare = (e) => Boolean(e && (e.riprova || e.status === 404 || e.status >= 500 || e.reason === 'NO_ACTIVE_DEVICE'));
+/**
+ * Un comando per un dispositivo, soprattutto un Echo: Spotify lo elenca anche quando è a riposo, ma allora
+ * risponde "Device not found". Provo i modi uno dopo l'altro (con un attimo in mezzo); se nessuno va, l'errore
+ * dice che il dispositivo è a riposo (ADDORMENTATO, con il dispositivo per il messaggio).
+ */
+async function insisti(device, modi) {
+  let err;
+  for (let i = 0; i < modi.length; i++) {
+    if (i) await pausa(900);
+    try { return await modi[i](); } catch (e) { err = e; if (!daRiprovare(e)) throw e; }
+  }
+  const d = trovaDispositivo(device) || { id: device, name: '' };
+  const e = new SpotifyError(`${d.name || 'Il dispositivo'} non risponde`, (err && err.status) || 404, 'ADDORMENTATO');
+  e.dispositivo = d;
+  throw e;
+}
+/** Se la musica passa a un altro account (es. dall'iPhone di Serena all'Echo con lo Spotify di Patrick), dove suonava prima si ferma. */
+function fermaAltrove(vecchio, k, device) {
+  if (!vecchio || !vecchio.is_playing || !vecchio.device || vecchio.device.id === device) return;
+  if (eQui(vecchio.device.id) && qui.player) qui.player.pause().catch(() => {});
+  else call('me/player/pause', { method: 'PUT' }, k).catch(() => {});
+}
+
+/**
+ * Fa partire una playlist/album (context) o dei brani (uris) su un dispositivo, con l'account a cui appartiene
+ * (k: di base lo so dal dispositivo) e, se serve, da un punto del brano (posizione in ms).
+ */
+export async function suona({ context, uris, offset }, device = doveSuonare(), k = null, posizione = 0) {
   if (device === QUI) device = qui.id;
   if (!device) throw new SpotifyError('Scegli dove ascoltare', 0, 'NO_DEVICE');
+  k = k || accountDi(device);
+  const daK = chiLettore();
+  const vecchio = sp.player;
   const primo = (offset && offset.uri) || (uris && uris[0]) || '';
   const nuovo = primo ? comeItem(primo) : null;
-  const dev = (sp.devices || []).find((d) => d.id === device) || (sp.player && sp.player.device) || { id: device, name: '' };
+  const dev = trovaDispositivo(device) || (sp.player && sp.player.device) || { id: device, name: '' };
   // subito sullo schermo: il brano nuovo (se lo conosco) dall'inizio, sul dispositivo scelto
   const prima = sp.player && sp.player.item ? sp.player.item.uri : '';
-  sp.player = { ...(sp.player || {}), device: dev, is_playing: true, progress_ms: 0, item: nuovo || (sp.player && sp.player.item) || null, context: context ? { uri: context } : null };
+  sp.player = { ...(sp.player || {}), device: dev, is_playing: true, progress_ms: posizione, item: nuovo || (sp.player && sp.player.item) || null, context: context ? { uri: context } : null };
   sp.playerAt = Date.now();
   attese = {};
-  aspetta('brano', { prima, nuovo, context: context ? { uri: context } : null });
-  aspetta('play', { on: true, ms: 0 });
+  // lo stesso brano che passa da un'altra parte (dallo stesso punto): cambia solo dove suona
+  if (posizione > 0 && primo && primo === prima) aspetta('device', dev);
+  else aspetta('brano', { prima, nuovo, context: context ? { uri: context } : null });
+  aspetta('play', { on: true, ms: posizione });
   rerender();
-  await inFila(() => call(`me/player/play?device_id=${encodeURIComponent(device)}`, { method: 'PUT', body: { ...(context ? { context_uri: context } : { uris }), ...(offset ? { offset } : {}) } }))
-    .catch((e) => { attese = {}; ripassa(); throw e; });
-  scegliDispositivo(device);
+  const da = posizione > 0 ? { position_ms: Math.round(posizione) } : {};
+  const corpo = { ...(context ? { context_uri: context } : { uris }), ...(offset ? { offset } : {}), ...da };
+  // con l'account dell'altro una playlist privata può non partire: allora almeno il brano
+  const soloBrano = context && offset && offset.uri ? { uris: [offset.uri], ...da } : null;
+  const play = (b) => call(`me/player/play?device_id=${encodeURIComponent(device)}`, { method: 'PUT', body: b }, k);
+  const modi = [
+    () => play(corpo).catch((e) => { if (soloBrano && k !== chi() && e.status === 403 && e.reason !== 'PREMIUM_REQUIRED') e.riprova = true; throw e; }),
+    // passo prima la musica lì (così si sveglia), poi la faccio partire
+    async () => { await call('me/player', { method: 'PUT', body: { device_ids: [device], play: false } }, k).catch(() => {}); await pausa(700); return play(corpo); },
+    () => play(soloBrano || corpo),
+  ];
+  const sceltaPrima = lsGet('casa.spotify.dev');
+  scegliDispositivo(device, k); // da subito: l'aggiornamento in sottofondo chiede già all'account giusto
+  await inFila(() => (eQui(device) ? play(corpo) : insisti(device, modi)))
+    .catch((e) => { lsSet('casa.spotify.dev', sceltaPrima); attese = {}; ripassa(); throw e; });
+  if (k !== daK) fermaAltrove(vecchio, daK, device);
   ripassa();
 }
 
-export async function sposta(device) {
-  const d = (sp.devices || []).find((x) => x.id === device) || { id: device, name: '' };
-  if (sp.player) { sp.player = { ...sp.player, device: d, is_playing: true }; aspetta('device', d); aspetta('play', { on: true, ms: progresso() }); rerender(); }
-  await inFila(() => call('me/player', { method: 'PUT', body: { device_ids: [device], play: true } })).catch((e) => { attese = {}; ripassa(); throw e; });
-  scegliDispositivo(device);
+/**
+ * Quello che suona passa su un altro dispositivo. Dello stesso account: lo passa Spotify. Di un altro account
+ * (un Echo che vede solo lo Spotify dell'altro): lo faccio partire lì dallo stesso punto e lo fermo dov'era.
+ */
+export async function sposta(device, k = accountDi(device)) {
+  const p = sp.player;
+  const it = p && p.item;
+  const ms = progresso();
+  if (k !== chiLettore()) {
+    if (!it || !it.uri) { scegliDispositivo(device, k); rerender(); return; }
+    const ctx = (p.context && p.context.uri) || '';
+    // playlist e album li apre anche l'altro account (e si riparte dallo stesso brano); il resto ("Brani che ti piacciono",
+    // un artista…) no o non da quel brano: allora il brano e i prossimi
+    const seguenti = quiSuona() && sp.prossimi ? sp.prossimi.map((t) => t.uri) : [];
+    const target = /^spotify:(playlist|album):/.test(ctx) ? { context: ctx, offset: { uri: it.uri } } : { uris: [it.uri, ...seguenti].slice(0, 50) };
+    await suona(target, device, k, ms);
+    return;
+  }
+  const d = trovaDispositivo(device) || { id: device, name: '' };
+  if (p) { sp.player = { ...p, device: d, is_playing: true }; aspetta('device', d); aspetta('play', { on: true, ms }); rerender(); }
+  const passa = () => call('me/player', { method: 'PUT', body: { device_ids: [device], play: true } }, k);
+  // l'altro modo: far partire lì lo stesso brano dallo stesso punto
+  const ctx = p && p.context && p.context.uri;
+  const conCtx = /^spotify:(playlist|album):/.test(ctx || ''); // solo lì Spotify riparte da un brano preciso
+  const li = it && it.uri ? () => call(`me/player/play?device_id=${encodeURIComponent(device)}`, { method: 'PUT', body: { ...(conCtx ? { context_uri: ctx, offset: { uri: it.uri } } : { uris: [it.uri] }), position_ms: Math.round(ms) } }, k) : passa;
+  await inFila(() => (eQui(device) ? passa() : insisti(device, [passa, li, passa]))).catch((e) => { attese = {}; ripassa(); throw e; });
+  scegliDispositivo(device, k);
   ripassa();
 }
 
@@ -899,12 +1020,13 @@ export async function inCoda(uri) {
   if (!a || !a.id) throw new SpotifyError('Scegli dove ascoltare', 0, 'NO_DEVICE');
   await call(`me/player/queue?uri=${encodeURIComponent(uri)}&device_id=${encodeURIComponent(a.id)}`, { method: 'POST' });
 }
-export async function suonaCasuale(target, d = doveSuonare()) {
+export async function suonaCasuale(target, d = doveSuonare(), k = null) {
   if (d === QUI) d = qui.id;
   if (!d) throw new SpotifyError('Scegli dove ascoltare', 0, 'NO_DEVICE');
-  const casuale = () => call(`me/player/shuffle?state=true&device_id=${encodeURIComponent(d)}`, { method: 'PUT' }).then(() => true, () => false);
+  k = k || accountDi(d);
+  const casuale = () => call(`me/player/shuffle?state=true&device_id=${encodeURIComponent(d)}`, { method: 'PUT' }, k).then(() => true, () => false);
   const prima = await casuale();
-  await suona(target, d);
+  await suona(target, d, k);
   // un dispositivo appena acceso (es. questo iPhone) accetta "casuale" solo quando sta già suonando
   if (!prima) casuale();
   if (sp.player) { sp.player.shuffle_state = true; aspetta('shuffle', true); }

@@ -41,14 +41,19 @@ export function render(route) {
   return html`${pageHead('Ricette', testa())}${corpo()}`;
 }
 
-export function corpo() {
+/** Il filtro scelto (categoria o Preferite) e la ricerca: valgono per l'elenco e per il dado. */
+function filtri() {
   const t0 = ui('ricette.theme', 'tutte');
-  const theme = t0 === 'preferite' || RICETTE_CATS[t0] ? t0 : 'tutte';
-  const q = norm(ui('ricette.q', ''));
+  return { theme: t0 === 'preferite' || RICETTE_CATS[t0] ? t0 : 'tutte', q: norm(ui('ricette.q', '')) };
+}
+const passa = ({ theme, q }) => (r) =>
+  (theme === 'tutte' || (theme === 'preferite' ? r.fav : ricetteCats(r).includes(theme))) &&
+  (!q || norm(r.title).includes(q) || (r.ingredients || []).some((i) => norm(i).includes(q)));
+
+export function corpo() {
+  const { theme, q } = filtri();
   const all = [...state.data.ricette].sort((a, b) => a.title.localeCompare(b.title, 'it'));
-  const filtered = all.filter((r) =>
-    (theme === 'tutte' || (theme === 'preferite' ? r.fav : ricetteCats(r).includes(theme))) &&
-    (!q || norm(r.title).includes(q) || (r.ingredients || []).some((i) => norm(i).includes(q))));
+  const filtered = all.filter(passa({ theme, q }));
   const season = seasonInfo();
   // il periodo dell'anno, se è una delle categorie (Natale, Halloween, Estate)
   const sTheme = currentTheme() && RICETTE_CATS[currentTheme().id] ? currentTheme() : null;
@@ -325,6 +330,10 @@ function aggiornaEsempi() {
 }
 export function after() { aggiornaEsempi(); }
 
+// le ricette già proposte dal dado (finché l'app resta aperta)
+const uscite = new Set();
+let ultima = null;
+
 export const actions = {
   wake: async () => {
     if (state.ui.wake) { releaseWake(); setUi('wake', false); return; }
@@ -368,13 +377,20 @@ export const actions = {
     if (!r) return;
     confirmSheet({ title: `Eliminare “${r.title}”?`, text: 'La ricetta verrà tolta dal ricettario di casa.', onYes: () => { store.remove('ricette', id); navigate('#/cibo/ricette'); } });
   },
+  // a caso tra quelle del filtro scelto, tutte con la stessa probabilità (anche a Natale, se non si sceglie Natale);
+  // non si ripete finché non sono uscite tutte
   'ricetta-random': () => {
-    const theme = currentTheme();
-    let pool = state.data.ricette;
-    const themed = theme && RICETTE_CATS[theme.id] ? pool.filter((r) => ricetteCats(r).includes(theme.id)) : [];
-    if (themed.length && Math.random() < 0.6) pool = themed;
-    if (!pool.length) return;
-    const r = pool[Math.floor(Math.random() * pool.length)];
+    const f = filtri();
+    const pool = state.data.ricette.filter(passa(f));
+    if (!pool.length) { toast(f.q ? 'Nessuna ricetta con questa ricerca' : 'Nessuna ricetta in questa categoria'); return; }
+    let scelta = pool.filter((r) => !uscite.has(r.id));
+    if (!scelta.length) {
+      pool.forEach((r) => uscite.delete(r.id));
+      scelta = pool.length > 1 ? pool.filter((r) => r.id !== ultima) : pool;
+    }
+    const r = scelta[Math.floor(Math.random() * scelta.length)];
+    uscite.add(r.id);
+    ultima = r.id;
     vibrate(15);
     navigate(`#/ricette/${r.id}`);
   },

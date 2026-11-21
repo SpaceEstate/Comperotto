@@ -63,6 +63,26 @@ export const parseIso = (s) => { const [y, m, d] = String(s).split('-').map(Numb
 export const addDays = (s, n) => { const d = parseIso(s); d.setDate(d.getDate() + n); return iso(d); };
 export const daysBetween = (a, b) => Math.round((parseIso(b) - parseIso(a)) / 86400000);
 
+// ---------- a caso ----------
+/** Un numero "a caso" ma sempre uguale per lo stesso testo. */
+function hash(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16;
+  return h >>> 0;
+}
+/** Un elemento della lista a caso, uguale per tutto il giorno; con il dado (giro 1, 2, …) i successivi,
+ *  tutti diversi finché non sono usciti tutti. Ognuno ha la stessa probabilità.
+ *  Restituisce anche l'ordine, per chi vuole "quello e poi gli altri". */
+export function aCasoDelGiorno(list, idOf, giro = 0, chiave = '') {
+  if (!list.length) return { scelto: null, ordine: [] };
+  const day = todayIso();
+  const ordine = list.map((x, i) => [hash(`${chiave}|${day}|${idOf(x)}`), i, x]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map((p) => p[2]);
+  const n = ordine.length;
+  const i = ((Math.floor(Number(giro) || 0) % n) + n) % n;
+  return { scelto: ordine[i], ordine: [...ordine.slice(i), ...ordine.slice(0, i)] };
+}
+
 export const WEEKDAYS = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
 export const WEEKDAYS_SHORT = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 export const MONTHS = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];

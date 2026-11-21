@@ -1,7 +1,7 @@
 // Spotify nella pagina Musica: cosa suona e dove (iPhone, iPad, Echo… o dentro l'app), ricerca,
 // preferiti, playlist (crearle, rinominarle, aggiungere e togliere brani), album, artisti, coda.
 // Sottopagine: #/musica/cerca, #/musica/preferiti, #/musica/pl/<id>, #/musica/album/<id>, #/musica/artista/<id>
-import { html, raw, vibrate, lsGet, lsSet, isIPad, cap, norm, MONTHS, todayIso } from '../utils.js';
+import { html, raw, vibrate, lsGet, lsSet, isIPad, cap, norm, MONTHS, aCasoDelGiorno } from '../utils.js';
 import { icon } from '../icons.js';
 import { openSheet, closeSheet, toast, val, ui, setUi, me, isSynced, nameOf, sheetError, rerender, confirmSheet, state, cancella, settings, saveSettings } from '../core.js';
 import { periodoMusica } from '../season.js';
@@ -129,11 +129,11 @@ function consigliata() {
   const pt = S.letto(S.chiave('perte'));
   const pool = ((pt && pt.scelti.length ? pt.scelti : S.letto(chiaveTema())) || []).filter((t) => t && t.ok !== false);
   if (!pool.length) return null;
-  const seme = [...todayIso()].reduce((a, c) => a + c.charCodeAt(0), 0) + Number(ui('sp.spin', 0));
-  const i = seme % pool.length;
+  // a caso tra tutte, uguale per tutto il giorno; il dado propone le altre senza ripetersi
+  const { scelto, ordine } = aCasoDelGiorno(pool, (t) => t.uri, ui('sp.spin', 0), 'musica');
   // parte quella, e dopo le altre (come una piccola playlist)
-  contesti.set('consiglio', { uris: [...pool.slice(i), ...pool.slice(0, i)].map((t) => t.uri) });
-  return pool[i];
+  contesti.set('consiglio', { uris: ordine.map((t) => t.uri) });
+  return scelto;
 }
 // La scheda in cima a Musica è fatta come «Stasera guardiamo…» dei film: dietro la copertina sfocata,
 // davanti copertina, titolo e artista; i tasti tondi (dado o cuore, e le casse per scegliere dove ascoltare).

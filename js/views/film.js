@@ -1,6 +1,6 @@
 // Film e serie che ci piacciono, per categoria (Famiglia, Natale, Halloween, Sempre, Thriller, Azione, Horror):
 // copertina e "dove vederlo" arrivano da soli, e cercando un titolo la categoria si propone dal genere.
-import { html, raw, norm, cap, vibrate, todayIso } from '../utils.js';
+import { html, raw, norm, cap, vibrate, aCasoDelGiorno } from '../utils.js';
 import { icon, catFace } from '../icons.js';
 import { FILM_CATS, filmCats, filmTemiNascosti, temiDaSalvare, categorieDaGeneri } from '../data.js';
 import { state, store, openSheet, closeSheet, toast, val, emptyState, ui, setUi, themeChoices, pageHead, isSynced, settings, saveSettings, cancella } from '../core.js';
@@ -61,22 +61,17 @@ function grid(list) {
     </button>`)}</div>`;
 }
 
-/** Il film di «Stasera guardiamo…»: uno da vedere (della categoria scelta, se c'è, e solo film o solo serie se scelto),
- *  cambia ogni giorno o con il dado. */
+/** Il film di «Stasera guardiamo…»: uno da vedere, della categoria scelta (se c'è) e solo film o solo serie se scelto.
+ *  Tutti hanno la stessa probabilità (anche a Natale, se non si sceglie la categoria Natale); cambia ogni giorno,
+ *  e con il dado propone gli altri senza ripetersi finché non sono usciti tutti. */
 function stasera(all, theme = 'tutti', tipo = '') {
   const daVedere = all.filter((f) => !f.watched && delTipo(tipo)(f));
-  const nellaCategoria = FILM_CATS[theme] ? daVedere.filter((f) => filmCats(f).includes(theme)) : [];
-  const pool = nellaCategoria.length ? nellaCategoria : daVedere;
-  if (!pool.length) return null;
-  const cur = catDelPeriodo();
-  const score = (f) => (cur && filmCats(f).includes(cur) ? 2 : 0) + (streaming(f).length ? 1 : 0) + (safePoster(f.poster) && !rotte.has(f.poster) ? 1 : 0);
-  const best = Math.max(...pool.map(score));
-  const top = pool.filter((f) => score(f) === best);
-  const seed = [...todayIso()].reduce((a, c) => a + c.charCodeAt(0), 0) + Number(ui('film.spin', 0));
-  return top[seed % top.length];
+  const pool = FILM_CATS[theme] ? daVedere.filter((f) => filmCats(f).includes(theme)) : daVedere;
+  return aCasoDelGiorno(pool, (f) => f.id, ui('film.spin', 0), 'film').scelto;
 }
 
-/** «Stasera guardiamo…»: sempre in cima; con una categoria scelta propone un film di quella categoria. */
+/** «Stasera guardiamo…»: sempre in cima; con una categoria scelta propone solo film di quella categoria
+ *  (se lì non c'è niente da vedere, la scheda non c'è). */
 function featured(all, theme = 'tutti', tipo = '') {
   const f = stasera(all, theme, tipo);
   if (!f) return '';

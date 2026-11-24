@@ -23,6 +23,16 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   a OwnTracks si mandano i nostri posti come zone (`setWaypoints`, una volta, o ogni 12 h finché non funzionano). Il codice di famiglia
   non si accetta mai nell'indirizzo (finirebbe nei log). Dall'app la posizione parte solo con l'interruttore acceso (e permesso già dato)
   o con un tocco; "Chiedi a…" manda una notifica all'altro (`#/dove/condividi`).
+- **Dov'è, partenze:** OwnTracks per iPhone attacca a entrate e uscite l'ultima posizione che conosce (`tst` di ore prima dopo ore
+  fermi), mentre `created_at` è quando ha scritto il messaggio. `elabora()` di `api/posizione.js` (pura, si prova senza database):
+  l'ora di un evento è `created_at` (`quando`); un'entrata o un'uscita appena scritta vale anche se il suo punto è più vecchio
+  dell'ultimo salvato (il punto più nuovo resta; entrando con un punto vecchio il segnaposto va sul posto stesso), `at` diventa l'ora
+  dell'evento (così la posizione "c" con lo stesso punto vecchio che segue si scarta) e la notifica parte se l'evento è di meno di
+  30 min. Uscita con il punto vecchio → indirizzo vuoto e `reportLocation` nella risposta (con Remote Commands l'iPhone manda subito
+  dov'è). Dopo un'uscita (`uscita` = `{ luogo, at }`) per 15 min la sola distanza non fa rientrare nello stesso posto (ci si rientra con
+  un'entrata o con `inregions`); i "ping" (`t: 'p'`: ultima posizione con l'ora di adesso) tengono viva la posizione ma, con le
+  zone attive (`zoneOk` degli ultimi 14 giorni), non cambiano il posto (solo le zone); senza zone contano come prima. Prima le partenze si perdevano (scartate come "arrivate tardi" o salvate senza notifica), gli arrivi no:
+  arrivando il punto è fresco. In Dov'è sotto ognuno "zone di casa attive" oppure "zone non ancora attive" (Remote Commands spento).
 - **Pagine e barra:** Home · Cibo · Casa · Svago · Desideri (su iPad la barra laterale aggiunge Dov'è, Thor e Minù, Viaggi, Impostazioni).
   Barra in basso bassa: `--tabbar-h: 50px` più 3+2 px (gli scostamenti di FAB, avvisi e mini lettore ne tengono conto).
   Cibo = Spesa | Ricette (`#/cibo/spesa`, `#/cibo/ricette`), Svago = Film | Musica (`#/svago/film`, `#/svago/musica`): pagine a due
@@ -164,6 +174,14 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   preferenze per il periodo e senza ripetersi finché non sono uscite tutte.
   Accanto a Da vedere · Visti · Tutti ci sono «Film» e «Serie TV» (`TIPI`, `ui('film.tipo')`: solo film o solo serie, toccando di nuovo
   si torna a tutti e due): si sommano alle categorie e valgono anche per «Stasera guardiamo…»; dalla Home si riparte da tutti e due.
+- **Widget (Scriptable):** `scriptable/Casa.js` (si copia da `https://comperotto.vercel.app/scriptable/Casa.js` e si incolla in
+  Scriptable; il codice di famiglia lo chiede la prima volta e resta nel portachiavi: `CONFIG.codice` resta vuoto nel repository).
+  Dati da `GET /api/dati?widget=1` (dentro `dati.js`: nessuna funzione nuova) → `riassunto()` di `api/_widget.js` (pura): spesa da
+  comprare nell'ordine del giro (`repartoDi()`, `cleanName`, `freqId` sono in `data.js`, gli stessi della pagina Spesa), faccende di
+  oggi e in ritardo non ancora fatte (`choreStatus` con la data italiana), rifiuti di stasera. Piccolo, medio, grande (extra grande su
+  iPad) e schermata di blocco; «Parameter» `spesa` o `faccende`. Il tocco apre `webapp://comperotto.vercel.app/` (trucco non
+  ufficiale di iOS per aprire l'app della schermata Home: se una versione di iOS non lo accetta, `apri` con l'indirizzo https va in
+  Safari). Senza codice o con il codice sbagliato il tocco apre lo script (`URLScheme.forRunningScript()`); senza rete l'ultima copia.
 - **Caselle di ricerca:** la X per cancellare è `cancella(id, poi)` di `core.js` (si vede solo con del testo, via `:placeholder-shown`).
 - **Spesa:** reparti in `SHOP_CATS` (`js/data.js`) nell'ordine del giro; gli id vecchi passano da `LEGACY_CATS` (il vecchio `freschi` ora è `frigo`).
   Stesso prodotto solo se il nome è uguale o cambia per parole "di riempimento" (`stessoProdotto()`/`nucleo()` in `spesa.js`: medie,

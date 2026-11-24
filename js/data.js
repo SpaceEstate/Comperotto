@@ -1,5 +1,5 @@
 // Costanti e logica "di casa": categorie della spesa, temi, stagioni, rifiuti, faccende.
-import { norm, todayIso, addDays, daysBetween, parseIso, iso, easter, nextYearly } from './utils.js';
+import { norm, cap, todayIso, addDays, daysBetween, parseIso, iso, easter, nextYearly } from './utils.js';
 
 // ---------------------------------------------------------------------------
 // Temi (ricette, musica, film)
@@ -185,6 +185,23 @@ const LEGACY_CATS = { frutta: 'fresco', carne: 'fresco', freschi: 'frigo', latti
 const legacy = (id) => (Object.hasOwn(LEGACY_CATS, id) ? LEGACY_CATS[id] : id);
 export const shopCat = (id) => SHOP_CATS.find((c) => c.id === legacy(id)) || SHOP_CATS[SHOP_CATS.length - 1];
 export const normCat = (id) => (SHOP_CATS.some((c) => c.id === legacy(id)) ? legacy(id) : 'altro');
+
+// "il latte" → "Latte": niente articoli, sempre con la maiuscola
+const ART = /^(?:(?:il|lo|la|i|gli|le|un|uno|una|del|dello|della|dei|degli|delle)\s+|(?:l|un|dell|d)['’]\s*)/i;
+export const cleanName = (s) => cap(String(s || '').trim().replace(ART, '').trim());
+/** La voce di un prodotto nelle "frequenze" (freq): lì si ricorda anche il reparto scelto a mano. */
+export const freqId = (name) => norm(name).replace(/[^a-z0-9]+/g, '-').slice(0, 60) || 'x';
+/**
+ * Il reparto di un prodotto della spesa: quello scelto a mano (per quel prodotto o ricordato dalle volte prima),
+ * altrimenti indovinato dal nome. Sempre uno dei reparti in uso: quelli tolti in Impostazioni finiscono in "Altro".
+ * Lo usano la pagina della spesa e il widget (api/_widget.js).
+ */
+export function repartoDi(it, freq = []) {
+  if (it.catManual && it.category) return normCat(it.category);
+  const nome = cleanName(it.name);
+  const f = freq.find((x) => x.id === freqId(nome));
+  return normCat(f && f.catManual ? f.category : classify(nome));
+}
 
 // ---------------------------------------------------------------------------
 // Filtri e categorie che si possono togliere o aggiungere (per tutta la casa, in settings):

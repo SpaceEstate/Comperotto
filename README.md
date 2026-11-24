@@ -129,7 +129,7 @@ Su ogni iPhone, una volta:
 1. Installa **OwnTracks** e consenti la posizione **"Sempre"** (e "Movimento e fitness").
 2. In OwnTracks → **ⓘ / Impostazioni**: *Mode* **HTTP**, *URL* `https://comperotto.vercel.app/api/posizione`, *Authentication* attiva, *UserID* il tuo nome (`patrick` o `serena`), *Password* il codice di famiglia.
 3. Sulla mappa di OwnTracks scegli il modo **Significant** (consuma pochissimo) e tocca la freccia ↑ per mandare subito la posizione.
-4. Sempre nelle impostazioni di OwnTracks attiva **Remote Commands** (in alcune versioni si chiama `cmd`, tra le impostazioni avanzate): così l'app gli manda da sola **Casa e i vostri posti come zone**, e l'iPhone avvisa appena si entra o si esce, anche in modalità Significant. Ve ne accorgete in Dov'è dalla scritta "zone di casa attive".
+4. Sempre nelle impostazioni di OwnTracks attiva **Remote Commands** (in alcune versioni si chiama `cmd`, tra le impostazioni avanzate): così l'app gli manda da sola **Casa e i vostri posti come zone**, e l'iPhone avvisa appena si entra o si esce, anche in modalità Significant. Ve ne accorgete in Dov'è dalla scritta "zone di casa attive" sotto il vostro nome; se c'è scritto "zone non ancora attive", Remote Commands è spento (senza zone le partenze arrivano tardi o per niente: in modalità Significant l'iPhone manda un punto solo ogni mezzo chilometro).
 5. Nell'app, in **Dov'è → I nostri posti**, tocca Casa e i due Lavoro e scrivi gli indirizzi: l'app trova da sola le coordinate e mostra "A casa", "Al lavoro" o "Fuori". In alternativa, quando sei sul posto, tocca "Sono qui adesso". Si possono aggiungere altri posti. Gli indirizzi restano nel database, non nel codice (che è pubblico).
 
 Si salva solo l'ultima posizione di ciascuno, protetta dal codice di famiglia.
@@ -165,7 +165,7 @@ La prima volta l'iPhone chiede i permessi (posizione, invio a comperotto.vercel.
 
 Su ogni iPhone/iPad con l'app **installata sulla schermata Home**: **Impostazioni → Notifiche → Attiva le notifiche** (c'è anche un invito in Home). Non serve configurare niente: le chiavi si creano da sole e restano nel database.
 
-- **Arrivi e partenze**: "Serena è a casa", "Patrick ha lasciato il lavoro" (dalle posizioni di OwnTracks, con un margine contro i falsi allarmi).
+- **Arrivi e partenze**: "Serena è a casa", "Patrick ha lasciato il lavoro" (dalle zone e dalle posizioni di OwnTracks, con un margine contro i falsi allarmi). Quando si esce da una zona, OwnTracks per iPhone allega l'ultima posizione che conosce, che dopo ore fermi in un posto è di ore prima: il server guarda l'ora in cui il telefono ha scritto l'uscita, quindi la partenza si notifica subito, e chiede a OwnTracks dov'è adesso per aggiornare la mappa.
 - **Stasera si butta**: una volta al giorno verso le 18–19, se quella sera c'è qualcosa da portare fuori e non è già stato segnato.
 - **Compleanni e gatti**: il giorno prima di compleanni, anniversario, ricorrenze e richiami di Thor e Minù.
 
@@ -214,6 +214,23 @@ In **+ Ricetta** c'è anche **"Da un sito di ricette"**: si incolla il link di u
 - Per un prodotto singolo si **incolla il suo link** nel nuovo desiderio (va bene anche il link breve `amzn.eu/…`): il link viene ripulito dal tracciamento e, se c'è, il nome del prodotto si compila da solo.
 
 ---
+
+## 10. Widget sulla schermata Home (Scriptable)
+
+Un widget per la schermata Home dell'iPhone (o dell'iPad) con **la spesa da comprare**, nell'ordine dei reparti come nella pagina Spesa, e **le faccende di oggi**, prima quelle in ritardo, con i rifiuti di stasera. Toccandolo si apre **l'app di casa**, quella con l'icona sulla schermata Home. Si aggiorna da solo più o meno ogni quarto d'ora (decide iOS); senza rete mostra l'ultima copia con la scritta «non aggiornato».
+
+Una volta su ogni iPhone:
+1. Installa **Scriptable** (gratis, App Store).
+2. In Safari apri `https://comperotto.vercel.app/scriptable/Casa.js`, tieni premuto sul testo → **Seleziona tutto** → **Copia**.
+3. In Scriptable tocca **+**, incolla, in alto chiama lo script **Casa** e tocca **Fine**.
+4. Tocca **Casa** per avviarlo: la prima volta chiede il **codice di famiglia** (resta nel portachiavi dell'iPhone, non nel file) e poi mostra le anteprime. Qui c'è anche **«Prova ad aprire l'app di casa»** (vedi sotto).
+5. Sulla schermata Home: tieni premuto uno spazio vuoto → **Modifica** → **Aggiungi widget** → **Scriptable** → scegli la misura (piccolo, medio o grande) → **Aggiungi widget**. Poi tieni premuto il widget → **Modifica widget** → *Script*: **Casa**. Alla voce *Parameter* si può scrivere `spesa` (solo la spesa) o `faccende` (solo le faccende); vuoto = tutte e due.
+
+Funziona anche sulla schermata di blocco (Personalizza → widget → Scriptable, il riquadro rettangolare o quello tondo).
+
+**Aprire l'app di casa e non Safari.** Apple non ha un modo ufficiale per aprire un'app web della schermata Home da un widget. Il widget usa l'indirizzo `webapp://comperotto.vercel.app/`, che su molte versioni di iOS apre proprio l'app di casa (sulla Home dell'app). Si prova con **«Prova ad aprire l'app di casa»** dentro Scriptable o toccando il widget. Se resta aperta Scriptable o compare «indirizzo non valido», quella versione di iOS non lo permette: in cima allo script cambiate `apri` in `'https://comperotto.vercel.app/'` (così però si apre in Safari).
+
+Il widget legge i dati da `GET /api/dati?widget=1`, con il codice nell'intestazione (mai nell'indirizzo).
 
 ## Com'è fatto
 

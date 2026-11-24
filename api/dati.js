@@ -6,10 +6,13 @@
 //        &dal=<versione>      → solo i documenti cambiati dopo quella versione: { v, items, tolti, pezzi: true }
 //                               (se è troppo vecchia, o il database non lo sa fare, arriva tutto come prima)
 //   GET  /api/dati?visti=1    → { visti, notifiche } chi ha usato l'app e quando, notifiche di ogni dispositivo
+//   GET  /api/dati?widget=1   → il riassunto per il widget della schermata Home (spesa, faccende di oggi, rifiuti):
+//                               vedi api/_widget.js e scriptable/Comperotto.js
 //   POST /api/dati { ops: [{ op: set|update|remove|bump|wipe, col, id, data }] }
 //        una modifica non valida → 400 { error, indice } (l'app toglie solo quella)
 import { COLLECTIONS, backend, body, respingi, send } from './_lib.js';
 import { avvisa, origineDi, iscritti, esitiPush, cortoPush } from './_push.js';
+import { riassunto, oggiInItalia } from './_widget.js';
 
 const ID = /^[\w.-]{1,80}$/;
 const PAGINA = 2500000; // caratteri per risposta: ben sotto il limite di Vercel
@@ -53,6 +56,11 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const col = prendi(req, 'col');
       if (!col) {
+        // il widget (Scriptable): poche cose già pronte da mostrare, in una richiesta sola
+        if (prendi(req, 'widget')) {
+          const [sett, spesa, freq, routine] = await Promise.all(['settings', 'spesa', 'freq', 'routine'].map((c) => db.collection(c)));
+          return send(res, 200, { ...riassunto({ settings: sett.items.main || {}, spesa: spesa.items, freq: freq.items, routine: routine.items }, oggiInItalia()), at: Date.now() });
+        }
         await segnaVisto(db, req);
         if (prendi(req, 'visti')) return send(res, 200, await collegamento(db));
         return send(res, 200, { v: await db.versions() });

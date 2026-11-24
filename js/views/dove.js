@@ -225,7 +225,9 @@ function diagnosi(k, st) {
   const bits = [];
   const ot = p.ot || (p.src === 'owntracks' ? p.at : 0);
   if (ot) bits.push(`OwnTracks ${Date.now() - ot < 20 * MIN ? 'attivo' : `sentito ${timeAgo(ot)}`}${p.m === 1 ? ' · Significant' : p.m === 2 ? ' · Move' : p.m === 0 ? ' · Manuale' : p.m === -1 ? ' · In pausa' : ''}`);
+  // con le zone l'iPhone dice da solo quando si esce: senza, le partenze arrivano tardi o per niente
   if (p.zoneOk && Date.now() - p.zoneOk < 14 * 24 * 60 * MIN) bits.push('zone di casa attive');
+  else if (ot && p.zoneAt && Date.now() - ot < 24 * 60 * MIN) bits.push('zone non ancora attive');
   if (p.src === 'app') bits.push('dall’app');
   if (Number(p.acc) > 300) bits.push(`precisione ±${metri(p.acc)}`);
   return bits.join(' · ');

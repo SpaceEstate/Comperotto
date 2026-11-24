@@ -1,20 +1,16 @@
 // Lista della spesa
-import { html, raw, norm, cap, parseQty, timeAgo, vibrate, plural } from '../utils.js';
+import { html, raw, norm, parseQty, timeAgo, vibrate, plural } from '../utils.js';
 import { icon, catFace } from '../icons.js';
-import { SHOP_CATS, normCat, classify } from '../data.js';
+import { SHOP_CATS, classify, cleanName, freqId, repartoDi } from '../data.js';
 import { state, store, me, whoBadge, openSheet, toast, val, emptyState, closeSheet, swipe } from '../core.js';
 
 // Reparto: quello scelto a mano (per quel prodotto o ricordato dalle volte prima), altrimenti indovinato dal nome
-const learnedCat = (name) => {
-  const f = state.data.freq.find((x) => x.id === freqId(cleanName(name)));
-  return f && f.catManual ? normCat(f.category) : null;
-};
-// (sempre uno dei reparti in uso: quelli tolti in Impostazioni finiscono in "Altro")
-const catOf = (it) => normCat(it.catManual && it.category ? it.category : learnedCat(it.name) || classify(cleanName(it.name)));
+// (sempre uno dei reparti in uso: quelli tolti in Impostazioni finiscono in "Altro"). La regola è in data.js,
+// la stessa del widget della schermata Home.
+const catOf = (it) => repartoDi(it, state.data.freq);
 
-// "il latte" → "Latte": niente articoli, sempre con la maiuscola
-const ART = /^(?:(?:il|lo|la|i|gli|le|un|uno|una|del|dello|della|dei|degli|delle)\s+|(?:l|un|dell|d)['’]\s*)/i;
-export const cleanName = (s) => cap(String(s || '').trim().replace(ART, '').trim());
+// "il latte" → "Latte": niente articoli, sempre con la maiuscola (cleanName, in data.js)
+export { cleanName };
 const keyOf = (s) => norm(cleanName(s));
 
 /**
@@ -28,7 +24,6 @@ export const stessoProdotto = (a, b) => a === b || (nucleo(a) !== '' && nucleo(a
 // dalle ricette: "burro a temperatura ambiente" in lista diventa "Burro"
 const RIEMPITIVI_TESTO = new RegExp(RIEMPITIVI.source, 'gi');
 const senzaRiempitivi = (s) => String(s).replace(RIEMPITIVI_TESTO, ' ').replace(/\s+/g, ' ').trim() || s;
-const freqId = (name) => norm(name).replace(/[^a-z0-9]+/g, '-').slice(0, 60) || 'x';
 
 /**
  * Aggiunge alla spesa senza doppioni:

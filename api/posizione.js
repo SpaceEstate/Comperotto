@@ -63,8 +63,14 @@ const postoDaZona = (posti, nome) => {
   return posti.find((l) => norm(l.nome) === n) || (/^(home|casa)$/.test(n) ? posti.find((l) => l.id === 'casa') : null) || null;
 };
 
-/** Dove si trova adesso: il posto (id) oppure null; incerto = punto troppo impreciso per cambiare idea. */
-export function decidi({ posti, lat, lon, acc, regioni, evento, prev }) {
+/**
+ * Dove si trova adesso: il posto (id) oppure null; incerto = punto troppo impreciso per cambiare idea.
+ *   appena   = il posto da cui il telefono ha detto da poco di essere uscito: per la sola distanza non torna
+ *              (un punto preso sul confine darebbe un falso «è tornato»); ci si rientra con un'entrata o con le zone
+ *   soloZone = il messaggio non porta un punto nuovo (un "ping" di OwnTracks, con le zone attive): il posto cambia
+ *              solo con le zone
+ */
+export function decidi({ posti, lat, lon, acc, regioni, evento, prev, appena = null, soloZone = false }) {
   // 1) entrata in una zona: lo dice il telefono, vale più di tutto
   if (evento && evento.posto && evento.tipo === 'enter') return { luogo: evento.posto.id, incerto: false };
   // uscita da una zona: quel posto non vale più, il resto si decide come sempre
@@ -76,9 +82,10 @@ export function decidi({ posti, lat, lon, acc, regioni, evento, prev }) {
     const dentroZone = regioni.map((z) => postoDaZona(validi, z)).filter(Boolean);
     if (dentroZone.length) return { luogo: (dentroZone.find((l) => l.id === 'casa') || dentroZone[0]).id, incerto: false, uscito };
   }
+  if (soloZone) return { luogo: prima, incerto: Boolean(prev.incerto) && !uscito, uscito };
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return { luogo: prima, incerto: !uscito, uscito };
   // 3) la distanza dai nostri posti, con la precisione del punto
-  const stati = validi.map((l) => ({ l, s: dentro(distanza({ lat, lon }, l), l.r, acc) }));
+  const stati = validi.filter((l) => l.id !== appena).map((l) => ({ l, s: dentro(distanza({ lat, lon }, l), l.r, acc) }));
   const casa = stati.find((x) => x.l.id === 'casa' && x.s === true);
   if (casa) return { luogo: 'casa', incerto: false, uscito };
   const altro = stati.find((x) => x.l.id !== 'casa' && x.s === true);
@@ -134,6 +141,115 @@ export function zone(posti) {
 /** Con quali posti è stato deciso "dove si trova" (l'app ricalcola solo se nel frattempo i posti sono cambiati). */
 export const chiavePosti = (posti) => posti.map((l) => `${l.id}:${Number(l.lat).toFixed(5)}:${Number(l.lon).toFixed(5)}:${Math.round(l.r)}`).join('|');
 const firmaZone = (z) => crypto.createHash('sha1').update(JSON.stringify(z.map((x) => [x.desc, x.lat, x.lon, x.rad]))).digest('hex').slice(0, 16);
+
+// ---------------------------------------------------------------------------
+// Il cuore di Dov'è: dal messaggio del telefono e dalla posizione di prima, la posizione nuova, l'eventuale
+// notifica per l'altro e se chiedere a OwnTracks un punto fresco. Pura (l'indirizzo si chiede da fuori): si prova
+// senza database.
+//
+// Le ore. "tst" è quando è stato preso il punto; "created_at" (OwnTracks recenti) quando il telefono ha scritto il
+// messaggio. Un'entrata o un'uscita da una zona succede quando il telefono la scrive, ma OwnTracks per iPhone ci
+// attacca l'ultima posizione che conosce: dopo ore fermi al lavoro o a casa, un punto di ore prima. Per questo
+// un'uscita non si scarta mai perché il suo punto è vecchio (lo stato cambia, il punto più recente resta) e la
+// notifica guarda l'ora dell'evento. All'arrivo invece il punto di solito è fresco (si è appena guidato):
+// ecco perché prima arrivavano gli arrivi e non le partenze.
+// ---------------------------------------------------------------------------
+const FRESCO = 2 * 60000;         // un punto più vecchio di così rispetto all'evento è "vecchio"
+const CONFINE = 15 * 60000;       // dopo un'uscita, per tanto la sola distanza non fa rientrare nello stesso posto
+const NOTIZIA = 30 * 60000;       // un cambio più vecchio di così non si notifica più (sarebbe una notizia vecchia)
+const ZONE_VIVE = 14 * 24 * H;    // le zone di OwnTracks "funzionano" se ne ha nominata una in questi giorni
+
+export async function elabora({ b, prev = {}, posti, adesso = Date.now(), daApp = false, cercaIndirizzo = indirizzo }) {
+  const type = b._type || 'location';
+  let doc = { ...prev, seen: adesso };
+  if (!daApp) doc.ot = adesso; // ultimo contatto da OwnTracks (per capire se sta funzionando)
+  if (Number.isFinite(num(b.m))) doc.m = num(b.m);
+  if (b._type === 'status' && b.iOS && b.iOS.locationManagerAuthorizationStatus) doc.permesso = String(b.iOS.locationManagerAuthorizationStatus).slice(0, 40);
+  if (type !== 'location' && type !== 'transition') return { doc, notifica: null, chiediPunto: false };
+
+  // ore dal telefono (in secondi): un orologio avanti di più di 5 minuti vale l'ora del server
+  const ora = (x) => { const t = num(x) * 1000; return !(t > 0) ? null : t > adesso + 5 * 60000 ? adesso : t; };
+  const fix = ora(b.tst) ?? adesso;
+  const scritto = Math.max(fix, ora(b.created_at) ?? fix);
+  const lat = num(b.lat), lon = num(b.lon);
+  const conPunto = Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+  const evento = type === 'transition' && b.desc ? { tipo: b.event === 'enter' ? 'enter' : b.event === 'leave' ? 'leave' : '', posto: postoDaZona(posti, b.desc) } : null;
+  const conEvento = Boolean(evento && evento.posto && evento.tipo);
+  const regioni = Array.isArray(b.inregions) ? b.inregions.map(String) : null;
+  // le zone di OwnTracks funzionano: lo so quando nomina uno dei nostri posti
+  if ((evento && evento.posto) || (regioni && regioni.some((z) => postoDaZona(posti, z)))) doc.zoneOk = adesso;
+
+  const quando = conEvento ? scritto : fix;          // quando è successo quello che il messaggio dice
+  const vecchio = quando - fix > FRESCO;              // il punto attaccato all'evento è di molto prima
+  // un messaggio rimasto in coda e arrivato tardi non sostituisce una posizione più recente;
+  // un'entrata o un'uscita appena scritta vale anche se il suo punto è più vecchio di quello che ho (che resta)
+  const nuovo = !prev.at || fix >= prev.at - 60000;
+  const soloEvento = !nuovo && conEvento && quando >= prev.at - 60000;
+  if (!nuovo && !soloEvento) return { doc, notifica: null, chiediPunto: false };
+
+  // il punto: quello del messaggio se è nuovo; per un'entrata con un punto vecchio il posto stesso (si sa solo che
+  // è lì dentro); per un'uscita con un punto più vecchio di quello che ho, resta il mio
+  const acc0 = Number.isFinite(num(b.acc)) ? Math.round(num(b.acc)) : null;
+  let lt = num(prev.lat), ln = num(prev.lon), acc = prev.acc ?? null, fresco = false;
+  if (conEvento && evento.tipo === 'enter' && (vecchio || !nuovo)) { lt = evento.posto.lat; ln = evento.posto.lon; acc = Math.round(evento.posto.r); }
+  else if (conPunto && nuovo) { lt = lat; ln = lon; acc = acc0; fresco = true; }
+  const accPunto = fresco ? acc0 : 0;
+
+  // un "ping" di OwnTracks rimanda l'ultima posizione che conosce con l'ora di adesso: tiene viva la posizione ma,
+  // se le zone funzionano (entrate e uscite le dicono loro), non sposta nessuno; senza zone conta come sempre.
+  // Dopo un'uscita, per un quarto d'ora la sola distanza non fa rientrare nello stesso posto
+  const zoneAttive = Boolean(doc.zoneOk && adesso - doc.zoneOk < ZONE_VIVE);
+  const ping = b.t === 'p' && !conEvento && zoneAttive;
+  const uscita = prev.uscita && prev.uscita.luogo ? prev.uscita : null;
+  const appena = uscita && fix - uscita.at < CONFINE ? uscita.luogo : null;
+  const d = decidi({ posti, lat: lt, lon: ln, acc: accPunto, regioni, evento, prev, appena, soloZone: ping });
+  const luogoId = d.luogo;
+  const casa = posti.find((l) => l.id === 'casa');
+  const home = casa ? luogoId === 'casa' : null;
+  const qui = luogoId && luogoId !== 'casa' ? posti.find((l) => l.id === luogoId) : null;
+  // per un'entrata o un'uscita l'ora è quella dell'evento: lo stato è di adesso anche se il punto è vecchio
+  const at = conEvento ? Math.max(quando, prev.at || 0) : fix;
+  const moved = !Number.isFinite(num(prev.lat)) || (fresco && distanza({ lat: num(prev.lat), lon: num(prev.lon) }, { lat, lon }) > 120);
+  // uscito, ma con un punto vecchio: dov'è adesso non si sa ancora (meglio niente indirizzo che quello del posto lasciato)
+  const ignoto = conEvento && evento.tipo === 'leave' && (vecchio || !nuovo);
+  const place = home ? 'Casa' : qui ? qui.nome : ignoto ? '' : fresco && (moved || !prev.place || prev.luogo) ? (await cercaIndirizzo(lat, lon)) || prev.place || '' : prev.place || '';
+  const batt = Number.isFinite(num(b.batt));
+  doc = {
+    ...doc,
+    lat: lt, lon: ln, at,
+    src: daApp ? 'app' : 'owntracks',
+    acc,
+    batt: batt ? num(b.batt) : prev.batt ?? null,
+    battAt: batt ? scritto : prev.battAt ?? (prev.batt != null ? prev.at ?? null : null),
+    t: typeof b.t === 'string' ? b.t.slice(0, 2) : type === 'transition' ? 'c' : null,
+    home,
+    homeSince: home !== prev.home ? at : prev.homeSince || at,
+    luogo: luogoId,
+    luogoSince: luogoId !== (prev.luogo ?? null) ? at : prev.luogoSince || at,
+    incerto: Boolean(d.incerto),
+    posti: chiavePosti(posti),
+    place,
+  };
+  // l'ultima uscita detta dal telefono (si dimentica entrando, o quando si è di nuovo in quel posto)
+  if (conEvento) doc.uscita = evento.tipo === 'leave' ? { luogo: evento.posto.id, at: quando } : null;
+  if (doc.uscita && (!doc.uscita.luogo || doc.uscita.luogo === luogoId)) doc.uscita = null;
+
+  // Notifica all'altro quando si arriva o si va via da casa, dal lavoro o da un altro dei nostri posti.
+  // Per "andato via" bisogna allontanarsi un po' oltre il raggio (o l'iPhone deve dirlo con la zona):
+  // così un GPS ballerino non manda falsi allarmi.
+  const detto = prev.avviso ? prev.avviso.luogo ?? null : prev.at ? prev.luogo ?? null : undefined;
+  let stato = luogoId;
+  if (!luogoId && detto) {
+    const era = posti.find((l) => l.id === detto);
+    const deciso = (conEvento && evento.tipo === 'leave' && evento.posto.id === detto) || d.uscito === detto;
+    if (era && !deciso && Number.isFinite(lt) && distanza({ lat: lt, lon: ln }, era) <= era.r + 120 + Math.min(Number(accPunto) || 0, 300)) stato = detto;
+  }
+  doc.avviso = { luogo: stato, at: stato === detto && prev.avviso ? prev.avviso.at : at };
+  const notifica = detto !== undefined && stato !== detto && adesso - quando < NOTIZIA ? { stato, detto } : null;
+  // uscita con un punto vecchio: si chiede a OwnTracks dov'è adesso (così la mappa non resta sul posto lasciato)
+  const chiediPunto = !daApp && ignoto;
+  return { doc, notifica, chiediPunto };
+}
 
 // ---------------------------------------------------------------------------
 // L'auto: «Ho parcheggiato», il comando rapido sulla schermata Home dell'iPhone. Si preme e basta:
@@ -315,73 +431,17 @@ export default async function handler(req, res) {
       return send(res, 200, { ok: true, inviati: esito.inviati || 0 });
     }
 
-    const type = b._type || 'location';
     const prev = pos[who] || {};
     const posti = postiDi(s, who);
-    const casa = posti.find((l) => l.id === 'casa');
     const adesso = Date.now();
-    let doc = { ...prev, seen: adesso };
-    if (!daApp) doc.ot = adesso; // ultimo contatto da OwnTracks (per capire se sta funzionando)
-    if (Number.isFinite(num(b.m))) doc.m = num(b.m);
-    if (b._type === 'status' && b.iOS && b.iOS.locationManagerAuthorizationStatus) doc.permesso = String(b.iOS.locationManagerAuthorizationStatus).slice(0, 40);
-    let notifica = null;
-
-    const lat = num(b.lat), lon = num(b.lon);
-    const conPunto = Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
-    if (type === 'location' || type === 'transition') {
-      let at = Number.isFinite(num(b.tst)) ? num(b.tst) * 1000 : adesso;
-      if (at > adesso + 5 * 60000) at = adesso; // orologio del telefono avanti: vale l'ora del server
-      const evento = type === 'transition' && b.desc ? { tipo: b.event === 'enter' ? 'enter' : b.event === 'leave' ? 'leave' : '', posto: postoDaZona(posti, b.desc) } : null;
-      const regioni = Array.isArray(b.inregions) ? b.inregions.map(String) : null;
-      // un messaggio rimasto in coda e arrivato tardi non sostituisce una posizione più recente
-      if (!prev.at || at >= prev.at - 60000) {
-        const acc = Number.isFinite(num(b.acc)) ? Math.round(num(b.acc)) : null;
-        const lt = conPunto ? lat : num(prev.lat), ln = conPunto ? lon : num(prev.lon);
-        const d = decidi({ posti, lat: lt, lon: ln, acc: conPunto ? acc : 0, regioni, evento, prev });
-        const luogoId = d.luogo;
-        const home = casa ? luogoId === 'casa' : null;
-        // le zone di OwnTracks funzionano: lo so quando nomina uno dei nostri posti
-        if ((evento && evento.posto) || (regioni && regioni.some((z) => postoDaZona(posti, z)))) doc.zoneOk = adesso;
-        const qui = luogoId && luogoId !== 'casa' ? posti.find((l) => l.id === luogoId) : null;
-        const moved = !Number.isFinite(num(prev.lat)) || (conPunto && distanza({ lat: num(prev.lat), lon: num(prev.lon) }, { lat, lon }) > 120);
-        const place = home ? 'Casa' : qui ? qui.nome : conPunto && (moved || !prev.place || prev.luogo) ? (await indirizzo(lat, lon)) || prev.place || '' : prev.place || '';
-        doc = {
-          ...doc,
-          lat: lt, lon: ln, at,
-          src: daApp ? 'app' : 'owntracks',
-          acc: conPunto ? acc : prev.acc ?? null,
-          batt: Number.isFinite(num(b.batt)) ? num(b.batt) : prev.batt ?? null,
-          battAt: Number.isFinite(num(b.batt)) ? at : prev.battAt ?? (prev.batt != null ? prev.at ?? null : null),
-          t: typeof b.t === 'string' ? b.t.slice(0, 2) : type === 'transition' ? 'c' : null,
-          home,
-          homeSince: home !== prev.home ? at : prev.homeSince || at,
-          luogo: luogoId,
-          luogoSince: luogoId !== (prev.luogo ?? null) ? at : prev.luogoSince || at,
-          incerto: Boolean(d.incerto),
-          posti: chiavePosti(posti),
-          place,
-        };
-        // Notifica all'altro quando si arriva o si va via da casa, dal lavoro o da un altro dei nostri posti.
-        // Per "andato via" bisogna allontanarsi un po' oltre il raggio (o l'iPhone deve dirlo con la zona):
-        // così un GPS ballerino non manda falsi allarmi.
-        const detto = prev.avviso ? prev.avviso.luogo ?? null : prev.at ? prev.luogo ?? null : undefined;
-        let stato = luogoId;
-        if (!luogoId && detto) {
-          const era = posti.find((l) => l.id === detto);
-          const deciso = (evento && evento.tipo === 'leave' && evento.posto && evento.posto.id === detto) || d.uscito === detto;
-          if (era && !deciso && Number.isFinite(lt) && distanza({ lat: lt, lon: ln }, era) <= era.r + 120 + Math.min(Number(acc) || 0, 300)) stato = detto;
-        }
-        doc.avviso = { luogo: stato, at: stato === detto && prev.avviso ? prev.avviso.at : at };
-        if (detto !== undefined && stato !== detto && adesso - at < 30 * 60000) notifica = { stato, detto };
-      }
-    }
+    const { doc, notifica, chiediPunto } = await elabora({ b, prev, posti, adesso, daApp });
 
     // zone da mandare a OwnTracks (solo se cambiate, o ogni 12 ore finché non vedo che funzionano)
     const out = [];
     if (!daApp && posti.length) {
       const z = zone(posti);
       const firma = firmaZone(z);
-      const funzionano = doc.zoneOk && adesso - doc.zoneOk < 14 * 24 * H;
+      const funzionano = doc.zoneOk && adesso - doc.zoneOk < ZONE_VIVE;
       if (prev.zoneFirma !== firma || (!funzionano && adesso - (prev.zoneAt || 0) > 12 * H)) {
         // le zone mandate prima con un nome che non c'è più si tolgono (su iPhone: coordinate non valide = elimina)
         const via = (prev.zoneNomi || []).filter((n) => !z.some((x) => x.desc === n)).map((n) => ({ _type: 'waypoint', desc: n, lat: 1000, lon: 1000, rad: 0, tst: tstStabile(`via:${n}`) }));
@@ -391,6 +451,9 @@ export default async function handler(req, res) {
         doc.zoneNomi = z.map((x) => x.desc);
       }
     }
+    // uscita arrivata con l'ultima posizione che il telefono conosceva (vecchia): chiedo a OwnTracks dov'è adesso
+    // (lo fa se "Remote Commands" è attivo; altrimenti ignora la richiesta e resta tutto come prima)
+    if (chiediPunto) out.push({ _type: 'cmd', action: 'reportLocation' });
 
     await db.apply([{ op: 'set', col: 'posizioni', id: who, data: doc }]);
     pos[who] = doc;

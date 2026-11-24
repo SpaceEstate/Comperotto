@@ -58,8 +58,8 @@ export default async function handler(req, res) {
       if (!col) {
         // il widget (Scriptable): poche cose già pronte da mostrare, in una richiesta sola
         if (prendi(req, 'widget')) {
-          const [sett, spesa, freq, routine] = await Promise.all(['settings', 'spesa', 'freq', 'routine'].map((c) => db.collection(c)));
-          return send(res, 200, { ...riassunto({ settings: sett.items.main || {}, spesa: spesa.items, freq: freq.items, routine: routine.items }, oggiInItalia()), at: Date.now() });
+          const [sett, spesa, freq, routine, gatti] = await Promise.all(['settings', 'spesa', 'freq', 'routine', 'gatti'].map((c) => db.collection(c)));
+          return send(res, 200, { ...riassunto({ settings: sett.items.main || {}, spesa: spesa.items, freq: freq.items, routine: routine.items, gatti: gatti.items }, oggiInItalia()), at: Date.now() });
         }
         await segnaVisto(db, req);
         if (prendi(req, 'visti')) return send(res, 200, await collegamento(db));

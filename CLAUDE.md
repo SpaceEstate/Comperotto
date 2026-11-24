@@ -174,14 +174,19 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   preferenze per il periodo e senza ripetersi finché non sono uscite tutte.
   Accanto a Da vedere · Visti · Tutti ci sono «Film» e «Serie TV» (`TIPI`, `ui('film.tipo')`: solo film o solo serie, toccando di nuovo
   si torna a tutti e due): si sommano alle categorie e valgono anche per «Stasera guardiamo…»; dalla Home si riparte da tutti e due.
-- **Widget (Scriptable):** `scriptable/Casa.js` (si copia da `https://comperotto.vercel.app/scriptable/Casa.js` e si incolla in
-  Scriptable; il codice di famiglia lo chiede la prima volta e resta nel portachiavi: `CONFIG.codice` resta vuoto nel repository).
-  Dati da `GET /api/dati?widget=1` (dentro `dati.js`: nessuna funzione nuova) → `riassunto()` di `api/_widget.js` (pura): spesa da
-  comprare nell'ordine del giro (`repartoDi()`, `cleanName`, `freqId` sono in `data.js`, gli stessi della pagina Spesa), faccende di
-  oggi e in ritardo non ancora fatte (`choreStatus` con la data italiana), rifiuti di stasera. Piccolo, medio, grande (extra grande su
-  iPad) e schermata di blocco; «Parameter» `spesa` o `faccende`. Il tocco apre `webapp://comperotto.vercel.app/` (trucco non
-  ufficiale di iOS per aprire l'app della schermata Home: se una versione di iOS non lo accetta, `apri` con l'indirizzo https va in
-  Safari). Senza codice o con il codice sbagliato il tocco apre lo script (`URLScheme.forRunningScript()`); senza rete l'ultima copia.
+- **Widget (Scriptable):** `scriptable/Casa.js` (si copia da `https://comperotto.vercel.app/scriptable/Casa.js`, servito come testo,
+  e si incolla in Scriptable; il codice di famiglia lo chiede la prima volta e resta nel portachiavi: `CONFIG.codice` resta vuoto nel
+  repository). Dati da `GET /api/dati?widget=1` (dentro `dati.js`: nessuna funzione nuova) → `riassunto()` di `api/_widget.js` (pura):
+  spesa da comprare nell'ordine del giro (`repartoDi()`, `cleanName`, `freqId` sono in `data.js`, gli stessi della pagina Spesa),
+  faccende di oggi e in ritardo non ancora fatte (`choreStatus` con la data italiana), rifiuti di stasera e `tema`: la festa come la
+  sceglie l'app (`festaDi()`: compleanni di casa e anniversario, poi `seasonFor`) con i suoi colori (`temaWidget()`: chiaro/scuro,
+  testata `--hdr` e bordo `--hdr-edge` a strisce o sfumato, faccina). I colori sono copiati da `css/style.css` (`CASA` e `FESTE` in
+  `_widget.js`): se cambiano lì, vanno cambiati anche qui. Lo script: testata come la Home (logo `icon-192.png` tenuto sul telefono,
+  «FAM. COMPEROTTO», ora dell'aggiornamento; nelle feste a colori pieni con il bordo), caratteri di sistema 14 pt (15 nel grande),
+  righe contate per misura (piccolo, medio, grande, extra grande su iPad; una in meno sugli iPhone bassi, `PICCOLO`), schermata di
+  blocco, «Parameter» `spesa` o `faccende`. Il tocco lancia il comando rapido «Apri Casa» (`shortcuts://run-shortcut?name=`), che
+  apre l'app con *Apri app* o *Apri URL* `webapp://…`: Scriptable da solo non apre le app della schermata Home (`webapp://` dal
+  widget riapriva Scriptable). Senza codice o con il codice sbagliato il tocco apre lo script; senza rete l'ultima copia.
 - **Caselle di ricerca:** la X per cancellare è `cancella(id, poi)` di `core.js` (si vede solo con del testo, via `:placeholder-shown`).
 - **Spesa:** reparti in `SHOP_CATS` (`js/data.js`) nell'ordine del giro; gli id vecchi passano da `LEGACY_CATS` (il vecchio `freschi` ora è `frigo`).
   Stesso prodotto solo se il nome è uguale o cambia per parole "di riempimento" (`stessoProdotto()`/`nucleo()` in `spesa.js`: medie,

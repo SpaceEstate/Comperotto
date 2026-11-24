@@ -4,8 +4,9 @@
 
 // ============================================================================
 //  Fam. Comperotto — il widget di casa per la schermata Home (app Scriptable)
-//  Mostra la spesa da comprare e le faccende di oggi (con i rifiuti di stasera).
-//  Toccandolo si apre l'app di casa, quella con l'icona sulla schermata Home.
+//  Mostra la spesa da comprare e le faccende di oggi (con i rifiuti di stasera),
+//  con i colori dell'app: nelle feste quelli della festa, come tutto il sito.
+//  Toccandolo parte il comando rapido «Apri Casa», che apre l'app di casa.
 //
 //  Come si mette: istruzioni nel README del progetto, «Widget sulla schermata Home».
 //  Il codice di famiglia non serve scriverlo qui: la prima volta che avviate lo
@@ -20,34 +21,46 @@ const CONFIG = {
   indirizzo: 'https://comperotto.vercel.app',
   // se preferite scriverlo qui invece che nel portachiavi (mai in un file che condividete)
   codice: '',
-  // cosa si apre toccando il widget: l'app di casa della schermata Home, non Safari.
-  // Se toccando il widget resta aperta Scriptable, questa versione di iOS non lo permette:
-  // mettete 'https://comperotto.vercel.app/' (si apre in Safari).
+  // toccando il widget parte questo comando rapido (app Comandi), che apre l'app di casa
+  comando: 'Apri Casa',
+  // senza comando (comando: ''), il tocco apre questo indirizzo: 'webapp://comperotto.vercel.app/' apre l'app
+  // solo su alcune versioni di iOS; 'https://comperotto.vercel.app/' apre Safari
   apri: 'webapp://comperotto.vercel.app/',
 };
 // ============================================================================
 
+// iPhone piccoli (SE e simili, schermo alto meno di 700 punti): i widget sono più bassi, una riga in meno
+const PICCOLO = (() => { try { return !Device.isPad() && Device.screenSize().height < 700; } catch (e) { return false; } })();
+
 const CHIAVE = 'comperotto.codice';
 const ARCHIVIO = 'comperotto-widget.json';
+const LOGO = 'comperotto-icona.png';
+const TOCCO = CONFIG.comando.trim() ? `shortcuts://run-shortcut?name=${encodeURIComponent(CONFIG.comando.trim())}` : CONFIG.apri;
 
-// i colori dell'app (chiaro e scuro, come la casa a pastello)
-const C = (chiaro, scuro) => Color.dynamic(new Color(chiaro), new Color(scuro));
-const COLORI = {
-  sfondo: C('#FBF6F1', '#1B1815'),
-  testo: C('#3D3430', '#F2EBE2'),
-  testo2: C('#776A60', '#C2B6A8'),
-  testo3: C('#8F8277', '#8C8074'),
-  albicocca: C('#9A5E31', '#F2C9A3'),
-  albicoccaTenue: C('#FDEBDB', '#3A2C22'),
-  salvia: C('#5E8A5B', '#9DB088'),
-  salviaTenue: C('#E4F2E0', '#2B3226'),
-  rosa: C('#C2614F', '#E08D78'),
+// I colori arrivano dal sito (api/_widget.js: quelli dell'app, o della festa di oggi). Questi sono quelli di casa,
+// per quando il sito non risponde.
+const TEMA_CASA = {
+  chiaro: { sfondo: '#FBF6F1', scheda: '#FFFDFB', testo: '#3D3430', testo2: '#776A60', testo3: '#8F8277', accento: '#9A5E31', accentoTenue: '#FDEBDB', verde: '#5E8A5B', verdeTenue: '#E4F2E0', rosso: '#C2614F' },
+  scuro: { sfondo: '#1B1815', scheda: '#262220', testo: '#F2EBE2', testo2: '#C2B6A8', testo3: '#8C8074', accento: '#F2C9A3', accentoTenue: '#3A2C22', verde: '#9DB088', verdeTenue: '#2B3226', rosso: '#E08D78' },
+  testata: null,
+  bordo: null,
 };
+const C = (chiaro, scuro) => Color.dynamic(new Color(chiaro), new Color(scuro || chiaro));
+function colori(t) {
+  const out = {};
+  Object.keys(TEMA_CASA.chiaro).forEach((k) => { out[k] = C((t.chiaro || {})[k] || TEMA_CASA.chiaro[k], (t.scuro || {})[k] || TEMA_CASA.scuro[k]); });
+  return out;
+}
+let TEMA = TEMA_CASA;
+let COLORI = colori(TEMA);
+
+// i caratteri dell'app (Manrope) sono un bastoni moderno: qui il carattere di sistema, che gli somiglia
 const F = {
-  forte: (n) => Font.boldRoundedSystemFont(n),
-  semi: (n) => Font.semiboldRoundedSystemFont(n),
-  medio: (n) => Font.mediumRoundedSystemFont(n),
-  normale: (n) => Font.regularRoundedSystemFont(n),
+  marchio: (n) => Font.heavySystemFont(n),
+  forte: (n) => Font.boldSystemFont(n),
+  semi: (n) => Font.semiboldSystemFont(n),
+  medio: (n) => Font.mediumSystemFont(n),
+  normale: (n) => Font.regularSystemFont(n),
 };
 
 // ----------------------------------------------------------------------------
@@ -55,6 +68,7 @@ const F = {
 // ----------------------------------------------------------------------------
 const fm = FileManager.local();
 const percorso = fm.joinPath(fm.documentsDirectory(), ARCHIVIO);
+const percorsoLogo = fm.joinPath(fm.documentsDirectory(), LOGO);
 
 function codiceSalvato() {
   if (CONFIG.codice.trim()) return CONFIG.codice.trim();
@@ -90,6 +104,18 @@ async function scarica(codice) {
 
 function copia() {
   try { return fm.fileExists(percorso) ? JSON.parse(fm.readString(percorso)) : null; } catch (e) { return null; }
+}
+
+/** L'icona dell'app (scaricata una volta e tenuta sul telefono). */
+async function logo() {
+  try { if (fm.fileExists(percorsoLogo)) return fm.readImage(percorsoLogo); } catch (e) { /* la riscarico */ }
+  try {
+    const r = new Request(`${CONFIG.indirizzo}/assets/icons/icon-192.png`);
+    r.timeoutInterval = 8;
+    const img = await r.loadImage();
+    fm.writeImage(percorsoLogo, img);
+    return img;
+  } catch (e) { return null; }
 }
 
 // ----------------------------------------------------------------------------
@@ -130,7 +156,7 @@ function rigaTesto(st, t, font, colore, righe = 1) {
   return r;
 }
 
-function pallino(st, colore, lato = 7) {
+function pallino(st, colore, lato = 8) {
   const p = st.addStack();
   p.size = new Size(lato, lato);
   p.cornerRadius = lato / 2;
@@ -142,7 +168,7 @@ function pallino(st, colore, lato = 7) {
 function testa(st, icona, titolo, numero, colore, tenue, dim) {
   const r = riga(st, 5);
   simbolo(r, icona, colore, dim - 1);
-  testo(r, titolo, F.semi(dim), COLORI.testo);
+  testo(r, titolo, F.forte(dim), COLORI.testo);
   r.addSpacer();
   if (numero !== null && numero !== undefined) {
     const chip = r.addStack();
@@ -164,10 +190,10 @@ function rigaSpesa(st, v, dim) {
 
 function rigaFaccenda(st, v, dim) {
   const r = riga(st, 6);
-  pallino(r, v.ritardo ? COLORI.rosa : COLORI.albicocca);
+  pallino(r, v.ritardo ? COLORI.rosso : COLORI.accento);
   testo(r, v.nome, F.normale(dim), COLORI.testo);
-  // in ritardo: corto, in rosa ("da ieri", "da 3 gg"), così il nome resta leggibile
-  if (v.ritardo) testo(r, String(v.quando).replace(/^in ritardo di (\d+) gg$/, 'da $1 gg'), F.medio(dim - 2), COLORI.rosa);
+  // in ritardo: corto, in rosso ("da ieri", "da 3 gg"), così il nome resta leggibile
+  if (v.ritardo) testo(r, String(v.quando).replace(/^in ritardo di (\d+) gg$/, 'da $1 gg'), F.medio(dim - 2), COLORI.rosso);
   r.addSpacer();
 }
 
@@ -175,8 +201,8 @@ function rigaRifiuti(st, rif, dim) {
   if (!rif || !rif.stasera || !rif.stasera.length) return false;
   const r = riga(st, 5);
   if (rif.fatto) {
-    simbolo(r, 'checkmark.circle.fill', COLORI.salvia, dim - 1);
-    testo(r, `Rifiuti fuori${rif.da ? ` · ${rif.da}` : ''}`, F.medio(dim - 1), COLORI.salvia);
+    simbolo(r, 'checkmark.circle.fill', COLORI.verde, dim - 1);
+    testo(r, `Rifiuti fuori${rif.da ? ` · ${rif.da}` : ''}`, F.medio(dim - 1), COLORI.verde);
   } else {
     simbolo(r, 'trash', COLORI.testo2, dim - 1);
     testo(r, `Stasera: ${rif.stasera.join(', ')}`, F.medio(dim - 1), COLORI.testo2);
@@ -192,7 +218,7 @@ function altre(st, n, parola, dim) {
 /** La spesa: fino a `righe` prodotti, in una o più colonne. */
 function parteSpesa(st, d, righe, dim, colonne = 1) {
   const s = d.spesa;
-  testa(st, 'cart.fill', 'Spesa', s.n, COLORI.albicocca, COLORI.albicoccaTenue, dim + 1);
+  testa(st, 'cart.fill', 'Spesa', s.n, COLORI.accento, COLORI.accentoTenue, dim + 1);
   st.addSpacer(4);
   if (!s.n) { rigaTesto(st, 'Lista vuota', F.normale(dim), COLORI.testo3); return; }
   const posto = righe * colonne;
@@ -201,7 +227,7 @@ function parteSpesa(st, d, righe, dim, colonne = 1) {
   if (colonne === 1) {
     const col = st.addStack(); col.layoutVertically(); col.spacing = 2;
     voci.forEach((v) => rigaSpesa(col, v, dim));
-    altre(col, s.n - voci.length, 'altre', dim);
+    if (posto > quante) altre(col, s.n - voci.length, 'altre', dim); // con una riga sola basta la pillola
     return;
   }
   const insieme = st.addStack(); insieme.layoutHorizontally(); insieme.spacing = 10; insieme.topAlignContent();
@@ -215,7 +241,7 @@ function parteSpesa(st, d, righe, dim, colonne = 1) {
 /** Oggi in casa: le faccende da fare (prima quelle in ritardo) e i rifiuti di stasera. */
 function parteOggi(st, d, righe, dim, titolo = 'Oggi in casa') {
   const f = d.faccende;
-  testa(st, 'checklist', titolo, f.n, COLORI.salvia, COLORI.salviaTenue, dim + 1);
+  testa(st, 'checklist', titolo, f.n, COLORI.verde, COLORI.verdeTenue, dim + 1);
   st.addSpacer(4);
   const col = st.addStack(); col.layoutVertically(); col.spacing = 2;
   const conRifiuti = Boolean(d.rifiuti && d.rifiuti.stasera && d.rifiuti.stasera.length);
@@ -239,33 +265,91 @@ function quando(t) {
   return DF.string(d);
 }
 
-function piede(st, d, errore) {
-  const r = riga(st, 4);
+// ----------------------------------------------------------------------------
+// La testata, come in cima alla Home dell'app: logo e «FAM. COMPEROTTO»; nelle feste a colori pieni,
+// con il bordo della festa (strisce o sfumatura) e la sua faccina. A destra l'ora dell'aggiornamento.
+// ----------------------------------------------------------------------------
+function sfumatura(colori, angolo = 180) {
+  const g = new LinearGradient();
+  g.colors = colori.map(([c]) => new Color(c));
+  g.locations = colori.map(([, p]) => p);
+  const r = (angolo * Math.PI) / 180, dx = Math.sin(r), dy = -Math.cos(r);
+  g.startPoint = new Point(0.5 - dx / 2, 0.5 - dy / 2);
+  g.endPoint = new Point(0.5 + dx / 2, 0.5 + dy / 2);
+  return g;
+}
+
+/** Il bordo sotto la testata: strisce dei colori della festa, o una sfumatura (Capodanno, anniversario). */
+function bordo(w, b, alto) {
+  if (!b) return;
+  const e = w.addStack();
+  e.size = new Size(0, alto);
+  e.addSpacer();
+  let colori;
+  if (b.strisce) {
+    const n = 26;
+    colori = [];
+    for (let k = 0; k < n; k++) {
+      const c = b.strisce[k % b.strisce.length];
+      colori.push([c, k / n], [c, (k + 1) / n]);
+    }
+  } else {
+    colori = b.sfumatura.map((c, k, a) => [c, k / (a.length - 1)]);
+  }
+  e.backgroundGradient = sfumatura(colori, 90);
+}
+
+function testata(w, d, misura, errore, img) {
+  const t = TEMA.testata;
+  const piccolo = misura === 'small';
+  const lato = misura === 'large' || misura === 'extraLarge' ? 21 : 18;
+  const r = w.addStack();
+  r.layoutHorizontally();
+  r.centerAlignContent();
+  r.spacing = 6;
+  r.setPadding(t ? 7 : 11, 14, t ? 7 : 1, 14);
+  if (t) r.backgroundGradient = sfumatura(t.colori, t.angolo);
+  const marchio = t ? new Color(t.marchio) : COLORI.accento;
+  if (img) {
+    const i = r.addImage(img);
+    i.imageSize = new Size(lato, lato);
+    i.cornerRadius = lato * 0.3;
+  } else {
+    simbolo(r, 'house.fill', marchio, lato - 3);
+  }
+  testo(r, piccolo ? 'CASA' : 'FAM. COMPEROTTO', F.marchio(piccolo ? 12 : 12.5), marchio);
+  if (d && d.tema && d.tema.emoji) testo(r, d.tema.emoji, Font.systemFont(piccolo ? 12 : 13), marchio);
   r.addSpacer();
-  if (errore) simbolo(r, 'exclamationmark.circle', COLORI.rosa, 9);
-  testo(r, `${errore ? 'non aggiornato · ' : ''}${d && d.at ? quando(d.at) : ''}`, F.medio(9), errore ? COLORI.rosa : COLORI.testo3);
+  if (d && d.at) {
+    const colore = errore ? (t ? new Color(t.evidenza) : COLORI.rosso) : t ? new Color(t.testo, 0.8) : COLORI.testo3;
+    testo(r, `${errore ? '⚠︎ ' : ''}${quando(d.at)}`, F.medio(11), colore);
+  }
+  bordo(w, TEMA.bordo, misura === 'large' || misura === 'extraLarge' ? 4 : 3);
+}
+
+/** Il corpo del widget, sotto la testata, con i suoi margini. */
+function corpo(w, sopra, lati = 14, sotto = 10) {
+  const b = w.addStack();
+  b.layoutVertically();
+  b.setPadding(sopra, lati, sotto, lati);
+  return b;
 }
 
 // ----------------------------------------------------------------------------
 // Il widget, per ogni misura
 // ----------------------------------------------------------------------------
 function messaggio(w, titolo, sotto) {
-  w.setPadding(14, 14, 14, 14);
-  const r = riga(w, 6);
-  simbolo(r, 'house.fill', COLORI.albicocca, 14);
-  testo(r, 'Casa', F.semi(15), COLORI.testo);
-  r.addSpacer();
-  w.addSpacer(8);
-  rigaTesto(w, titolo, F.semi(13), COLORI.testo, 3);
-  w.addSpacer(4);
-  rigaTesto(w, sotto, F.normale(11), COLORI.testo2, 4);
+  const b = corpo(w, 10);
+  rigaTesto(b, titolo, F.semi(13), COLORI.testo, 3);
+  b.addSpacer(4);
+  rigaTesto(b, sotto, F.normale(11), COLORI.testo2, 4);
   w.addSpacer();
 }
 
-function disegna(d, misura, parte, errore) {
+function disegna(d, misura, parte, errore, img) {
   const w = new ListWidget();
   w.backgroundColor = COLORI.sfondo;
-  w.url = CONFIG.apri;
+  w.url = TOCCO;
   w.refreshAfterDate = new Date(Date.now() + 15 * 60000);
 
   // schermata di blocco (widget piccoli, in tinta con il sistema)
@@ -297,6 +381,9 @@ function disegna(d, misura, parte, errore) {
     return w;
   }
 
+  w.setPadding(0, 0, 0, 0);
+  testata(w, d, misura, errore, img);
+
   if (!d) {
     w.url = URLScheme.forRunningScript(); // senza dati: il tocco apre lo script, che chiede il codice
     if (errore && errore.codice) messaggio(w, 'Codice di famiglia sbagliato', 'Tocca qui per scriverlo di nuovo.');
@@ -305,55 +392,49 @@ function disegna(d, misura, parte, errore) {
     return w;
   }
 
+  // quante righe ci stanno: caratteri grandi (14 punti, 15 nel grande) e, sugli iPhone piccoli, una riga in meno
+  const meno = PICCOLO ? 1 : 0;
   if (misura === 'small') {
-    w.setPadding(12, 14, 10, 14);
-    if (parte === 'spesa') parteSpesa(w, d, 5, 12);
-    else if (parte === 'faccende') parteOggi(w, d, 5, 12, 'Oggi');
+    const b = corpo(w, 7, 14, 6);
+    if (parte === 'spesa') parteSpesa(b, d, 4 - meno, 14);
+    else if (parte === 'faccende') parteOggi(b, d, 4 - meno, 14, 'Oggi');
     else {
-      parteSpesa(w, d, 2, 12);
-      w.addSpacer(6);
-      parteOggi(w, d, 2, 12, 'Oggi');
+      // poco posto: della spesa il primo prodotto (quanti sono lo dice la pillola), delle faccende fino a due righe
+      parteSpesa(b, d, 1, 14);
+      b.addSpacer(5);
+      parteOggi(b, d, 2 - meno, 14, 'Oggi');
     }
     w.addSpacer();
-    piede(w, d, errore);
     return w;
   }
 
   if (misura === 'medium') {
-    w.setPadding(14, 16, 10, 16);
-    if (parte === 'spesa' || parte === 'faccende') {
-      if (parte === 'spesa') parteSpesa(w, d, 5, 12, 2); else parteOggi(w, d, 5, 12);
-    } else {
-      const due = w.addStack(); due.layoutHorizontally(); due.topAlignContent(); due.spacing = 14;
+    const b = corpo(w, 7, 16, 6);
+    const righe = 4 - meno;
+    if (parte === 'spesa') parteSpesa(b, d, righe, 14, 2);
+    else if (parte === 'faccende') parteOggi(b, d, righe, 14);
+    else {
+      const due = b.addStack(); due.layoutHorizontally(); due.topAlignContent(); due.spacing = 14;
       const sx = due.addStack(); sx.layoutVertically();
-      parteSpesa(sx, d, 5, 12);
+      parteSpesa(sx, d, righe, 14);
       const dx = due.addStack(); dx.layoutVertically();
-      parteOggi(dx, d, 5, 12);
+      parteOggi(dx, d, righe, 14);
     }
     w.addSpacer();
-    piede(w, d, errore);
     return w;
   }
 
   // grande (e quello extra grande dell'iPad)
   const extra = misura === 'extraLarge';
-  w.setPadding(16, 16, 12, 16);
-  const su = riga(w, 6);
-  simbolo(su, 'house.fill', COLORI.albicocca, 12);
-  testo(su, 'Fam. Comperotto', F.semi(12), COLORI.testo2);
-  su.addSpacer();
-  DF.dateFormat = 'EEEE d MMMM';
-  testo(su, DF.string(new Date()), F.medio(11), COLORI.testo3);
-  w.addSpacer(10);
-  if (parte === 'spesa') parteSpesa(w, d, 13, 13, extra ? 3 : 2);
-  else if (parte === 'faccende') parteOggi(w, d, 13, 13);
+  const b = corpo(w, 11, 16, 10);
+  if (parte === 'spesa') parteSpesa(b, d, 11 - meno, 15, extra ? 3 : 2);
+  else if (parte === 'faccende') parteOggi(b, d, 11 - meno, 15);
   else {
-    parteSpesa(w, d, 7, 13, extra ? 3 : 2);
-    w.addSpacer(12);
-    parteOggi(w, d, 5, 13);
+    parteSpesa(b, d, 6 - meno, 15, extra ? 3 : 2);
+    b.addSpacer(11);
+    parteOggi(b, d, 6 - meno, 15);
   }
   w.addSpacer();
-  piede(w, d, errore);
   return w;
 }
 
@@ -380,9 +461,12 @@ if (codice) {
     if (!dati && !(errore && errore.codice)) dati = copia(); // senza rete: l'ultima copia, con l'avviso
   }
 }
+// i colori: quelli che manda il sito (dell'app o della festa di oggi)
+if (dati && dati.tema && dati.tema.chiaro) { TEMA = dati.tema; COLORI = colori(TEMA); }
+const icona = config.runsInAccessoryWidget ? null : await logo();
 
 if (config.runsInWidget || config.runsInAccessoryWidget) {
-  Script.setWidget(disegna(dati, config.widgetFamily || 'medium', parte, errore));
+  Script.setWidget(disegna(dati, config.widgetFamily || 'medium', parte, errore, icona));
 } else {
   const a = new Alert();
   a.title = 'Il widget di casa';
@@ -394,10 +478,10 @@ if (config.runsInWidget || config.runsInAccessoryWidget) {
   a.addDestructiveAction('Cambia il codice di famiglia');
   a.addCancelAction('Chiudi');
   const scelta = await a.presentSheet();
-  if (scelta === 0) await disegna(dati, 'small', parte, errore).presentSmall();
-  if (scelta === 1) await disegna(dati, 'medium', parte, errore).presentMedium();
-  if (scelta === 2) await disegna(dati, 'large', parte, errore).presentLarge();
-  if (scelta === 3) Safari.open(CONFIG.apri);
+  if (scelta === 0) await disegna(dati, 'small', parte, errore, icona).presentSmall();
+  if (scelta === 1) await disegna(dati, 'medium', parte, errore, icona).presentMedium();
+  if (scelta === 2) await disegna(dati, 'large', parte, errore, icona).presentLarge();
+  if (scelta === 3) Safari.open(TOCCO);
   if (scelta === 4) {
     // quello vecchio resta finché non se ne scrive uno nuovo (Annulla non lo cancella)
     if (await chiediCodice()) {

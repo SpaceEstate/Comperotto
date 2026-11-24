@@ -217,18 +217,23 @@ In **+ Ricetta** c'è anche **"Da un sito di ricette"**: si incolla il link di u
 
 ## 10. Widget sulla schermata Home (Scriptable)
 
-Un widget per la schermata Home dell'iPhone (o dell'iPad) con **la spesa da comprare**, nell'ordine dei reparti come nella pagina Spesa, e **le faccende di oggi**, prima quelle in ritardo, con i rifiuti di stasera. Toccandolo si apre **l'app di casa**, quella con l'icona sulla schermata Home. Si aggiorna da solo più o meno ogni quarto d'ora (decide iOS); senza rete mostra l'ultima copia con la scritta «non aggiornato».
+Un widget per la schermata Home dell'iPhone (o dell'iPad) con **la spesa da comprare**, nell'ordine dei reparti come nella pagina Spesa, e **le faccende di oggi**, prima quelle in ritardo, con i rifiuti di stasera. Ha **i colori dell'app**: in cima il logo e «FAM. COMPEROTTO», e nelle feste la testata della festa (a Natale verde con il bordo bianco e rosso, a Halloween nera e arancione…), che cambia da sola con il calendario come tutto il sito. Si aggiorna più o meno ogni quarto d'ora (decide iOS); senza rete mostra l'ultima copia con l'ora in rosso.
 
 Una volta su ogni iPhone:
 1. Installa **Scriptable** (gratis, App Store).
 2. In Safari apri `https://comperotto.vercel.app/scriptable/Casa.js`, tieni premuto sul testo → **Seleziona tutto** → **Copia**.
-3. In Scriptable tocca **+**, incolla, in alto chiama lo script **Casa** e tocca **Fine**.
-4. Tocca **Casa** per avviarlo: la prima volta chiede il **codice di famiglia** (resta nel portachiavi dell'iPhone, non nel file) e poi mostra le anteprime. Qui c'è anche **«Prova ad aprire l'app di casa»** (vedi sotto).
+3. In Scriptable tocca **+**, incolla, in alto chiama lo script **Casa** e tocca **Fine**. (Per aggiornarlo: apri lo script, seleziona tutto e incolla sopra la versione nuova.)
+4. Tocca **Casa** per avviarlo: la prima volta chiede il **codice di famiglia** (resta nel portachiavi dell'iPhone, non nel file) e poi mostra le anteprime.
 5. Sulla schermata Home: tieni premuto uno spazio vuoto → **Modifica** → **Aggiungi widget** → **Scriptable** → scegli la misura (piccolo, medio o grande) → **Aggiungi widget**. Poi tieni premuto il widget → **Modifica widget** → *Script*: **Casa**. Alla voce *Parameter* si può scrivere `spesa` (solo la spesa) o `faccende` (solo le faccende); vuoto = tutte e due.
 
 Funziona anche sulla schermata di blocco (Personalizza → widget → Scriptable, il riquadro rettangolare o quello tondo).
 
-**Aprire l'app di casa e non Safari.** Apple non ha un modo ufficiale per aprire un'app web della schermata Home da un widget. Il widget usa l'indirizzo `webapp://comperotto.vercel.app/`, che su molte versioni di iOS apre proprio l'app di casa (sulla Home dell'app). Si prova con **«Prova ad aprire l'app di casa»** dentro Scriptable o toccando il widget. Se resta aperta Scriptable o compare «indirizzo non valido», quella versione di iOS non lo permette: in cima allo script cambiate `apri` in `'https://comperotto.vercel.app/'` (così però si apre in Safari).
+**Toccandolo si apre l'app di casa** con un comando rapido: Scriptable da solo non riesce ad aprire un'app della schermata Home (riapre sé stesso), Comandi sì. Una volta, nell'app **Comandi**:
+1. **+** → **Aggiungi azione** → cerca **Apri app** → tocca *App* e scegli l'app di casa (il nome che ha sotto l'icona, es. «Comperotto»).
+2. Se nell'elenco non c'è, al posto di *Apri app* usa **Apri URL** con `webapp://comperotto.vercel.app/`.
+3. Tocca il nome in alto e chiamalo **Apri Casa** (proprio così), poi provalo con ▶︎: si deve aprire l'app, non Safari.
+
+Il widget lancia «Apri Casa» (la prima volta iOS chiede se Scriptable può aprire Comandi: **Consenti**). Si prova anche da Scriptable: avvia lo script → «Prova ad aprire l'app di casa». Se il comando non riesce ad aprire l'app in nessuno dei due modi, quella versione di iOS non lo permette: in cima allo script mettete `comando: ''` e `apri: 'https://comperotto.vercel.app/'` (si apre in Safari).
 
 Il widget legge i dati da `GET /api/dati?widget=1`, con il codice nell'intestazione (mai nell'indirizzo).
 

@@ -187,6 +187,9 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
   blocco, «Parameter» `spesa` o `faccende`. Il tocco lancia il comando rapido «Apri Casa» (`shortcuts://run-shortcut?name=`), che
   apre l'app con *Apri app* o *Apri URL* `webapp://…`: Scriptable da solo non apre le app della schermata Home (`webapp://` dal
   widget riapriva Scriptable). Senza codice o con il codice sbagliato il tocco apre lo script; senza rete l'ultima copia.
+  Il codice si scrive in una casella (`addTextField`) o si incolla dagli appunti (`Pasteboard`): su iOS 27.1 le caselle degli avvisi
+  sono rotte e `textFieldValue()` dava `null` (lo script si fermava e il widget restava senza codice), ora si passa agli appunti.
+  Tutto l'avvio è in `avvio()` dentro un try/catch: un errore diventa un messaggio nel widget o in un avviso, mai la schermata rossa.
 - **Caselle di ricerca:** la X per cancellare è `cancella(id, poi)` di `core.js` (si vede solo con del testo, via `:placeholder-shown`).
 - **Spesa:** reparti in `SHOP_CATS` (`js/data.js`) nell'ordine del giro; gli id vecchi passano da `LEGACY_CATS` (il vecchio `freschi` ora è `frigo`).
   Stesso prodotto solo se il nome è uguale o cambia per parole "di riempimento" (`stessoProdotto()`/`nucleo()` in `spesa.js`: medie,

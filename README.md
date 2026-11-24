@@ -223,7 +223,7 @@ Una volta su ogni iPhone:
 1. Installa **Scriptable** (gratis, App Store).
 2. In Safari apri `https://comperotto.vercel.app/scriptable/Casa.js`, tieni premuto sul testo → **Seleziona tutto** → **Copia**.
 3. In Scriptable tocca **+**, incolla, in alto chiama lo script **Casa** e tocca **Fine**. (Per aggiornarlo: apri lo script, seleziona tutto e incolla sopra la versione nuova.)
-4. Tocca **Casa** per avviarlo: la prima volta chiede il **codice di famiglia** (resta nel portachiavi dell'iPhone, non nel file) e poi mostra le anteprime.
+4. Tocca **Casa** per avviarlo: la prima volta chiede il **codice di famiglia** (resta nel portachiavi dell'iPhone, non nel file) e poi mostra le anteprime. Su iOS 27.1 le caselle degli avvisi a volte non funzionano: in quel caso copia il codice (per esempio da Note) e tocca **«Incolla dagli appunti»**. In alternativa si può scrivere in cima allo script, alla riga `codice: ''`.
 5. Sulla schermata Home: tieni premuto uno spazio vuoto → **Modifica** → **Aggiungi widget** → **Scriptable** → scegli la misura (piccolo, medio o grande) → **Aggiungi widget**. Poi tieni premuto il widget → **Modifica widget** → *Script*: **Casa**. Alla voce *Parameter* si può scrivere `spesa` (solo la spesa) o `faccende` (solo le faccende); vuoto = tutte e due.
 
 Funziona anche sulla schermata di blocco (Personalizza → widget → Scriptable, il riquadro rettangolare o quello tondo).

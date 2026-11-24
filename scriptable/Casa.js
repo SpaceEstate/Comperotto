@@ -75,16 +75,54 @@ function codiceSalvato() {
   return Keychain.contains(CHIAVE) ? Keychain.get(CHIAVE) : '';
 }
 
+/** Quello che c'è negli appunti (iOS chiede il permesso di incollare). */
+function appunti() {
+  try { return String((Pasteboard.pasteString ? Pasteboard.pasteString() : Pasteboard.paste()) || '').trim(); } catch (e) { return ''; }
+}
+
+/** Quello che è stato scritto nella casella: su iOS 27.1 le caselle degli avvisi sono rotte e a volte non danno niente. */
+function letto(a, casella) {
+  let v = null;
+  try { v = a.textFieldValue(0); } catch (e) { v = null; }
+  if ((v === null || v === undefined || v === '') && casella && typeof casella.text === 'string') v = casella.text;
+  return String(v === null || v === undefined ? '' : v).trim();
+}
+
+/**
+ * Chiede il codice di famiglia e lo tiene nel portachiavi. Si scrive nella casella oppure si incolla dagli appunti
+ * (copiato per esempio da Note): se la casella torna vuota (succede con iOS 27.1) si passa da sola agli appunti.
+ */
 async function chiediCodice(messaggio) {
   const a = new Alert();
   a.title = 'Codice di famiglia';
-  a.message = messaggio || 'Lo stesso che usate per entrare nell’app di casa. Resta solo su questo iPhone.';
-  a.addSecureTextField('Codice', '');
+  a.message = messaggio || 'Lo stesso che usate per entrare nell’app di casa. Scrivilo qui, oppure copialo (per esempio da Note) e tocca «Incolla». Resta solo su questo iPhone.';
+  let casella = null;
+  try { casella = a.addTextField('Codice di famiglia', ''); } catch (e) { casella = null; }
   a.addAction('Salva');
+  a.addAction('Incolla dagli appunti');
   a.addCancelAction('Annulla');
-  if ((await a.presentAlert()) === -1) return '';
-  const c = a.textFieldValue(0).trim();
-  if (c) Keychain.set(CHIAVE, c);
+  const scelta = await a.presentAlert();
+  if (scelta === -1) return '';
+  let c = scelta === 0 ? letto(a, casella) : appunti();
+  if (!c && scelta === 0) {
+    // la casella non ha dato niente: si prova con gli appunti
+    const b = new Alert();
+    b.title = 'Non leggo la casella';
+    b.message = 'Su questa versione di iOS succede. Copia il codice di famiglia (per esempio da Note), poi torna qui e tocca «Incolla».';
+    b.addAction('Incolla');
+    b.addCancelAction('Annulla');
+    if ((await b.presentAlert()) === -1) return '';
+    c = appunti();
+  }
+  if (!c) {
+    const n = new Alert();
+    n.title = 'Nessun codice';
+    n.message = 'Negli appunti non c’è niente. Puoi anche scriverlo in cima allo script, alla riga «codice: \'\'», tra le virgolette.';
+    n.addAction('OK');
+    await n.presentAlert();
+    return '';
+  }
+  Keychain.set(CHIAVE, c);
   return c;
 }
 
@@ -439,58 +477,82 @@ function disegna(d, misura, parte, errore, img) {
 }
 
 // ----------------------------------------------------------------------------
-// Avvio: nel widget si disegna e basta; dentro Scriptable si sceglie cosa fare
+// Avvio: nel widget si disegna e basta; dentro Scriptable si sceglie cosa fare.
+// Un errore qualsiasi diventa un messaggio (nel widget o in un avviso), mai la schermata rossa.
 // ----------------------------------------------------------------------------
-const parte = String(args.widgetParameter || '').trim().toLowerCase();
-let codice = codiceSalvato();
-if (!codice && config.runsInApp) codice = await chiediCodice();
+async function avvio() {
+  const parte = String(args.widgetParameter || '').trim().toLowerCase();
+  let codice = codiceSalvato();
+  if (!codice && config.runsInApp) codice = await chiediCodice();
 
-let dati = null, errore = null;
-if (codice) {
-  try {
-    dati = await scarica(codice);
-    fm.writeString(percorso, JSON.stringify(dati));
-  } catch (e) {
-    errore = e;
-    if (e.codice && config.runsInApp) {
-      codice = await chiediCodice('Codice sbagliato: riprova.');
-      if (codice) {
-        try { dati = await scarica(codice); errore = null; fm.writeString(percorso, JSON.stringify(dati)); } catch (e2) { errore = e2; }
+  let dati = null, errore = null;
+  if (codice) {
+    try {
+      dati = await scarica(codice);
+      fm.writeString(percorso, JSON.stringify(dati));
+    } catch (e) {
+      errore = e;
+      if (e.codice && config.runsInApp) {
+        codice = await chiediCodice('Codice sbagliato: riprova.');
+        if (codice) {
+          try { dati = await scarica(codice); errore = null; fm.writeString(percorso, JSON.stringify(dati)); } catch (e2) { errore = e2; }
+        }
+      }
+      if (!dati && !(errore && errore.codice)) dati = copia(); // senza rete: l'ultima copia, con l'avviso
+    }
+  }
+  // i colori: quelli che manda il sito (dell'app o della festa di oggi)
+  if (dati && dati.tema && dati.tema.chiaro) { TEMA = dati.tema; COLORI = colori(TEMA); }
+  const icona = config.runsInAccessoryWidget ? null : await logo();
+
+  if (config.runsInWidget || config.runsInAccessoryWidget) {
+    Script.setWidget(disegna(dati, config.widgetFamily || 'medium', parte, errore, icona));
+  } else {
+    const a = new Alert();
+    a.title = 'Il widget di casa';
+    a.message = dati
+      ? `Spesa: ${dati.spesa.n} da comprare · Oggi: ${dati.faccende.n} da fare${errore ? `\n(${errore.message}: è l’ultima copia)` : ''}`
+      : errore ? errore.message : 'Manca il codice di famiglia';
+    ['Anteprima piccolo', 'Anteprima medio', 'Anteprima grande'].forEach((t) => a.addAction(t));
+    a.addAction('Prova ad aprire l’app di casa');
+    a.addDestructiveAction('Cambia il codice di famiglia');
+    a.addCancelAction('Chiudi');
+    const scelta = await a.presentSheet();
+    if (scelta === 0) await disegna(dati, 'small', parte, errore, icona).presentSmall();
+    if (scelta === 1) await disegna(dati, 'medium', parte, errore, icona).presentMedium();
+    if (scelta === 2) await disegna(dati, 'large', parte, errore, icona).presentLarge();
+    if (scelta === 3) Safari.open(TOCCO);
+    if (scelta === 4) {
+      // quello vecchio resta finché non se ne scrive uno nuovo (Annulla non lo cancella)
+      if (await chiediCodice()) {
+        const ok = new Alert();
+        ok.title = 'Fatto';
+        ok.message = 'Il widget userà il codice nuovo al prossimo aggiornamento.';
+        ok.addAction('OK');
+        await ok.presentAlert();
       }
     }
-    if (!dati && !(errore && errore.codice)) dati = copia(); // senza rete: l'ultima copia, con l'avviso
   }
 }
-// i colori: quelli che manda il sito (dell'app o della festa di oggi)
-if (dati && dati.tema && dati.tema.chiaro) { TEMA = dati.tema; COLORI = colori(TEMA); }
-const icona = config.runsInAccessoryWidget ? null : await logo();
 
-if (config.runsInWidget || config.runsInAccessoryWidget) {
-  Script.setWidget(disegna(dati, config.widgetFamily || 'medium', parte, errore, icona));
-} else {
-  const a = new Alert();
-  a.title = 'Il widget di casa';
-  a.message = dati
-    ? `Spesa: ${dati.spesa.n} da comprare · Oggi: ${dati.faccende.n} da fare${errore ? `\n(${errore.message}: è l’ultima copia)` : ''}`
-    : errore ? errore.message : 'Manca il codice di famiglia';
-  ['Anteprima piccolo', 'Anteprima medio', 'Anteprima grande'].forEach((t) => a.addAction(t));
-  a.addAction('Prova ad aprire l’app di casa');
-  a.addDestructiveAction('Cambia il codice di famiglia');
-  a.addCancelAction('Chiudi');
-  const scelta = await a.presentSheet();
-  if (scelta === 0) await disegna(dati, 'small', parte, errore, icona).presentSmall();
-  if (scelta === 1) await disegna(dati, 'medium', parte, errore, icona).presentMedium();
-  if (scelta === 2) await disegna(dati, 'large', parte, errore, icona).presentLarge();
-  if (scelta === 3) Safari.open(TOCCO);
-  if (scelta === 4) {
-    // quello vecchio resta finché non se ne scrive uno nuovo (Annulla non lo cancella)
-    if (await chiediCodice()) {
-      const ok = new Alert();
-      ok.title = 'Fatto';
-      ok.message = 'Il widget userà il codice nuovo al prossimo aggiornamento.';
-      ok.addAction('OK');
-      await ok.presentAlert();
-    }
+try {
+  await avvio();
+} catch (e) {
+  const testoErrore = String((e && e.message) || e).slice(0, 160);
+  if (config.runsInWidget || config.runsInAccessoryWidget) {
+    const w = new ListWidget();
+    w.backgroundColor = COLORI.sfondo;
+    w.url = URLScheme.forRunningScript();
+    rigaTesto(w, 'Il widget si è inceppato', F.semi(14), COLORI.testo, 2);
+    w.addSpacer(4);
+    rigaTesto(w, testoErrore, F.normale(11), COLORI.testo2, 4);
+    Script.setWidget(w);
+  } else {
+    const a = new Alert();
+    a.title = 'Qualcosa non va';
+    a.message = testoErrore;
+    a.addAction('OK');
+    await a.presentAlert();
   }
 }
 Script.complete();

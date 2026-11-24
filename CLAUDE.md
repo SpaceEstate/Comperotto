@@ -20,7 +20,7 @@ App di casa (PWA per iPhone e iPad) di Patrick e Serena, con i gatti Thor e Min�
 - **Dov'è, freschezza:** fino a 2 ore si dice "A casa"; oltre, "Era a casa · 5 h fa" in grigio (mai una posizione vecchia al presente).
   Il server (`api/posizione.js`) decide il posto con precisione del punto, zone ed entrate/uscite di OwnTracks e salva la chiave dei
   posti usati (`posti`): l'app si fida di quella decisione finché i posti non cambiano. Con "Remote Commands" attivo, nella risposta
-  a OwnTracks si mandano i nostri posti come zone (`setWaypoints`, una volta, o ogni ora finché non funzionano). Il codice di famiglia
+  a OwnTracks si mandano i nostri posti come zone (`setWaypoints`, una volta, ogni ora finché non funzionano e a ogni invio a mano con la freccia ↑, `t: 'u'`). Il codice di famiglia
   non si accetta mai nell'indirizzo (finirebbe nei log). Dall'app la posizione parte solo con l'interruttore acceso (e permesso già dato)
   o con un tocco; "Chiedi a…" manda una notifica all'altro (`#/dove/condividi`).
 - **Dov'è, partenze:** OwnTracks per iPhone attacca a entrate e uscite l'ultima posizione che conosce (`tst` di ore prima dopo ore

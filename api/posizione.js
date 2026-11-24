@@ -436,14 +436,15 @@ export default async function handler(req, res) {
     const adesso = Date.now();
     const { doc, notifica, chiediPunto } = await elabora({ b, prev, posti, adesso, daApp });
 
-    // zone da mandare a OwnTracks (solo se cambiate, o ogni ora finché non vedo che funzionano: così, appena si accende
-    // l'impostazione giusta in OwnTracks, le zone arrivano presto)
+    // zone da mandare a OwnTracks: se sono cambiate, ogni ora finché non vedo che funzionano e ogni volta che si tocca
+    // la freccia ↑ in OwnTracks (invio a mano, t = 'u'): così, appena si accende l'impostazione giusta, arrivano subito
     const out = [];
     if (!daApp && posti.length) {
       const z = zone(posti);
       const firma = firmaZone(z);
       const funzionano = doc.zoneOk && adesso - doc.zoneOk < ZONE_VIVE;
-      if (prev.zoneFirma !== firma || (!funzionano && adesso - (prev.zoneAt || 0) > H)) {
+      const aMano = b.t === 'u';
+      if (prev.zoneFirma !== firma || aMano || (!funzionano && adesso - (prev.zoneAt || 0) > H)) {
         // le zone mandate prima con un nome che non c'è più si tolgono (su iPhone: coordinate non valide = elimina)
         const via = (prev.zoneNomi || []).filter((n) => !z.some((x) => x.desc === n)).map((n) => ({ _type: 'waypoint', desc: n, lat: 1000, lon: 1000, rad: 0, tst: tstStabile(`via:${n}`) }));
         out.push({ _type: 'cmd', action: 'setWaypoints', waypoints: { _type: 'waypoints', waypoints: [...z, ...via] } });
